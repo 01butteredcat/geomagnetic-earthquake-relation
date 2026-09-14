@@ -1,0 +1,67 @@
+# Python virtual environment -- regenerate with:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/
+
+__pycache__/
+*.pyc
+.DS_Store
+*Zone.Identifier*
+
+# Analysis intermediates/outputs (~850MB) -- all regenerable from scripts/
+# against the raw data below, with the project's fixed seed (20260805).
+# Not worth version-controlling; see CLAUDE.md.
+data/
+
+# --- Raw geomagnetic day-data, per group ------------------------------------
+# ~18GB total across G1..G23 -- far beyond what belongs in a git repo (and
+# beyond Git LFS's free quota). Excluded here; each group's own CLAUDE.md
+# (small, valuable per-group documentation) is explicitly kept via the `!`
+# negation lines. Must be `Gx/*` (not `Gx/`) below -- gitignore cannot apply
+# a negation to a file inside a directory that was itself fully ignored.
+# See README.md's "資料需求" section for how to fetch this data.
+G1/*
+!G1/CLAUDE.md
+G2_G3/*
+!G2_G3/CLAUDE.md
+G4/*
+!G4/CLAUDE.md
+G5/*
+!G5/CLAUDE.md
+G6_G7_G8/*
+!G6_G7_G8/CLAUDE.md
+G9/*
+!G9/CLAUDE.md
+G10/*
+!G10/CLAUDE.md
+G11/*
+!G11/CLAUDE.md
+G12/*
+!G12/CLAUDE.md
+G13/*
+!G13/CLAUDE.md
+G14/*
+!G14/CLAUDE.md
+G15/*
+!G15/CLAUDE.md
+G16/*
+!G16/CLAUDE.md
+G17/*
+!G17/CLAUDE.md
+G18/*
+!G18/CLAUDE.md
+G19/*
+!G19/CLAUDE.md
+G20/*
+!G20/CLAUDE.md
+G21/*
+!G21/CLAUDE.md
+G22/*
+!G22/CLAUDE.md
+G23/*
+!G23/CLAUDE.md
+
+# --- Seismometer/accelerometer waveform + instrument-response data ---------
+# ~384MB, all binary (mseed waveforms + SAC PoleZero files), no documentation
+# files to preserve -- moved in from the parent directory 2026-09-14, same
+# too-big-for-git reasoning as Gx above.
+seismometer/

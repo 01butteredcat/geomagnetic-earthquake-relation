@@ -1,0 +1,648 @@
+<title>地磁資料與 2024/4/3 花蓮 M7.2 地震關聯分析</title>
+<style>
+  .gm-root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-near: #2a78d6;
+    --series-far: #1baf7a;
+    --series-local: #e34948;
+    --series-ulf-near: #2a78d6;
+    --series-ulf-far: #1baf7a;
+    --series-ulf-diff: #4a3aa7;
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-serious: #ec835a;
+    --status-critical: #d03b3b;
+    --seq-100: #cde2fb; --seq-300: #6da7ec; --seq-500: #256abf; --seq-700: #0d366b;
+    color: var(--text-primary);
+    background: var(--page);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.55;
+  }
+  @media (prefers-color-scheme: dark) {
+    .gm-root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-near: #3987e5;
+      --series-far: #199e70;
+      --series-local: #e66767;
+      --series-ulf-near: #3987e5;
+      --series-ulf-far: #199e70;
+      --series-ulf-diff: #9085e9;
+      --status-good: #0ca30c;
+      --status-warning: #fab219;
+      --status-serious: #ec835a;
+      --status-critical: #d03b3b;
+      --seq-100: #184f95; --seq-300: #256abf; --seq-500: #6da7ec; --seq-700: #cde2fb;
+    }
+  }
+  :root[data-theme="dark"] .gm-root {
+    --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-near: #3987e5; --series-far: #199e70; --series-local: #e66767;
+    --series-ulf-near: #3987e5; --series-ulf-far: #199e70; --series-ulf-diff: #9085e9;
+    --seq-100: #184f95; --seq-300: #256abf; --seq-500: #6da7ec; --seq-700: #cde2fb;
+  }
+  :root[data-theme="light"] .gm-root {
+    --surface-1: #fcfcfb; --page: #f9f9f7; --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --series-near: #2a78d6; --series-far: #1baf7a; --series-local: #e34948;
+    --series-ulf-near: #2a78d6; --series-ulf-far: #1baf7a; --series-ulf-diff: #4a3aa7;
+    --seq-100: #cde2fb; --seq-300: #6da7ec; --seq-500: #256abf; --seq-700: #0d366b;
+  }
+
+  .gm-root * { box-sizing: border-box; }
+  .gm-page { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  .gm-title { font-size: 26px; font-weight: 700; margin: 0 0 6px; }
+  .gm-subtitle { color: var(--text-secondary); font-size: 15px; margin: 0 0 28px; }
+  .gm-callout {
+    background: var(--surface-1); border: 1px solid var(--border); border-left: 4px solid var(--status-warning);
+    border-radius: 8px; padding: 16px 18px; margin: 0 0 32px; font-size: 14px; color: var(--text-secondary);
+  }
+  .gm-callout b { color: var(--text-primary); }
+  .gm-section { margin: 48px 0; }
+  .gm-h2 { font-size: 19px; font-weight: 700; margin: 0 0 4px; }
+  .gm-h2-note { font-size: 13px; color: var(--text-muted); margin: 0 0 18px; }
+  .gm-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  .gm-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .gm-grid-2 { grid-template-columns: 1fr; } }
+  .gm-stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .gm-stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; flex: 1 1 150px; }
+  .gm-stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .gm-stat-value { font-size: 22px; font-weight: 700; }
+  table.gm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.gm-table th, table.gm-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); }
+  table.gm-table th { color: var(--text-secondary); font-weight: 600; }
+  table.gm-table td { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .gm-table-wrap { overflow-x: auto; }
+  .gm-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .gm-tag-near { background: color-mix(in srgb, var(--series-near) 18%, transparent); color: var(--series-near); }
+  .gm-tag-far { background: color-mix(in srgb, var(--series-far) 18%, transparent); color: var(--series-far); }
+  .gm-tag-other { background: color-mix(in srgb, var(--text-muted) 18%, transparent); color: var(--text-muted); }
+  .gm-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .gm-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .gm-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .gm-legend-item { display: flex; align-items: center; gap: 6px; }
+  .gm-legend-swatch { width: 14px; height: 3px; border-radius: 2px; }
+  .gm-legend-swatch.dot { width: 9px; height: 9px; border-radius: 50%; }
+  .gm-chart-wrap { position: relative; }
+  .gm-tooltip {
+    position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    white-space: nowrap; opacity: 0; transition: opacity 0.1s; z-index: 5; color: var(--text-primary);
+  }
+  .gm-tooltip .gm-tt-row { display: flex; justify-content: space-between; gap: 14px; }
+  .gm-footnote { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .gm-limits { font-size: 13.5px; color: var(--text-secondary); }
+  .gm-limits li { margin-bottom: 8px; }
+  a.gm-src { color: var(--series-near); }
+  .gm-heat-legend { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .gm-heat-bar { width: 120px; height: 10px; border-radius: 3px; background: linear-gradient(to right, var(--seq-100), var(--seq-300), var(--seq-500), var(--seq-700)); }
+</style>
+
+<div class="gm-root">
+<div class="gm-page">
+
+  <h1 class="gm-title">地磁資料與 2024/4/3 花蓮 M7.2 地震關聯分析</h1>
+  <p class="gm-subtitle">13 座台灣地磁測站、2024-01-01 至 2024-04-25、每秒取樣資料的探索性分析</p>
+
+  <div class="gm-callout">
+    <b>研究框架與限制（請先讀這段）：</b>
+    地磁 ULF（超低頻）地震前兆訊號在地球物理學界仍存在爭議，尚無被普遍接受的物理機制或可重複驗證的預測能力。本報告是<b>探索性</b>分析單一地震事件（n=1 的案例研究），
+    目的是誠實呈現資料中「有沒有」統計上顯著的異常特徵，<b>不是</b>要證明地磁前兆的存在或提供地震預測方法。
+    報告中會明確標示每個發現的信心程度、可能的替代解釋（太陽磁暴、儀器缺測、儀器雜訊），以及方法本身的侷限。
+  </div>
+
+  <div class="gm-section" id="sec-event">
+    <h2 class="gm-h2">事件摘要</h2>
+    <div class="gm-stat-row" id="event-stats"></div>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">13 座測站與震央距離</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="station-table"></table></div>
+    </div>
+  </div>
+
+  <div class="gm-section" id="sec-quality">
+    <h2 class="gm-h2">資料品質透明面板</h2>
+    <p class="gm-h2-note">在解讀任何「異常」之前，必須先知道資料本身的限制</p>
+    <div class="gm-grid-2">
+      <div class="gm-card">
+        <div class="gm-h2" style="font-size:15px;">涵蓋率與已知缺測窗口</div>
+        <div class="gm-table-wrap"><table class="gm-table" id="outage-table"></table></div>
+        <p class="gm-footnote">全部 13 站 × 116 天檔案齊全，每檔恆為 86400 列；上表為已知的資料缺失/斷訊窗口，分析時已排除。</p>
+      </div>
+      <div class="gm-card">
+        <div class="gm-h2" style="font-size:15px;">特例站與儀器雜訊事件</div>
+        <p class="gm-limits" id="quality-narrative"></p>
+      </div>
+    </div>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;">時區驗證</div>
+      <p class="gm-footnote" id="tz-narrative" style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;"></p>
+      <div class="gm-grid-2">
+        <div><div class="gm-chart-wrap"><svg id="chart-sq" viewBox="0 0 460 220"></svg></div></div>
+        <div><div class="gm-chart-wrap"><svg id="chart-noise" viewBox="0 0 460 220"></svg></div></div>
+      </div>
+    </div>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;">太陽磁暴指數（Kp / Dst）</div>
+      <p class="gm-footnote" id="storm-narrative" style="font-size:13px;color:var(--text-secondary);"></p>
+    </div>
+  </div>
+
+  <div class="gm-section" id="sec-verify">
+    <h2 class="gm-h2">管線驗證結果</h2>
+    <p class="gm-h2-note">在下面的統計篩檢／解讀結果之前，先確認資料處理本身沒有已知的計算錯誤</p>
+    <div class="gm-table-wrap"><table class="gm-table" id="verify-table"></table></div>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:4px;">Baseline 窗口檢視：關鍵候選日的 trailing baseline window 是否避開磁暴</div>
+      <p class="gm-footnote" id="baseline-window-narrative" style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;"></p>
+      <div class="gm-chart-wrap">
+        <svg id="chart-baseline" viewBox="0 0 900 320" style="width:100%;height:auto;"></svg>
+        <div class="gm-tooltip" id="tooltip-baseline"></div>
+      </div>
+      <p class="gm-footnote">橘底＝太陽磁暴擾動日（含恢復期）；綠色虛線框＝該候選日實際使用的 trailing baseline window；紅點＝候選異常日</p>
+    </div>
+  </div>
+
+  <div class="gm-section" id="sec-screening">
+    <h2 class="gm-h2">基礎統計篩檢：近／遠站異常指數</h2>
+    <p class="gm-h2-note">近站組（xcg 主要 + cnu、csg）vs. 遠站組（mtu、kma）夜間基線，經穩健迴歸去除全球共同背景場後的殘差</p>
+    <div class="gm-card">
+      <div class="gm-legend" id="legend-screening"></div>
+      <div class="gm-chart-wrap">
+        <svg id="chart-screening" viewBox="0 0 900 320" style="width:100%;height:auto;"></svg>
+        <div class="gm-tooltip" id="tooltip-screening"></div>
+      </div>
+      <p class="gm-footnote">灰底＝已知缺測窗口；橘底＝太陽磁暴擾動日（含恢復期）；紅色虛線＝地震發生時刻；紅點＝統計篩檢標記的候選異常日</p>
+    </div>
+    <p class="gm-limits" id="screening-narrative"></p>
+  </div>
+
+  <div class="gm-section" id="sec-ulf">
+    <h2 class="gm-h2">ULF 極化分析：Pc3 頻段 Z/H 近遠站差異</h2>
+    <p class="gm-h2-note">10-45 秒週期頻段，夜間窗口 Hilbert 包絡 RMS 之 Z/H 極化比，近站（xcg/cnu/csg 中位數）減遠站（mtu/kma 中位數）</p>
+    <div class="gm-card">
+      <div class="gm-legend" id="legend-ulf"></div>
+      <div class="gm-chart-wrap">
+        <svg id="chart-ulf" viewBox="0 0 900 320" style="width:100%;height:auto;"></svg>
+        <div class="gm-tooltip" id="tooltip-ulf"></div>
+      </div>
+    </div>
+    <p class="gm-limits" id="ulf-narrative"></p>
+
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;">震央附近局部頻譜圖（4/3 前後 ±12 天）</div>
+      <div class="gm-grid-2">
+        <div>
+          <p class="gm-footnote" id="spec-near-caption">近站</p>
+          <canvas id="spec-near" width="440" height="180" style="width:100%;height:auto;border-radius:6px;"></canvas>
+        </div>
+        <div>
+          <p class="gm-footnote" id="spec-far-caption">遠站（背景參考）</p>
+          <canvas id="spec-far" width="440" height="180" style="width:100%;height:auto;border-radius:6px;"></canvas>
+        </div>
+      </div>
+      <div class="gm-heat-legend"><span>功率（log10, 低→高）</span><span class="gm-heat-bar"></span></div>
+    </div>
+  </div>
+
+  <div class="gm-section" id="sec-convergence">
+    <h2 class="gm-h2">兩種方法的交叉比對</h2>
+    <div class="gm-card" id="convergence-card"></div>
+  </div>
+
+  <div class="gm-section" id="sec-limits">
+    <h2 class="gm-h2">限制與結論</h2>
+    <ul class="gm-limits">
+      <li><b>ttn（卑南）僅為純量站</b>，X/Y/Z 結構性缺值，無法參與 H/D/極化比等向量分析，只能用 F（總磁場）做次要、信心較低的篩檢。</li>
+      <li><b>單一事件、n=1 的案例研究</b>：本報告只分析一次地震，任何「候選異常」都只是相關性觀察，不構成統計上可推論到其他地震的證據，也未做多重比較校正。</li>
+      <li><b>簡化的 Z/H 極化比</b> vs. 文獻中更嚴謹的三分量交叉頻譜矩陣 SVD 極化/橢圓度分析——本報告採用前者（Hayakawa 式方法）作為可行的第一階近似。</li>
+      <li><b>116 天的基線偏短</b>，不足以建立長期季節性或太陽週期背景的穩健常態分布，MAD z-score 的「常態」定義本身仍受限於這個短窗口。</li>
+      <li><b>twu 測站在地震當天（4/3）開始出現儀器脈衝雜訊，並在之後數週内逐漸惡化直至 4/24-25 完全斷訊</b>——這很可能是地震搖晃或後續餘震對儀器/傳輸造成的物理損壞，而非地磁前兆訊號本身；因 twu 距震央 126.7km（不在近站組），未被使用於前兆篩檢，但作為地震對監測設施造成實際影響的佐證，仍值得記錄。</li>
+      <li><b>ttn 測站在 3/26 起雜訊事件明顯增加</b>（約在地震前 8 天），且與 3/21-3/27 的太陽磁暴期部分重疊——由於兩者時間高度重疊，且 ttn 只有純量資料可用，此現象究竟是磁暴引起還是獨立的異常，本報告不下定論。</li>
+    </ul>
+  </div>
+
+  <p class="gm-footnote">資料來源：中央氣象署地磁觀測網（IAGA-2002 格式）；太陽磁暴指數取自 GFZ Potsdam（Kp）與京都世界資料中心（Dst，provisional）。分析程式碼與中繼資料保存於獨立專案目錄，可重複執行與擴充至其他地震事件。</p>
+
+</div>
+</div>
+
+<script>
+const DATA = /*__REPORT_DATA__*/null;
+(function(){
+  const root = document.querySelector('.gm-root');
+  const cs = getComputedStyle(root);
+  const cvar = (name) => cs.getPropertyValue(name).trim();
+  // SVG fill/stroke attributes accept CSS var() directly and stay in sync
+  // with the page's live/dark theme automatically; canvas cannot (colors
+  // must be resolved to concrete values at draw time via cvar() instead).
+  const cvarRef = (name) => 'var(' + name + ')';
+
+  function fmtDate(yyyymmdd){
+    return yyyymmdd.slice(4,6) + '/' + yyyymmdd.slice(6,8);
+  }
+  function parseDate(yyyymmdd){
+    return new Date(Date.UTC(+yyyymmdd.slice(0,4), +yyyymmdd.slice(4,6)-1, +yyyymmdd.slice(6,8)));
+  }
+  const eqDate = new Date(DATA.meta.eq_time_utc.replace(' ','T')+'Z');
+
+  // ---------- Event stats ----------
+  const statsEl = document.getElementById('event-stats');
+  const stats = [
+    ['規模', 'M' + DATA.meta.eq_magnitude],
+    ['發生時間（台灣時間）', DATA.meta.eq_time_local],
+    ['震央', DATA.meta.eq_lat.toFixed(3) + '°N, ' + DATA.meta.eq_lon.toFixed(3) + '°E'],
+    ['深度', DATA.meta.eq_depth_km + ' km'],
+    ['資料涵蓋期間', DATA.meta.data_start + ' ~ ' + DATA.meta.data_end],
+    ['資料時區（實測驗證）', DATA.meta.data_timezone],
+  ];
+  statsEl.innerHTML = stats.map(([l,v]) => `<div class="gm-stat-tile"><div class="gm-stat-label">${l}</div><div class="gm-stat-value" style="font-size:16px;">${v}</div></div>`).join('');
+
+  // ---------- Station table ----------
+  const stTable = document.getElementById('station-table');
+  const roleTag = (r) => r==='near' ? '<span class="gm-tag gm-tag-near">近站組</span>' : r==='far' ? '<span class="gm-tag gm-tag-far">遠站組</span>' : '<span class="gm-tag gm-tag-other">其他</span>';
+  stTable.innerHTML = '<thead><tr><th>代碼</th><th>站名</th><th>距震央</th><th>緯度</th><th>經度</th><th>分組</th></tr></thead><tbody>' +
+    DATA.stations.map(s => `<tr><td>${s.code}${s.code==='ttn'?' *':''}</td><td>${s.name}</td><td>${s.distance_km.toFixed(1)} km</td><td>${s.lat.toFixed(3)}</td><td>${s.lon.toFixed(3)}</td><td>${roleTag(s.role)}</td></tr>`).join('') +
+    '</tbody>';
+
+  // ---------- Outage table ----------
+  const outTable = document.getElementById('outage-table');
+  outTable.innerHTML = '<thead><tr><th>測站</th><th>起</th><th>迄</th><th>說明</th></tr></thead><tbody>' +
+    DATA.known_outage_windows.map(w => `<tr><td>${w.station}</td><td>${w.start}</td><td>${w.end}</td><td>${w.note}</td></tr>`).join('') +
+    '</tbody>';
+
+  // ---------- Quality narrative ----------
+  const twu = DATA.spike_glitches_by_station.twu || [];
+  const ttn = DATA.spike_glitches_by_station.ttn || [];
+  document.getElementById('quality-narrative').innerHTML = `
+    <p><b>ttn（卑南）：</b> 純量磁力儀，X/Y/Z 恆為結構性佔位值，僅 F（總磁場）為真實資料；已從近/遠站向量分析中排除。</p>
+    <p><b>twu（萬丘，126.7 km）：</b> ${twu.length} 天偵測到儀器脈衝雜訊，<b>從地震當天（4/3）開始出現</b>並持續惡化，4/24、4/25 完全斷訊。研判為地震/餘震對站點設備造成的物理性損壞，而非地磁前兆。</p>
+    <p><b>ttn 雜訊事件：</b> ${ttn.length} 天偵測到雜訊尖峰，主要集中在 3/26-4/8（含地震前 8 天到震後 5 天），與 3/21-3/27 太陽磁暴期部分重疊，成因不明確。</p>
+  `;
+
+  // ---------- Timezone narrative + mini charts ----------
+  const tz = DATA.timezone_check;
+  document.getElementById('tz-narrative').innerHTML =
+    `IAGA-2002 標頭沒有時區欄位。用 xcg 站 ${tz.quiet_days_used.length} 個乾淨日，交叉比對 Sq 日變曲線（太陽靜日磁場，理論尖峰應落在地方太陽正午附近）與人為/工業 ULF 雜訊日變（應在本地上班時段較高、深夜較低），
+    兩個獨立訊號一致指向：<b>檔案中的 TIME 欄位是 UTC</b>（信心度：${tz.confidence}）。所有「夜間基線窗口」（本地 01:00-04:00）換算為 UTC 17:00-19:59。`;
+
+  function miniLineChart(svgId, hourly, color, yLabel, title){
+    const svg = document.getElementById(svgId);
+    const W=460,H=220,ML=48,MR=14,MT=28,MB=32;
+    const hours = Array.from({length:24}, (_,i)=>i);
+    const vals = hours.map(h => hourly[h]);
+    const yMin = Math.min(...vals), yMax = Math.max(...vals);
+    const pad = (yMax-yMin)*0.15 || 1;
+    const y0=yMin-pad, y1=yMax+pad;
+    const x = h => ML + (W-ML-MR) * h/23;
+    const y = v => MT + (H-MT-MB) * (1 - (v-y0)/(y1-y0));
+    let s = `<text x="${ML}" y="16" font-size="12" fill="${cvarRef('--text-primary')}" font-weight="600">${title}</text>`;
+    // gridlines
+    for(let i=0;i<=3;i++){
+      const v = y0 + (y1-y0)*i/3;
+      s += `<line x1="${ML}" x2="${W-MR}" y1="${y(v)}" y2="${y(v)}" stroke="${cvarRef('--grid')}" stroke-width="1"/>`;
+      s += `<text x="${ML-6}" y="${y(v)+3}" font-size="9" fill="${cvarRef('--text-muted')}" text-anchor="end">${v.toFixed(1)}</text>`;
+    }
+    for(let h=0; h<=23; h+=4){
+      s += `<text x="${x(h)}" y="${H-MB+14}" font-size="9" fill="${cvarRef('--text-muted')}" text-anchor="middle">${h}h</text>`;
+    }
+    s += `<text x="${(ML+W-MR)/2}" y="${H-4}" font-size="9" fill="${cvarRef('--text-muted')}" text-anchor="middle">原始 UTC 時刻</text>`;
+    let path = hours.map((h,i) => (i===0?'M':'L') + x(h).toFixed(1) + ',' + y(vals[i]).toFixed(1)).join(' ');
+    s += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    svg.innerHTML = s;
+  }
+  miniLineChart('chart-sq', tz.sq_curve_H_deviation_by_raw_hour, cvarRef('--series-near'), 'H 偏差 (nT)', 'Sq 日變曲線（H 偏離當日均值）');
+  miniLineChart('chart-noise', tz.noise_power_by_raw_hour, cvarRef('--series-local'), '雜訊功率', '人為/工業 ULF 雜訊功率（一階差分平方）');
+
+  // ---------- Storm narrative ----------
+  const ss = DATA.storm_summary;
+  document.getElementById('storm-narrative').innerHTML =
+    `資料來源：${ss.sources.join('；')}。信心：${ss.confidence}。共標記 ${ss.n_storm_onset_days} 個磁暴發生日、含恢復期共 ${ss.n_storm_or_recovery_days} 天已從基線計算中排除。`;
+
+  // ---------- Generic line chart with shading, markers, tooltip ----------
+  function buildLineChart(svgEl, tooltipEl, opts){
+    const {dates, series, storms, outages, eqDateStr, candidateDates, yFmt, highlightRange, highlightLabel} = opts;
+    const W=900,H=320, ML=54, MR=16, MT=16, MB=34;
+    const xs = dates.map(parseDate);
+    const x0 = xs[0].getTime(), x1 = xs[xs.length-1].getTime();
+    let yMin=Infinity, yMax=-Infinity;
+    series.forEach(s => s.data.forEach(v => { if(v!=null){ yMin=Math.min(yMin,v); yMax=Math.max(yMax,v);} }));
+    const pad = (yMax-yMin)*0.12 || 1;
+    yMin -= pad; yMax += pad;
+    const X = t => ML + (W-ML-MR) * (t-x0)/(x1-x0);
+    const Y = v => MT + (H-MT-MB) * (1 - (v-yMin)/(yMax-yMin));
+
+    let s = '';
+    // highlighted date-range band (e.g. the trailing baseline window actually
+    // used for one candidate day) -- drawn first so it sits behind everything
+    if(highlightRange){
+      const hw = (W-ML-MR)*(1/dates.length);
+      const xStart = X(parseDate(highlightRange[0]).getTime()) - hw/2;
+      const xEnd = X(parseDate(highlightRange[1]).getTime()) + hw/2;
+      s += `<rect x="${xStart}" y="${MT}" width="${xEnd-xStart}" height="${H-MT-MB}" fill="none" stroke="${cvarRef('--status-good')}" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+      if(highlightLabel){
+        s += `<text x="${xStart+4}" y="${MT+11}" font-size="10" fill="${cvarRef('--status-good')}" font-weight="600">${highlightLabel}</text>`;
+      }
+    }
+    // storm shading
+    (storms||[]).forEach(d => {
+      const t = parseDate(d).getTime();
+      const w = (W-ML-MR)*(1/dates.length);
+      s += `<rect x="${X(t)-w/2}" y="${MT}" width="${w}" height="${H-MT-MB}" fill="${cvarRef('--status-warning')}" opacity="0.12"/>`;
+    });
+    // outage shading
+    (outages||[]).forEach(d => {
+      const t = parseDate(d).getTime();
+      const w = (W-ML-MR)*(1/dates.length);
+      s += `<rect x="${X(t)-w/2}" y="${MT}" width="${w}" height="${H-MT-MB}" fill="${cvarRef('--text-muted')}" opacity="0.18"/>`;
+    });
+    // gridlines + y ticks
+    for(let i=0;i<=4;i++){
+      const v = yMin + (yMax-yMin)*i/4;
+      s += `<line x1="${ML}" x2="${W-MR}" y1="${Y(v)}" y2="${Y(v)}" stroke="${cvarRef('--grid')}" stroke-width="1"/>`;
+      s += `<text x="${ML-8}" y="${Y(v)+4}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="end">${v.toFixed(2)}</text>`;
+    }
+    // x ticks: every ~14 days
+    for(let i=0;i<dates.length;i+=14){
+      s += `<text x="${X(xs[i].getTime())}" y="${H-MB+16}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="middle">${fmtDate(dates[i])}</text>`;
+    }
+    s += `<line x1="${ML}" x2="${W-MR}" y1="${H-MB}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1"/>`;
+
+    // earthquake marker
+    if(eqDateStr){
+      const t = new Date(eqDateStr.replace(' ','T')+'Z').getTime();
+      s += `<line x1="${X(t)}" x2="${X(t)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-critical')}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+      s += `<text x="${X(t)+4}" y="${MT+11}" font-size="10" fill="${cvarRef('--status-critical')}" font-weight="600">4/3 地震</text>`;
+    }
+
+    // series lines
+    series.forEach(ser => {
+      let d = '';
+      let drawing = false;
+      dates.forEach((dt,i) => {
+        const v = ser.data[i];
+        if(v==null){ drawing=false; return; }
+        const cmd = drawing ? 'L' : 'M';
+        d += cmd + X(xs[i].getTime()).toFixed(1) + ',' + Y(v).toFixed(1) + ' ';
+        drawing = true;
+      });
+      s += `<path d="${d}" fill="none" stroke="${ser.color}" stroke-width="${ser.width||2}" opacity="${ser.opacity!=null?ser.opacity:1}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    });
+
+    // candidate markers
+    (candidateDates||[]).forEach(cd => {
+      const i = dates.indexOf(cd);
+      if(i<0) return;
+      const primary = series[series.length-1];
+      const v = primary.data[i];
+      if(v==null) return;
+      const cx = X(xs[i].getTime()), cy = Y(v);
+      s += `<circle cx="${cx}" cy="${cy}" r="5.5" fill="${cvarRef('--status-critical')}" stroke="${cvarRef('--surface-1')}" stroke-width="2"/>`;
+      s += `<text x="${cx}" y="${cy-10}" font-size="10" fill="${cvarRef('--status-critical')}" text-anchor="middle" font-weight="600">${fmtDate(cd)}</text>`;
+    });
+
+    // hover crosshair layer
+    s += `<line id="${svgEl.id}-cross" x1="0" x2="0" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1" opacity="0"/>`;
+    svgEl.innerHTML = s;
+
+    const cross = document.getElementById(svgEl.id+'-cross');
+    svgEl.addEventListener('mousemove', (e) => {
+      const pt = svgEl.createSVGPoint();
+      pt.x = e.clientX; pt.y = e.clientY;
+      const loc = pt.matrixTransform(svgEl.getScreenCTM().inverse());
+      if(loc.x < ML || loc.x > W-MR){ cross.setAttribute('opacity','0'); tooltipEl.style.opacity=0; return; }
+      const frac = (loc.x-ML)/(W-ML-MR);
+      const t = x0 + frac*(x1-x0);
+      let idx=0, best=Infinity;
+      xs.forEach((d,i) => { const diff=Math.abs(d.getTime()-t); if(diff<best){best=diff;idx=i;} });
+      cross.setAttribute('x1', X(xs[idx].getTime())); cross.setAttribute('x2', X(xs[idx].getTime()));
+      cross.setAttribute('opacity','1');
+      let rows = `<div style="font-weight:600;margin-bottom:4px;">${dates[idx].slice(0,4)}-${dates[idx].slice(4,6)}-${dates[idx].slice(6,8)}</div>`;
+      series.forEach(ser => {
+        const v = ser.data[idx];
+        rows += `<div class="gm-tt-row"><span>${ser.name}</span><span style="font-weight:600;">${v==null?'—':(yFmt?yFmt(v):v.toFixed(3))}</span></div>`;
+      });
+      tooltipEl.innerHTML = rows;
+      const bbox = svgEl.getBoundingClientRect();
+      const px = (X(xs[idx].getTime())/W) * bbox.width;
+      tooltipEl.style.left = Math.min(px+10, bbox.width-160) + 'px';
+      tooltipEl.style.top = '10px';
+      tooltipEl.style.opacity = 1;
+    });
+    svgEl.addEventListener('mouseleave', () => { cross.setAttribute('opacity','0'); tooltipEl.style.opacity=0; });
+  }
+
+  // ---------- Screening chart ----------
+  const li = DATA.local_anomaly_index;
+  const dates1 = li.map(r=>r.date);
+  buildLineChart(document.getElementById('chart-screening'), document.getElementById('tooltip-screening'), {
+    dates: dates1,
+    series: [
+      {name:'遠站指數 (far_index_H)', data: li.map(r=>r.far_index_H), color: cvarRef('--series-far'), width:1.5, opacity:0.7},
+      {name:'近站指數 (near_index_H)', data: li.map(r=>r.near_index_H), color: cvarRef('--series-near'), width:1.5, opacity:0.7},
+      {name:'在地異常指數 (local_anomaly_index_H)', data: li.map(r=>r.local_anomaly_index_H), color: cvarRef('--series-local'), width:2.5},
+    ],
+    storms: DATA.storm_dates,
+    outages: [], // outage days already show as NaN gaps
+    eqDateStr: DATA.meta.eq_time_utc,
+    candidateDates: DATA.candidate_windows.candidate_dates_H,
+  });
+  document.getElementById('legend-screening').innerHTML = [
+    ['遠站指數（mtu/kma 中位數 MAD z-score）', cvarRef('--series-far')],
+    ['近站指數（xcg/cnu/csg 中位數 MAD z-score）', cvarRef('--series-near')],
+    ['在地異常指數（近站經迴歸去除遠站共同背景後的殘差）', cvarRef('--series-local')],
+  ].map(([l,c]) => `<div class="gm-legend-item"><span class="gm-legend-swatch" style="background:${c};"></span>${l}</div>`).join('');
+
+  const candH = DATA.candidate_windows.candidate_dates_H;
+  document.getElementById('screening-narrative').innerHTML = `
+    <p>穩健迴歸（Theil-Sen）顯示近遠站 H 分量夜間基線共同背景係數約 ${DATA.candidate_windows.fit_H.slope.toFixed(2)}（${DATA.candidate_windows.fit_H.n_fit_days} 個乾淨日擬合），
+    Z 分量係數僅 ${DATA.candidate_windows.fit_Z.slope.toFixed(2)}——符合 Z 分量較不受全球共同背景場（太陽磁暴/Sq）主導、較可能承載局部訊號的物理預期。</p>
+    <p><b>候選異常日（H 分量）：</b>${candH.length ? candH.map(fmtDate).join('、') : '無'}。<b>候選異常日（Z 分量）：</b>${DATA.candidate_windows.candidate_dates_Z.length ? DATA.candidate_windows.candidate_dates_Z.map(fmtDate).join('、') : '無'}。
+    兩者同時標記的日期：${DATA.candidate_windows.candidate_dates_both_H_and_Z.length ? DATA.candidate_windows.candidate_dates_both_H_and_Z.join('、') : '<b>無</b>——本方法在震前數週未發現 H、Z 分量同時同步異常的日子。'}</p>
+    <p>值得注意的是 <b>3/30</b>（震前 4 天）在 H 分量被標記為候選異常日，強度中等（略超過 2.5×MAD 門檻），地震當天（4/3）及前後數日本身數值並不特別極端。</p>
+  `;
+
+  // ---------- ULF chart ----------
+  const un = DATA.ulf_near_far_index;
+  const dates2 = un.map(r=>r.date);
+  buildLineChart(document.getElementById('chart-ulf'), document.getElementById('tooltip-ulf'), {
+    dates: dates2,
+    series: [
+      {name:'遠站 Pc3 Z/H (pc3_far_zh)', data: un.map(r=>r.pc3_far_zh), color: cvarRef('--series-ulf-far'), width:1.5, opacity:0.7},
+      {name:'近站 Pc3 Z/H (pc3_near_zh)', data: un.map(r=>r.pc3_near_zh), color: cvarRef('--series-ulf-near'), width:1.5, opacity:0.7},
+      {name:'近遠站差異 (pc3_diff_zh)', data: un.map(r=>r.pc3_diff_zh), color: cvarRef('--series-ulf-diff'), width:2.5},
+    ],
+    storms: DATA.storm_dates,
+    outages: [],
+    eqDateStr: DATA.meta.eq_time_utc,
+    candidateDates: ['20240330'],
+  });
+  document.getElementById('legend-ulf').innerHTML = [
+    ['遠站 Pc3 Z/H 極化比', cvarRef('--series-ulf-far')],
+    ['近站 Pc3 Z/H 極化比', cvarRef('--series-ulf-near')],
+    ['近站－遠站差異', cvarRef('--series-ulf-diff')],
+  ].map(([l,c]) => `<div class="gm-legend-item"><span class="gm-legend-swatch" style="background:${c};"></span>${l}</div>`).join('');
+
+  document.getElementById('ulf-narrative').innerHTML = `
+    <p><b>3/30（震前 4 天）的 Pc3 近遠站極化比差異，是整個 113 天可計算窗口中最極端的一天</b>（z ≈ -4.1 個 MAD 單位，第二極端為震後 11 天的 4/14）。
+    這與基礎統計篩檢法（上一節）獨立標記的候選日 <b>完全相同</b>，是兩個各自獨立的方法首次出現交叉印證的日子。</p>
+    <p><b>但務必謹慎解讀：</b>這是單一事件、單一候選窗口的巧合式交叉驗證，並未做多重比較校正；地磁時間序列本身具有自相關與非常態的厚尾分布，"z=4 很罕見" 的直覺並不嚴謹適用。
+    這個結果值得記錄與後續用更多地震事件驗證，但不足以構成前兆訊號存在的證據。</p>
+  `;
+
+  // ---------- Spectrogram heatmaps ----------
+  function drawSpectrogram(canvasId, spec, eqDateStr){
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const ML=40, MB=20, MT=6, MR=6;
+    const nF = spec.freq_hz.length, nT = spec.time_hours_from_start.length;
+    let vmin=Infinity, vmax=-Infinity;
+    spec.power_db.forEach(row => row.forEach(v => { vmin=Math.min(vmin,v); vmax=Math.max(vmax,v); }));
+    const seqColors = [cvar('--seq-100'), cvar('--seq-300'), cvar('--seq-500'), cvar('--seq-700')];
+    function colorFor(v){
+      const f = Math.max(0, Math.min(1, (v-vmin)/(vmax-vmin)));
+      const idx = f*(seqColors.length-1);
+      const lo = Math.floor(idx), hi = Math.min(seqColors.length-1, lo+1), frac = idx-lo;
+      const c1 = hexToRgb(seqColors[lo]), c2 = hexToRgb(seqColors[hi]);
+      const r = Math.round(c1[0]+(c2[0]-c1[0])*frac), g = Math.round(c1[1]+(c2[1]-c1[1])*frac), b = Math.round(c1[2]+(c2[2]-c1[2])*frac);
+      return `rgb(${r},${g},${b})`;
+    }
+    function hexToRgb(hex){
+      hex = hex.trim();
+      const m = hex.match(/^#([0-9a-f]{6})$/i);
+      if(!m) return [128,128,128];
+      const n = parseInt(m[1],16);
+      return [(n>>16)&255, (n>>8)&255, n&255];
+    }
+    const cw = (W-ML-MR)/nT, ch = (H-MT-MB)/nF;
+    for(let ti=0; ti<nT; ti++){
+      for(let fi=0; fi<nF; fi++){
+        ctx.fillStyle = colorFor(spec.power_db[fi][ti]);
+        ctx.fillRect(ML+ti*cw, MT+(nF-1-fi)*ch, cw+0.6, ch+0.6);
+      }
+    }
+    ctx.fillStyle = cvar('--text-muted');
+    ctx.font = '9px system-ui';
+    ctx.textAlign = 'center';
+    const startMs = new Date(spec.start_date+'T00:00:00Z').getTime();
+    for(let d=0; d<=24; d+=6){
+      const hrs = d*24;
+      const frac = hrs/(spec.time_hours_from_start[nT-1]);
+      if(frac>1) continue;
+      const dateLabel = new Date(startMs + hrs*3600*1000);
+      ctx.fillText((dateLabel.getUTCMonth()+1)+'/'+dateLabel.getUTCDate(), ML+frac*(W-ML-MR), H-4);
+    }
+    ctx.textAlign = 'right';
+    [spec.freq_hz[0], spec.freq_hz[Math.floor(nF/2)], spec.freq_hz[nF-1]].forEach((f,i) => {
+      const yy = i===0 ? H-MB : i===1 ? MT+(H-MT-MB)/2 : MT+8;
+      ctx.fillText((f*1000).toFixed(1)+'mHz', ML-4, yy);
+    });
+    // earthquake marker
+    if(eqDateStr){
+      const eqMs = new Date(eqDateStr.replace(' ','T')+'Z').getTime();
+      const frac = (eqMs-startMs)/(1000*3600*(spec.time_hours_from_start[nT-1]));
+      if(frac>=0 && frac<=1){
+        ctx.strokeStyle = cvar('--status-critical'); ctx.lineWidth = 1.5;
+        ctx.setLineDash([4,3]);
+        ctx.beginPath(); ctx.moveTo(ML+frac*(W-ML-MR), MT); ctx.lineTo(ML+frac*(W-ML-MR), H-MB); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }
+  function redrawSpectrograms(){
+    if(DATA.spectrogram_near) drawSpectrogram('spec-near', DATA.spectrogram_near, DATA.meta.eq_time_utc);
+    if(DATA.spectrogram_far) drawSpectrogram('spec-far', DATA.spectrogram_far, DATA.meta.eq_time_utc);
+  }
+  redrawSpectrograms();
+  // captions pull the actual station code/distance from the data itself
+  // (rather than being hardcoded) so they stay correct if the near/far
+  // station selection ever differs from the original xcg/mtu pairing.
+  function stationDistanceKm(code){
+    const s = DATA.stations.find(s => s.code === code);
+    return s ? s.distance_km.toFixed(1) + ' km' : '';
+  }
+  if(DATA.spectrogram_near) document.getElementById('spec-near-caption').textContent =
+    `近站 ${DATA.spectrogram_near.station}（${stationDistanceKm(DATA.spectrogram_near.station)}）`;
+  if(DATA.spectrogram_far) document.getElementById('spec-far-caption').textContent =
+    `遠站 ${DATA.spectrogram_far.station}（${stationDistanceKm(DATA.spectrogram_far.station)}，背景參考）`;
+  // canvas colors are baked at draw time, so re-draw whenever the page's
+  // theme changes (host viewer's toggle sets data-theme; OS-level changes
+  // fire prefers-color-scheme) -- SVG charts elsewhere use var() directly
+  // and re-theme via CSS with no JS involvement.
+  new MutationObserver(redrawSpectrograms).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawSpectrograms);
+  }
+
+  // ---------- Convergence ----------
+  document.getElementById('convergence-card').innerHTML = `
+    <p class="gm-limits">基礎統計篩檢（夜間基線 MAD z-score）與 ULF 極化分析（Pc3 Z/H 比）是兩個資料處理路徑完全獨立的方法，
+    卻都把 <b>2024-03-30（震前 4 天）</b>標記為近遠站差異最突出的日子之一。
+    地震發生當天與前後 1-2 天，兩種方法都<b>沒有</b>看到特別極端的訊號。</p>
+    <p class="gm-limits">誠實的整體結論：<b>本次分析沒有找到強烈、明確的地磁前兆訊號</b>。3/30 的交叉印證是唯一值得記錄的候選觀察，
+    但其統計強度、缺乏第二次獨立地震事件佐證、以及地磁時間序列的非常態特性，都使它遠不足以構成「地磁前兆存在」的證據。
+    這與目前地球物理學界對地磁地震前兆的整體審慎立場一致。</p>
+  `;
+
+  // ---------- Verification table ----------
+  const v = DATA.verification;
+  const vTable = document.getElementById('verify-table');
+  const rows = Object.entries(v.checks).map(([name, c]) => {
+    const status = c.pass === true ? ['good','通過'] : c.pass === false ? ['critical','失敗'] : ['warning','無法判定'];
+    return `<tr><td>${name}</td><td><span class="gm-status"><span class="gm-dot" style="background:var(--status-${status[0]});"></span>${status[1]}</span></td><td style="color:var(--text-secondary);font-size:12px;">${c.note||''}</td></tr>`;
+  }).join('');
+  vTable.innerHTML = `<thead><tr><th>檢查項目</th><th>結果</th><th>備註</th></tr></thead><tbody>${rows}</tbody>` +
+    `<caption style="text-align:left;caption-side:bottom;padding-top:8px;font-size:12px;color:var(--text-muted);">${v.summary.pass} 項通過 / ${v.summary.fail} 項失敗 / ${v.summary.inconclusive} 項無法判定</caption>`;
+
+  // ---------- Baseline window chart ----------
+  // Reuses the same local_anomaly_index series as the screening chart, zoomed
+  // to the storm period, with the actual trailing baseline window that
+  // verify_pipeline.py independently reconstructed for the 3/30 candidate
+  // day drawn as a highlight band -- this is the direct visual answer to
+  // "did the baseline overlap the storm".
+  const baselineCheck = v.checks.baseline_window_excludes_storms;
+  const focusStart = '20240301', focusEnd = '20240410';
+  const liFocus = li.filter(r => r.date >= focusStart && r.date <= focusEnd);
+  const probe330 = baselineCheck && (baselineCheck.probe_days||[]).find(p => p.probe_date === '20240330');
+  buildLineChart(document.getElementById('chart-baseline'), document.getElementById('tooltip-baseline'), {
+    dates: liFocus.map(r=>r.date),
+    series: [
+      {name:'遠站指數 (far_index_H)', data: liFocus.map(r=>r.far_index_H), color: cvarRef('--series-far'), width:1.5, opacity:0.7},
+      {name:'近站指數 (near_index_H)', data: liFocus.map(r=>r.near_index_H), color: cvarRef('--series-near'), width:1.5, opacity:0.7},
+      {name:'在地異常指數 (local_anomaly_index_H)', data: liFocus.map(r=>r.local_anomaly_index_H), color: cvarRef('--series-local'), width:2.5},
+    ],
+    storms: DATA.storm_dates.filter(d => d>=focusStart && d<=focusEnd),
+    outages: [],
+    eqDateStr: null,
+    candidateDates: DATA.candidate_windows.candidate_dates_H.filter(d => d>=focusStart && d<=focusEnd),
+    highlightRange: probe330 ? probe330.trailing_window : null,
+    highlightLabel: probe330 ? '3/30 baseline window' : null,
+  });
+  document.getElementById('baseline-window-narrative').innerHTML = probe330 ? `
+    <p>驗證管線獨立重建了 3/30 候選異常日實際使用的 ${baselineCheck.trailing_window_days} 天 trailing baseline window
+    （<b>${fmtDate(probe330.trailing_window[0])} ~ ${fmtDate(probe330.trailing_window[1])}</b>，圖中綠色虛線框），
+    其中 <b>${probe330.storm_dates_in_window.length}</b> 天落在太陽磁暴期內（橘底）已被排除，
+    扣除後仍有 <b>${probe330.n_clean_days_in_window}</b> 個乾淨日可用（門檻為 ${baselineCheck.min_clean_points_threshold} 個），
+    確認磁暴沒有污染 3/30 的判斷基準——這正是 <code>compute_indices.py</code> 選用 ${baselineCheck.trailing_window_days} 天（而非更短窗口）的原因。</p>
+  ` : '<p class="gm-limits">本次執行未計算出 3/30 的 baseline window 檢查結果（<code>verify_pipeline.py</code> 可能尚未針對此候選日執行檢查）。</p>';
+
+})();
+</script>

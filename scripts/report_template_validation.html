@@ -1,0 +1,488 @@
+<title>教授建議方法驗證：surrogate 檢定・多事件疊加・z 規則回測</title>
+<style>
+  .gm-root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-near: #2a78d6;
+    --series-far: #1baf7a;
+    --series-local: #e34948;
+    --series-ulf-diff: #4a3aa7;
+    --status-good: #0ca30c;
+    --status-warning: #fab219;
+    --status-serious: #ec835a;
+    --status-critical: #d03b3b;
+    color: var(--text-primary);
+    background: var(--page);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.55;
+  }
+  @media (prefers-color-scheme: dark) {
+    .gm-root {
+      --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+      --text-muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+      --series-near: #3987e5; --series-far: #199e70; --series-local: #e66767; --series-ulf-diff: #9085e9;
+      --status-good: #0ca30c; --status-warning: #fab219; --status-serious: #ec835a; --status-critical: #d03b3b;
+    }
+  }
+  :root[data-theme="dark"] .gm-root {
+    --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-near: #3987e5; --series-far: #199e70; --series-local: #e66767; --series-ulf-diff: #9085e9;
+  }
+  :root[data-theme="light"] .gm-root {
+    --surface-1: #fcfcfb; --page: #f9f9f7; --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --series-near: #2a78d6; --series-far: #1baf7a; --series-local: #e34948; --series-ulf-diff: #4a3aa7;
+  }
+
+  .gm-root * { box-sizing: border-box; }
+  .gm-page { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  .gm-title { font-size: 25px; font-weight: 700; margin: 0 0 6px; }
+  .gm-subtitle { color: var(--text-secondary); font-size: 15px; margin: 0 0 28px; }
+  .gm-callout {
+    background: var(--surface-1); border: 1px solid var(--border); border-left: 4px solid var(--status-warning);
+    border-radius: 8px; padding: 16px 18px; margin: 0 0 32px; font-size: 14px; color: var(--text-secondary);
+  }
+  .gm-callout b { color: var(--text-primary); }
+  .gm-section { margin: 48px 0; }
+  .gm-h2 { font-size: 19px; font-weight: 700; margin: 0 0 4px; }
+  .gm-h2-note { font-size: 13px; color: var(--text-muted); margin: 0 0 18px; }
+  .gm-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .gm-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .gm-grid-2 { grid-template-columns: 1fr; } }
+  .gm-stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .gm-stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; flex: 1 1 150px; }
+  .gm-stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .gm-stat-value { font-size: 21px; font-weight: 700; }
+  .gm-stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  table.gm-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.gm-table th, table.gm-table td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  table.gm-table th { color: var(--text-secondary); font-weight: 600; }
+  table.gm-table td { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  table.gm-table tr.gm-row-flag td { background: color-mix(in srgb, var(--status-warning) 10%, transparent); }
+  .gm-table-wrap { overflow-x: auto; }
+  .gm-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .gm-legend-item { display: flex; align-items: center; gap: 6px; }
+  .gm-legend-swatch { width: 14px; height: 3px; border-radius: 2px; }
+  .gm-legend-swatch.area { width: 12px; height: 10px; border-radius: 2px; }
+  .gm-chart-wrap { position: relative; }
+  .gm-tooltip {
+    position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    white-space: nowrap; opacity: 0; transition: opacity 0.1s; z-index: 5; color: var(--text-primary);
+  }
+  .gm-tooltip .gm-tt-row { display: flex; justify-content: space-between; gap: 14px; }
+  .gm-footnote { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .gm-limits { font-size: 13.5px; color: var(--text-secondary); }
+  .gm-limits li { margin-bottom: 8px; }
+  .gm-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .gm-tab-btn {
+    font-size: 12.5px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--page); color: var(--text-secondary); cursor: pointer;
+  }
+  .gm-tab-btn.active { background: var(--series-ulf-diff); color: #fff; border-color: var(--series-ulf-diff); }
+</style>
+
+<div class="gm-root">
+<div class="gm-page">
+
+  <h1 class="gm-title">教授建議方法驗證：surrogate 檢定・多事件疊加・z 規則回測</h1>
+  <p class="gm-subtitle">對 G1–G20 中 10 個具向量磁力資料組別的 Pc3/Pc4 近遠站極化差分序列（<code>pc3_diff_zh</code> / <code>pc4_diff_zh</code>）進行的方法論檢驗</p>
+
+  <div class="gm-callout">
+    <b>這份報告在回答什麼問題：</b>
+    先前報告指出 G10（2024/4/3 花蓮 M7.2）震前 4 天（2024-03-30）的 Pc3 近遠站極化差分，是整個 113 天窗口中最極端的一天（z ≈ -4.1 個 MAD 單位），但也自陳「z=4 很罕見」的常態直覺並不嚴謹適用、且未做多重比較校正。
+    這份報告針對這個缺口做三件事：<b>(1)</b> 不假設常態分布，改用 block bootstrap／相位隨機化把序列洗牌成「統計長相一樣但跟地震無關」的代理序列，看多常會自己冒出這麼極端的下沉；
+    <b>(2)</b> 把「一次地震」擴充成這幾年測網附近所有 M≥5.5 的獨立地震（去叢集後 23 起，另附 M≥5.0／69 起當敏感度檢查），把各組序列依發震時刻對齊疊加，看 3/30 那種下沉疊完會不會浮現；
+    <b>(3)</b> 把 z ≤ -4.1 這條規則當成一條真正的警報規則，回測它在整個資料集上的命中與誤報表現。
+    仍然缺乏獨立的「安靜期」對照資料，去叢集規則是簡化版，見文末「方法限制」。
+  </div>
+
+  <div class="gm-section" id="sec-overview">
+    <h2 class="gm-h2">總覽</h2>
+    <div class="gm-stat-row" id="overview-stats"></div>
+  </div>
+
+  <div class="gm-section" id="sec-surrogate">
+    <h2 class="gm-h2">1. Surrogate 檢定：這種下沉在「跟地震無關」的資料裡多常見？</h2>
+    <p class="gm-h2-note">常態性檢定（Shapiro-Wilk）先確認不能假設常態；接著用 block bootstrap（保留短期自相關、打亂時間位置）與 FFT 相位隨機化（保留頻譜結構、隨機化相位）各產生 2000 組代理序列，重算同一套 median/MAD z-score 公式的 min(z)，得到虛無分布</p>
+    <div class="gm-card">
+      <div class="gm-legend" id="legend-surrogate"></div>
+      <div class="gm-chart-wrap">
+        <svg id="chart-surrogate" viewBox="0 0 900 320" style="width:100%;height:auto;"></svg>
+        <div class="gm-tooltip" id="tooltip-surrogate"></div>
+      </div>
+      <p class="gm-footnote" id="surrogate-caption"></p>
+    </div>
+    <p class="gm-limits" id="surrogate-narrative"></p>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">全部 10 組 × 2 頻段明細</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="surrogate-table"></table></div>
+      <p class="gm-footnote">p(≤觀測極值)：代理序列的 min(z) 比該組實際觀測到的還極端的比例。p(≤-4.1)：代理序列中出現任一天 z≤-4.1 的比例（直接回答「這個規則在無關資料裡多常自己冒出來」）。反白列＝block bootstrap 與相位隨機化兩種方法的 p(≤-4.1) 皆低於 0.05。</p>
+    </div>
+  </div>
+
+  <div class="gm-section" id="sec-sea">
+    <h2 class="gm-h2">2. 多事件疊加對齊（Superposed Epoch Analysis）</h2>
+    <p class="gm-h2-note">events.py 既有 17 起事件 + fetch_earthquake_catalog.py 擴充目錄（M≥5.5，去叢集後）＝ 10 組共 <span id="sea-n-events">-</span> 起獨立地震；各組序列先各自轉成 median/MAD z-score 再疊加，相對發震日 -30 ~ +10 天</p>
+    <div class="gm-tabs" id="sea-tabs">
+      <button class="gm-tab-btn active" data-band="pc3">Pc3</button>
+      <button class="gm-tab-btn" data-band="pc4">Pc4</button>
+    </div>
+    <div class="gm-card">
+      <div class="gm-legend" id="legend-sea"></div>
+      <div class="gm-chart-wrap">
+        <svg id="chart-sea" viewBox="0 0 900 340" style="width:100%;height:auto;"></svg>
+        <div class="gm-tooltip" id="tooltip-sea"></div>
+      </div>
+      <p class="gm-footnote">紅色虛線＝發震日（day 0）；橘色虛線＝day −4（3/30 相對於 4/3 主震的位置）；灰色帶＝隨機假發震日重複疊加 1000 次的 90% 區間（虛無基準）；紫色帶＝真實疊加對事件重抽的 90% 信賴區間</p>
+    </div>
+    <p class="gm-limits" id="sea-narrative"></p>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">疊加使用的事件清單（M≥5.5，去叢集後）</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="sea-events-table"></table></div>
+    </div>
+  </div>
+
+  <div class="gm-section" id="sec-backtest">
+    <h2 class="gm-h2">3. z ≤ -4.1 規則回測</h2>
+    <p class="gm-h2-note">把 -4.1 當成一條真正的警報門檻，標記全部 10 組序列中 z ≤ -4.1 的日子，對照擴充地震目錄的震前 7/14/30 天窗口算命中與誤報</p>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">M≥5.5 主要分析</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="backtest-table-55"></table></div>
+    </div>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">M≥5.0 敏感度檢查</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="backtest-table-50"></table></div>
+    </div>
+    <p class="gm-limits" id="backtest-narrative"></p>
+  </div>
+
+  <div class="gm-section" id="sec-limits">
+    <h2 class="gm-h2">方法限制</h2>
+    <ul class="gm-limits">
+      <li><b>仍缺獨立的「安靜期」對照資料</b>：null band／surrogate 都是從既有 13 組的資料窗口內部構造出來的（隨機假發震日、洗牌既有序列），不是額外抓取的、確定跟任何地震無關的長期背景資料——這是專案文件裡一直標記為「完全缺少」的部分，本次修改沒有解決它，只是在現有資料內盡量逼近。</li>
+      <li><b>去叢集規則是簡化版</b>：同一序列的餘震只用「3 天內、100km 內、規模較小」剔除，不是正式的 ETAS 或 Reasenberg 去叢集演算法；且即使去叢集後，仍有事件的疊加視窗（-30~+10 天）彼此重疊（例如同組內兩起獨立地震相隔僅 20 天），疊加樣本嚴格來說不是完全獨立的。</li>
+      <li><b>Near/far 站別分類每組只算一次</b>（依錨定事件距離），套用到同組內其他事件時沿用同一分類，沒有針對每個候選地震的實際震央重新計算——同組內震央通常相近，此簡化影響應該不大，但未驗證。</li>
+      <li><b>Block bootstrap 與相位隨機化在多數組別給出矛盾的結論</b>（block bootstrap 通常不顯著、相位隨機化通常顯著）：這不是程式錯誤，而是兩種方法在檢定不同的虛無假設——block bootstrap 完整保留原始序列的重尾邊際分布，只打亂區塊的時間位置，所以「整條序列裡有一天特別極端」這件事本身在原始邊際分布下並不罕見；相位隨機化保留頻譜（自相關）結構但重新合成振幅，其代理序列的邊際分布會趨近常態、尾部比原始重尾資料更薄，因此更容易把觀測值判為「顯著」。更嚴謹的作法（如 IAAFT，迭代調整振幅同時逼近原始邊際分布與頻譜）留待後續。</li>
+      <li><b>M≥5.5 的 23 起事件雖達到專案文件提到的「20-30 起」統計門檻</b>，但這只是達到樣本數量下限，不等於每起事件都有足夠資料品質／獨立性；G11 起 ttn 站缺測、部分組別震央座標信心較低（見 events.py 的 <code>coord_confidence</code>）等既有資料限制仍然適用。</li>
+      <li>本報告的地震目錄來自 USGS FDSN 公開目錄 API（即時查詢），CWA 官方目錄若有規模/座標修訂，數字可能隨之變動；此為公開資料來源的固有限制，非本報告特有。</li>
+    </ul>
+  </div>
+
+  <p class="gm-footnote">方法與程式碼：<code>scripts/fetch_earthquake_catalog.py</code>、<code>scripts/surrogate_test.py</code>、<code>scripts/superposed_epoch_analysis.py</code>、<code>scripts/backtest_rule.py</code>、<code>scripts/stat_utils.py</code>。地震目錄來源：USGS FDSN event webservice。</p>
+
+</div>
+</div>
+
+<script>
+const DATA = /*__REPORT_DATA__*/null;
+(function(){
+  const root = document.querySelector('.gm-root');
+  const cvarRef = (name) => 'var(' + name + ')';
+  const fmtPct = (v) => v==null ? '—' : (v*100).toFixed(1) + '%';
+  const fmtNum = (v,d) => v==null ? '—' : v.toFixed(d==null?3:d);
+
+  // ---------- overview stat tiles ----------
+  (function(){
+    const groups = DATA.meta.ulf_groups;
+    const surKeys = Object.keys(DATA.surrogate).filter(k => !DATA.surrogate[k].error);
+    const shapiroRejects = surKeys.filter(k => DATA.surrogate[k].shapiro.rejects_normality_p05).length;
+    const blockPs = surKeys.map(k => DATA.surrogate[k].block_bootstrap.p_value_vs_fixed_threshold);
+    const phasePs = surKeys.map(k => DATA.surrogate[k].phase_randomization.p_value_vs_fixed_threshold);
+    const bt55 = DATA.backtest['m5.5'];
+    const recall14_pc3 = bt55 ? bt55.pc3.windows['14'].recall_events_with_hit : null;
+    const far14_pc3 = bt55 ? bt55.pc3.windows['14'].false_alarm_rate_per_non_precursor_day : null;
+
+    const tiles = [
+      ['分析組別數', groups.length, 'G4/G5/G6_G7_G8/G9/G10/G11/G12/G13/G19/G20'],
+      ['常態性遭拒絕的序列', shapiroRejects + ' / ' + surKeys.length, 'Shapiro-Wilk p<0.05'],
+      ['block bootstrap p(≤-4.1) 中位數', fmtNum([...blockPs].sort((a,b)=>a-b)[Math.floor(blockPs.length/2)], 3), '跨 20 組×頻段'],
+      ['相位隨機化 p(≤-4.1) 中位數', fmtNum([...phasePs].sort((a,b)=>a-b)[Math.floor(phasePs.length/2)], 3), '跨 20 組×頻段'],
+      ['M≥5.5 疊加事件數', DATA.meta.catalog_counts['m5.5'].n_declustered, '去叢集後獨立地震'],
+      ['z≤-4.1 規則 14 天窗回測', fmtPct(recall14_pc3), 'Pc3 recall（命中事件／總事件）'],
+      ['同規則誤報率', far14_pc3==null?'—':(far14_pc3*100).toFixed(2)+'%', 'Pc3／每個非前兆日'],
+    ];
+    document.getElementById('overview-stats').innerHTML = tiles.map(([label,val,sub]) => `
+      <div class="gm-stat-tile">
+        <div class="gm-stat-label">${label}</div>
+        <div class="gm-stat-value">${val}</div>
+        <div class="gm-stat-sub">${sub}</div>
+      </div>`).join('');
+  })();
+
+  // ---------- generic step-histogram (density) chart ----------
+  function stepPath(edges, counts, X, Y, normalize){
+    const total = counts.reduce((a,b)=>a+b,0) || 1;
+    const widths = edges.slice(1).map((e,i)=>e-edges[i]);
+    let d = `M${X(edges[0])},${Y(0)} `;
+    counts.forEach((c,i) => {
+      const dens = normalize ? c/total/widths[i] : c;
+      d += `L${X(edges[i])},${Y(dens)} L${X(edges[i+1])},${Y(dens)} `;
+    });
+    d += `L${X(edges[edges.length-1])},${Y(0)} Z`;
+    return d;
+  }
+
+  (function buildSurrogateChart(){
+    const d = DATA.surrogate['G10_pc3'];
+    if(!d || d.error){ return; }
+    const svgEl = document.getElementById('chart-surrogate');
+    const tooltipEl = document.getElementById('tooltip-surrogate');
+    const W=900,H=320, ML=54, MR=16, MT=16, MB=34;
+    const bb = d.block_bootstrap.null_min_z_distribution;
+    const pr = d.phase_randomization.null_min_z_distribution;
+    const allEdges = bb.bin_edges.concat(pr.bin_edges);
+    let xMin = Math.min(...allEdges, d.observed.min_z, d.fixed_rule_threshold);
+    let xMax = Math.max(...allEdges);
+    const totalBB = bb.counts.reduce((a,b)=>a+b,0)||1;
+    const totalPR = pr.counts.reduce((a,b)=>a+b,0)||1;
+    const widthsBB = bb.bin_edges.slice(1).map((e,i)=>e-bb.bin_edges[i]);
+    const widthsPR = pr.bin_edges.slice(1).map((e,i)=>e-pr.bin_edges[i]);
+    const maxDens = Math.max(
+      ...bb.counts.map((c,i)=>c/totalBB/widthsBB[i]),
+      ...pr.counts.map((c,i)=>c/totalPR/widthsPR[i])
+    );
+    const X = v => ML + (W-ML-MR) * (v-xMin)/(xMax-xMin);
+    const Y = v => MT + (H-MT-MB) * (1 - v/(maxDens*1.15));
+
+    let s = '';
+    for(let i=0;i<=4;i++){
+      const v = maxDens*1.15*i/4;
+      s += `<line x1="${ML}" x2="${W-MR}" y1="${Y(v)}" y2="${Y(v)}" stroke="${cvarRef('--grid')}" stroke-width="1"/>`;
+    }
+    for(let i=Math.ceil(xMin);i<=Math.floor(xMax);i+=2){
+      s += `<text x="${X(i)}" y="${H-MB+16}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="middle">${i}</text>`;
+      s += `<line x1="${X(i)}" x2="${X(i)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--grid')}" stroke-width="0.5"/>`;
+    }
+    s += `<line x1="${ML}" x2="${W-MR}" y1="${H-MB}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1"/>`;
+
+    s += `<path d="${stepPath(bb.bin_edges, bb.counts, X, Y, true)}" fill="${cvarRef('--series-near')}" opacity="0.35" stroke="${cvarRef('--series-near')}" stroke-width="1.5"/>`;
+    s += `<path d="${stepPath(pr.bin_edges, pr.counts, X, Y, true)}" fill="${cvarRef('--series-far')}" opacity="0.35" stroke="${cvarRef('--series-far')}" stroke-width="1.5"/>`;
+
+    s += `<line x1="${X(d.observed.min_z)}" x2="${X(d.observed.min_z)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-critical')}" stroke-width="2"/>`;
+    s += `<text x="${X(d.observed.min_z)+4}" y="${MT+12}" font-size="10" fill="${cvarRef('--status-critical')}" font-weight="600">G10/pc3 觀測 min(z)=${d.observed.min_z} (${d.observed.min_z_date})</text>`;
+    s += `<line x1="${X(d.fixed_rule_threshold)}" x2="${X(d.fixed_rule_threshold)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-warning')}" stroke-width="2" stroke-dasharray="5,3"/>`;
+    s += `<text x="${X(d.fixed_rule_threshold)+4}" y="${MT+26}" font-size="10" fill="${cvarRef('--status-warning')}" font-weight="600">z = -4.1 門檻</text>`;
+
+    svgEl.innerHTML = s;
+    document.getElementById('legend-surrogate').innerHTML = [
+      ['block bootstrap 虛無分布（' + d.block_bootstrap.n_surrogates + ' 組代理序列）', cvarRef('--series-near'), 'area'],
+      ['相位隨機化虛無分布（' + d.phase_randomization.n_surrogates + ' 組代理序列）', cvarRef('--series-far'), 'area'],
+    ].map(([l,c,cls]) => `<div class="gm-legend-item"><span class="gm-legend-swatch ${cls||''}" style="background:${c};"></span>${l}</div>`).join('');
+
+    document.getElementById('surrogate-caption').innerHTML =
+      `x 軸：代理序列的 min(z)（MAD 單位）；y 軸：機率密度。以 G10/Pc3 為例——這是原始報告文字宣稱 「z≈-4.1」 的那組序列，用同一套公式重新獨立計算得到觀測 min(z)=${d.observed.min_z}（${d.observed.min_z_date}，與原文的 3/30 相符，數值略有出入見下方説明）。`;
+
+    document.getElementById('surrogate-narrative').innerHTML = `
+      <p><b>block bootstrap：</b>p(代理序列 min(z) ≤ 觀測值) = ${fmtNum(d.block_bootstrap.p_value_vs_observed_extreme)}，
+      p(代理序列中出現任一天 z≤-4.1) = ${fmtNum(d.block_bootstrap.p_value_vs_fixed_threshold)}——兩者都不小，
+      代表就算把序列打亂成各個區塊隨機排列（但每個區塊裡的極端值原封不動保留），min(z) 這麼負在完全跟地震無關的重排版本裡也很常見。
+      這是因為 block bootstrap 保留了原始序列的重尾邊際分布，只打亂區塊的時間位置——「整條序列裡總有一天特別極端」這件事本身，在重尾分布下並不罕見，這正是報告文字自己提醒的「不能套用常態直覺」在起作用。</p>
+      <p><b>相位隨機化：</b>p(≤觀測值) = ${fmtNum(d.phase_randomization.p_value_vs_observed_extreme)}，
+      p(≤-4.1) = ${fmtNum(d.phase_randomization.p_value_vs_fixed_threshold)}——遠比 block bootstrap 顯著。
+      但這很大程度是相位隨機化本身的性質造成的：保留頻譜（自相關結構）、重新合成振幅後，代理序列的邊際分布會趨近常態、尾部比原始重尾資料薄很多，所以更容易把任何一個重尾觀測值判為「顯著」。
+      兩種方法對同一個觀測值給出矛盾結論，說明「這一天多異常」高度依賴你選擇的虛無假設，值得在解讀 G10 的 3/30 時特別謹慎。</p>
+    `;
+  })();
+
+  // ---------- surrogate summary table ----------
+  (function(){
+    const rows = [];
+    DATA.meta.ulf_groups.forEach(g => {
+      ['pc3','pc4'].forEach(band => {
+        const d = DATA.surrogate[g+'_'+band];
+        rows.push({g, band, d});
+      });
+    });
+    const tbody = rows.map(({g,band,d}) => {
+      if(!d || d.error){
+        return `<tr><td>${g}</td><td>${band}</td><td colspan="6">${d?d.error:'無資料'}</td></tr>`;
+      }
+      const flag = (d.block_bootstrap.p_value_vs_fixed_threshold < 0.05 && d.phase_randomization.p_value_vs_fixed_threshold < 0.05);
+      return `<tr class="${flag?'gm-row-flag':''}">
+        <td>${g}</td><td>${band}</td><td>${d.n_days}</td>
+        <td>${fmtNum(d.shapiro.p,4)}${d.shapiro.rejects_normality_p05?' (拒絕常態)':''}</td>
+        <td>${d.observed.min_z} (${d.observed.min_z_date})</td>
+        <td>${fmtNum(d.block_bootstrap.p_value_vs_observed_extreme)} / ${fmtNum(d.block_bootstrap.p_value_vs_fixed_threshold)}</td>
+        <td>${fmtNum(d.phase_randomization.p_value_vs_observed_extreme)} / ${fmtNum(d.phase_randomization.p_value_vs_fixed_threshold)}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('surrogate-table').innerHTML = `
+      <thead><tr><th>組</th><th>頻段</th><th>可用天數</th><th>Shapiro p</th><th>觀測 min(z) (日期)</th>
+      <th>block bootstrap p(≤觀測/≤-4.1)</th><th>相位隨機化 p(≤觀測/≤-4.1)</th></tr></thead>
+      <tbody>${tbody}</tbody>`;
+  })();
+
+  // ---------- SEA chart ----------
+  function buildSeaChart(band){
+    const label = 'm5.5';
+    const d = DATA.sea[band+'_'+label];
+    const svgEl = document.getElementById('chart-sea');
+    const tooltipEl = document.getElementById('tooltip-sea');
+    if(!d || d.error){ svgEl.innerHTML = ''; return; }
+    const W=900,H=340, ML=54, MR=16, MT=16, MB=34;
+    const lags = d.lags_days;
+    const X = i => ML + (W-ML-MR) * i/(lags.length-1);
+    let yMin = Math.min(...d.null_band_p5, ...d.bootstrap_ci90_lo, ...d.stack_mean.filter(v=>v!=null));
+    let yMax = Math.max(...d.null_band_p95, ...d.bootstrap_ci90_hi, ...d.stack_mean.filter(v=>v!=null));
+    const pad = (yMax-yMin)*0.12 || 1;
+    yMin -= pad; yMax += pad;
+    const Y = v => MT + (H-MT-MB) * (1 - (v-yMin)/(yMax-yMin));
+
+    let s = '';
+    for(let i=0;i<=4;i++){
+      const v = yMin + (yMax-yMin)*i/4;
+      s += `<line x1="${ML}" x2="${W-MR}" y1="${Y(v)}" y2="${Y(v)}" stroke="${cvarRef('--grid')}" stroke-width="1"/>`;
+      s += `<text x="${ML-8}" y="${Y(v)+4}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="end">${v.toFixed(1)}</text>`;
+    }
+    for(let i=0;i<lags.length;i+=5){
+      s += `<text x="${X(i)}" y="${H-MB+16}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="middle">${lags[i]}</text>`;
+    }
+    s += `<line x1="${ML}" x2="${W-MR}" y1="${H-MB}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1"/>`;
+
+    // null band (gray fill)
+    let nb = `M${X(0)},${Y(d.null_band_p5[0])} `;
+    lags.forEach((l,i) => nb += `L${X(i)},${Y(d.null_band_p5[i])} `);
+    for(let i=lags.length-1;i>=0;i--) nb += `L${X(i)},${Y(d.null_band_p95[i])} `;
+    nb += 'Z';
+    s += `<path d="${nb}" fill="${cvarRef('--text-muted')}" opacity="0.18" stroke="none"/>`;
+
+    // CI band (purple fill)
+    let ci = `M${X(0)},${Y(d.bootstrap_ci90_lo[0])} `;
+    lags.forEach((l,i) => ci += `L${X(i)},${Y(d.bootstrap_ci90_lo[i])} `);
+    for(let i=lags.length-1;i>=0;i--) ci += `L${X(i)},${Y(d.bootstrap_ci90_hi[i])} `;
+    ci += 'Z';
+    s += `<path d="${ci}" fill="${cvarRef('--series-ulf-diff')}" opacity="0.16" stroke="none"/>`;
+
+    // day 0 / day -4 markers
+    const idx0 = lags.indexOf(0);
+    const idxM4 = lags.indexOf(-4);
+    s += `<line x1="${X(idx0)}" x2="${X(idx0)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-critical')}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    s += `<text x="${X(idx0)+4}" y="${MT+11}" font-size="10" fill="${cvarRef('--status-critical')}" font-weight="600">day 0（發震）</text>`;
+    if(idxM4>=0){
+      s += `<line x1="${X(idxM4)}" x2="${X(idxM4)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-warning')}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+      s += `<text x="${X(idxM4)+4}" y="${MT+24}" font-size="10" fill="${cvarRef('--status-warning')}" font-weight="600">day -4</text>`;
+    }
+
+    // mean stack line
+    let path = ''; let drawing=false;
+    d.stack_mean.forEach((v,i) => {
+      if(v==null){ drawing=false; return; }
+      path += (drawing?'L':'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1) + ' ';
+      drawing = true;
+    });
+    s += `<path d="${path}" fill="none" stroke="${cvarRef('--series-ulf-diff')}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+    s += `<line id="chart-sea-cross" x1="0" x2="0" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1" opacity="0"/>`;
+    svgEl.innerHTML = s;
+
+    const cross = document.getElementById('chart-sea-cross');
+    svgEl.onmousemove = (e) => {
+      const pt = svgEl.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const loc = pt.matrixTransform(svgEl.getScreenCTM().inverse());
+      if(loc.x<ML || loc.x>W-MR){ cross.setAttribute('opacity','0'); tooltipEl.style.opacity=0; return; }
+      const idx = Math.round((loc.x-ML)/(W-ML-MR)*(lags.length-1));
+      cross.setAttribute('x1', X(idx)); cross.setAttribute('x2', X(idx)); cross.setAttribute('opacity','1');
+      const rows = [
+        ['相對天數', lags[idx]],
+        ['疊加平均 z', d.stack_mean[idx]==null?'—':d.stack_mean[idx].toFixed(3)],
+        ['貢獻事件數', d.n_contributing_per_lag[idx]],
+        ['信賴區間 (90%)', `${d.bootstrap_ci90_lo[idx].toFixed(2)} ~ ${d.bootstrap_ci90_hi[idx].toFixed(2)}`],
+        ['虛無基準 (90%)', `${d.null_band_p5[idx].toFixed(2)} ~ ${d.null_band_p95[idx].toFixed(2)}`],
+      ];
+      tooltipEl.innerHTML = rows.map(([l,v]) => `<div class="gm-tt-row"><span>${l}</span><span style="font-weight:600;">${v}</span></div>`).join('');
+      const bbox = svgEl.getBoundingClientRect();
+      tooltipEl.style.left = Math.min((X(idx)/W)*bbox.width+10, bbox.width-170)+'px';
+      tooltipEl.style.top = '10px';
+      tooltipEl.style.opacity = 1;
+    };
+    svgEl.onmouseleave = () => { cross.setAttribute('opacity','0'); tooltipEl.style.opacity=0; };
+
+    document.getElementById('legend-sea').innerHTML = [
+      ['疊加平均 z-score（' + d.n_events_used + ' 起事件）', cvarRef('--series-ulf-diff')],
+    ].map(([l,c]) => `<div class="gm-legend-item"><span class="gm-legend-swatch" style="background:${c};"></span>${l}</div>`).join('') +
+      `<div class="gm-legend-item"><span class="gm-legend-swatch area" style="background:${cvarRef('--series-ulf-diff')};opacity:0.3;"></span>疊加 90% 信賴區間（對事件重抽）</div>` +
+      `<div class="gm-legend-item"><span class="gm-legend-swatch area" style="background:${cvarRef('--text-muted')};opacity:0.4;"></span>虛無基準 90% 區間（隨機假發震日）</div>`;
+
+    document.getElementById('sea-n-events').textContent = d.n_events_used;
+
+    // narrative: find lags where real stack falls outside null band
+    const outside = [];
+    lags.forEach((l,i) => {
+      const v = d.stack_mean[i];
+      if(v==null) return;
+      if(v < d.null_band_p5[i] || v > d.null_band_p95[i]) outside.push(l);
+    });
+    const m4v = idxM4>=0 ? d.stack_mean[idxM4] : null;
+    const m4InNull = idxM4>=0 && m4v!=null && m4v>=d.null_band_p5[idxM4] && m4v<=d.null_band_p95[idxM4];
+    document.getElementById('sea-narrative').innerHTML = `
+      <p><b>Day -4（3/30 在其他組別的對應位置）：</b>疊加平均 z = ${m4v==null?'—':m4v.toFixed(3)}，
+      ${m4InNull ? '<b>落在虛無基準 90% 區間內</b>，也就是說用更多事件疊加之後，day -4 這個特定位置並沒有明顯浮現出比隨機對齊更異常的下沉。' : '<b>超出虛無基準 90% 區間</b>，比隨機對齊更極端。'}</p>
+      <p><b>整條疊加曲線中，超出虛無基準 90% 區間的相對天數：</b>${outside.length ? outside.join('、') + '（共 ' + outside.length + ' 天，佔 ' + lags.length + ' 天窗口中約 ' + (outside.length/lags.length*100).toFixed(0) + '%——注意窗口越長、多重比較下純粹碰運氣也會有幾天超出 90% 區間，不宜只挑其中一天過度解讀）' : '<b>無</b>——疊加後沒有任何一天明顯超出隨機對齊的基準區間。'}</p>
+      <p>邊界天數（接近 -30 或 +10）貢獻的事件數較少（部分組別資料窗口不夠長），估計較不穩定，解讀時應以 n_contributing（滑鼠懸停可見）較高的中段天數為主。</p>
+    `;
+  }
+  buildSeaChart('pc3');
+  document.querySelectorAll('#sea-tabs .gm-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sea-tabs .gm-tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      buildSeaChart(btn.dataset.band);
+    });
+  });
+
+  // ---------- SEA events table ----------
+  (function(){
+    const d = DATA.sea['pc3_m5.5'];
+    if(!d || !d.events_used) return;
+    const rows = [...d.events_used].sort((a,b)=> a.date.localeCompare(b.date));
+    document.getElementById('sea-events-table').innerHTML = `
+      <thead><tr><th>組</th><th>日期</th><th>規模</th><th>來源</th></tr></thead>
+      <tbody>${rows.map(e => `<tr><td>${e.group}</td><td>${e.date}</td><td>${e.mag}</td><td>${e.source==='events.py'?'events.py（原 13 組主震/前震/餘震）':'USGS 目錄擴充'}</td></tr>`).join('')}</tbody>`;
+  })();
+
+  // ---------- backtest tables ----------
+  function buildBacktestTable(elId, label){
+    const bt = DATA.backtest[label];
+    if(!bt) return;
+    const windows = DATA.meta.windows_days;
+    let rows = '';
+    ['pc3','pc4'].forEach(band => {
+      windows.forEach(w => {
+        const r = bt[band].windows[String(w)];
+        rows += `<tr><td>${band}</td><td>${w} 天</td><td>${r.total_flagged_days}</td><td>${r.total_hit_days}</td>
+          <td>${r.total_false_alarm_days}</td><td>${fmtPct(r.precision_hit_over_flagged)}</td>
+          <td>${r.n_events_with_hit}/${r.n_events}（${fmtPct(r.recall_events_with_hit)}）</td>
+          <td>${r.false_alarm_rate_per_non_precursor_day==null?'—':(r.false_alarm_rate_per_non_precursor_day*100).toFixed(2)+'%'}</td></tr>`;
+      });
+    });
+    document.getElementById(elId).innerHTML = `
+      <thead><tr><th>頻段</th><th>震前窗口</th><th>標記天數</th><th>命中天數</th><th>誤報天數</th>
+      <th>precision（命中/標記）</th><th>recall（有命中的事件/總事件）</th><th>誤報率（每非前兆日）</th></tr></thead>
+      <tbody>${rows}</tbody>`;
+  }
+  buildBacktestTable('backtest-table-55', 'm5.5');
+  buildBacktestTable('backtest-table-50', 'm5.0');
+
+  (function(){
+    const bt = DATA.backtest['m5.5'];
+    if(!bt) return;
+    const r14 = bt.pc3.windows['14'];
+    document.getElementById('backtest-narrative').innerHTML = `
+      <p>以 Pc3、14 天震前窗口為例：全部 10 組資料中共有 ${r14.total_flagged_days} 天被 z≤-4.1 標記，其中 ${r14.total_hit_days} 天落在某起地震前 14 天內（precision ${fmtPct(r14.precision_hit_over_flagged)}），
+      ${r14.n_events_with_hit}／${r14.n_events} 起地震在震前 14 天內至少有一天被標記（recall ${fmtPct(r14.recall_events_with_hit)}）；
+      同時每個「非前兆」日被誤報的比例約 ${(r14.false_alarm_rate_per_non_precursor_day*100).toFixed(2)}%。
+      窗口拉長到 30 天時 precision/recall 都會提高——這是預期中的效果（窗口越長，隨機命中機率也越高），不代表規則變準，對照下方各組的 sliding_baseline_rate（同一組資料內隨機窗口的經驗命中率）才能判斷是否顯著優於亂猜。</p>
+      <p>M≥5.0 敏感度分析下 recall 通常較高、precision 通常較低——這也符合預期：候選地震變多，14/30 天窗口更容易覆蓋到某次標記日，但這不代表規則本身變強，只是分母（事件數）變大讓「命中」變容易。</p>
+    `;
+  })();
+
+})();
+</script>

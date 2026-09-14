@@ -1,0 +1,18 @@
+# geomag_precursor pipeline dependencies.
+#
+# This project had no dependency manifest before 2026-08-13 -- packages were
+# installed ad hoc into geomag_precursor/.venv over the course of development
+# with no record of what/why. This file was added when coseismic_stacking_
+# analysis.py / seismometer_comparison.py introduced obspy as the project's
+# first external (non-scientific-stdlib) dependency, and captures the other
+# three (numpy/pandas/scipy) that every other script already silently
+# assumed, pinned to what data/interim/ was actually generated with.
+#
+# Setup:
+#   cd geomag_precursor && python3 -m venv .venv
+#   .venv/bin/pip install -r requirements.txt
+
+numpy==2.5.1
+pandas==3.0.3
+scipy==1.18.0
+obspy==1.5.0
