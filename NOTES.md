@@ -17,15 +17,15 @@ Full event/date-range rationale and background: `docs/13_groups_fetch_ranges.md`
 
 ### Layout
 
-All 23 groups are flat directories of `.sec` files (no nested subfolders):
+All 23 groups live in 20 flat directories of `.sec` files (no nested subfolders). **Two directories hold more than one group**, because those events were fetched together for convenience, not because they belong to one sequence: `G2_G3/` holds groups **G2** and **G3**, `G6_G7_G8/` holds **G6**, **G7** and **G8**. Until 2026-09-20 each of these was registered as a single merged group (`G2_G3`, `G6_G7_G8`) with a single anchor, which left G3, G6 and G7 out of every cross-group test; they are now separate groups (own anchor, own `data/interim/<group>/`, own near/far station pools chosen from their own epicenter) that share a raw-data `folder` (`events.py::Group.folder`). Anything that needs "every real event in this data" -- null/random reference draws, catalog `is_known_event` flagging, search-window caps -- uses `events.py::folder_events()` rather than `Group.events`; extra (unregistered) catalog events are attributed to one sibling by `assign_group_for_time()` so they are not counted once per group. Table rows below are per directory:
 
 | Group | Date range (actual) | Event(s) |
 |---|---|---|
 | G1 | 2017-11-03 ~ 2018-02-28 | 2018-02-04 ML5.8 (CWA; Mww6.1 USGS) + 02-06 ML6.2 (anchor) Hualien |
-| G2_G3 | 2019-01-15 ~ 2019-10-30 | G2: 2019-04-18 ML6.3 (anchor) Hualien Xiulin; G3: 2019-08-08 ML6.2 offshore Yilan |
+| G2_G3 (groups G2, G3) | 2019-01-15 ~ 2019-10-30 | G2: 2019-04-18 ML6.3 (anchor) Hualien Xiulin; G3: 2019-08-08 ML6.2 offshore Yilan |
 | G4 | 2020-09-08 ~ 2021-01-01 | 2020-12-10 M6.7 offshore Yilan |
 | G5 | 2021-01-15 ~ 2021-05-10 | 2021-02-07 ML6.21 (non-anchor, added 2026-08-20) + 04-18 ML6.26 (anchor, corrected 2026-09-14 from a stale ML6.2 -- see events.py's note) Hualien Shoufeng |
-| G6_G7_G8 | 2021-07-23 ~ 2022-05-31 | G6: 2021-10-24 M6.5 Nan'ao Township, Yilan; G7: 2022-01-03 ML6.06 offshore Yilan; G8: 2022-03-23 ML6.7 (CWA-revised from an initial ML6.6 rapid report, anchor) offshore Hualien + 03-23b ML6.04 (non-anchor, added 2026-08-20, aftershock ~2h48m after the anchor) + 05-09 ML6.27 (non-anchor, added 2026-08-20; ~24.0N,122.5E, coordinate-derived direction, no confirmed CWA place name) |
+| G6_G7_G8 (groups G6, G7, G8) | 2021-07-23 ~ 2022-05-31 | G6: 2021-10-24 M6.5 Nan'ao Township, Yilan; G7: 2022-01-03 ML6.06 offshore Yilan; G8: 2022-03-23 ML6.7 (CWA-revised from an initial ML6.6 rapid report, anchor) offshore Hualien + 03-23b ML6.04 (non-anchor, added 2026-08-20, aftershock ~2h48m after the anchor) + 05-09 ML6.27 (non-anchor, added 2026-08-20; ~24.0N,122.5E, coordinate-derived direction, no confirmed CWA place name) |
 | G9 | 2022-06-17 ~ 2022-10-10 | 2022-09-17 ML6.6 foreshock + 09-18a ML6.15 (non-anchor, added 2026-08-20, foreshock ~1h25m before the mainshock) + 09-18 ML6.8 (anchor) Chishang/Guanshan mainshock + 09-19 ML6.02 (non-anchor, added 2026-08-20, aftershock the next day) |
 | G10 | 2024-01-01 ~ 2024-06-01 | 2024-04-03 M7.2 mainshock (anchor) + 04-23a ML6.16 + 04-23b ML6.3 (Shoufeng Township) + 04-23c ML6.14 (non-anchor, added 2026-08-20) + 04-27a ML6.31 + 04-27b ML6.0 (both non-anchor, added 2026-08-20) + 05-06 ML6.05 (non-anchor, added 2026-08-20) + 05-10 ML6.01 (corrected 2026-08-20 from a stale ML5.8) Hualien -- 8 events total |
 | G11 | 2024-10-20 ~ 2025-04-30 | 2025-01-21 M6.4 Chiayi Dapu (anchor) + 04-08 ML6.15 (non-anchor, added 2026-08-20; ~24.7N,123.1E, far NE offshore near the Ryukyu arc, coordinate-derived direction, no confirmed CWA place name) |
@@ -102,7 +102,7 @@ Empirically checking each new group's station pool (`common.py`'s XYZ/F pool dis
 - **G14–G18** (2009–2016 data): scalar-only, `F`-method analysis only (`ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped — see `common.py`'s `MIN_STATIONS_FOR_METHOD` gating).
 - **G19–G20** (2024-2025 data): full vector pools, same analysis methods available as G4–G13.
 
-This means the dataset's "vector-sufficient" tier (usable for the professor-suggested ULF/ Pc3-Pc4 polarization method) is **G4, G5, G6_G7_G8, G9, G10, G11, G12, G13, G19, G20, G23** (11 groups) — see `scripts/*.py`'s `ULF_GROUPS` tuple (duplicated across 5 files; keep them in sync if this set changes again). `G23` (2020 data) joined this tier 2026-08-20 despite its high group number, since its raw data is chronologically modern (post-vector-upgrade) even though it was fetched after G14–G20; `G21`/`G22` (2010/2012 data, also added 2026-08-20) remain scalar-only like G14–G18.
+This means the dataset's "vector-sufficient" tier (usable for the professor-suggested ULF/ Pc3-Pc4 polarization method) is **G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G19, G20, G23** (13 groups; G6/G7/G8 counted as one until the 2026-09-20 split) — see `scripts/*.py`'s `ULF_GROUPS` tuple (duplicated across 5 files; keep them in sync if this set changes again). `G23` (2020 data) joined this tier 2026-08-20 despite its high group number, since its raw data is chronologically modern (post-vector-upgrade) even though it was fetched after G14–G20; `G21`/`G22` (2010/2012 data, also added 2026-08-20) remain scalar-only like G14–G18.
 
 ### Working with this data
 
@@ -132,7 +132,7 @@ python3 -m venv .venv
 
 ## Scripts pipeline (daily-scale, per group)
 
-Orchestrated by `scripts/run_pipeline.sh --group <G1|...|G23> [--full-report]` (single group) / `scripts/run_all_groups.sh` (all 20 group folders / 23 event sequences, steps 1–6 only):
+Orchestrated by `scripts/run_pipeline.sh --group <G1|...|G23> [--full-report]` (single group) / `scripts/run_all_groups.sh` (all 23 groups in 20 raw-data folders, steps 1–6 only):
 
 1. `build_daily_features.py` — parses raw `.sec`/`.sec.gz`/`.tgz` day files → `data/interim/<group>/daily_features.csv` + `minute_series_<station>.parquet`.
 2. `timezone_check.py` — confirms the `.sec` TIME column's timezone via diurnal-signal inference (dataset-wide constant `common.DATA_TIMEZONE = "UTC"`, not re-verified per group once established).

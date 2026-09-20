@@ -33,9 +33,10 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 from catalog_utils import load_extended_events  # noqa: E402
 from common import PROJECT_DIR, load_group_config  # noqa: E402
+from events import folder_events  # noqa: E402
 from stat_utils import mad_zscore  # noqa: E402
 
-ULF_GROUPS = ("G4", "G5", "G6_G7_G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
 BANDS = ("pc3", "pc4")
 WINDOW_BEFORE_DAYS = 30
 WINDOW_AFTER_DAYS = 10
@@ -122,6 +123,10 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
     real_dates_by_group: dict[str, list[pd.Timestamp]] = {}
     for ev in events:
         real_dates_by_group.setdefault(ev["group"], []).append(ev["date"])
+    # sibling groups (shared raw-data folder) see the same days, so their registered events must
+    # stay out of this group's random epoch dates too
+    for g in list(real_dates_by_group):
+        real_dates_by_group[g] += [pd.Timestamp(e.time_utc.split(" ")[0]) for e in folder_events(g)]
 
     valid_ranges = {g: valid_date_range(s) for g, s in group_series.items()}
 

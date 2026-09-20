@@ -15,7 +15,7 @@ notes.
 
 Scope, per plan (`~/.claude/plans/block-bootstrap-shiny-pearl.md`):
   - Only the 8 groups that have `ulf_near_far_index.csv` (vector-sufficient
-    XYZ pool; G1/G2_G3 are scalar-only and can't run the polarization method
+    XYZ pool; G1/G2/G3 are scalar-only and can't run the polarization method
     at all, so they're not part of the superposed-epoch/backtest population).
   - Per-group date window = exactly the window that group's ULF index
     actually covers (read from the CSV itself, not re-derived from
@@ -49,11 +49,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import PROJECT_DIR, haversine_km, load_group_config  # noqa: E402
-from events import ALL_GROUP_IDS, get_group  # noqa: E402
+from events import ALL_GROUP_IDS, assign_group_for_time, folder_events, get_group, sibling_group_ids  # noqa: E402
 
 USGS_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 BBOX = {"minlatitude": 20.5, "maxlatitude": 27.0, "minlongitude": 117.5, "maxlongitude": 123.5}
-ULF_GROUPS = ("G4", "G5", "G6_G7_G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
 
 DECLUSTER_DAYS = 3
 DECLUSTER_KM = 100
@@ -127,7 +127,8 @@ def decluster(events: list[dict], days: float = DECLUSTER_DAYS, km: float = DECL
 
 
 def flag_known_events(events: list[dict], group_id: str) -> None:
-    known = get_group(group_id).events
+    # folder_events: a sibling group's registered event is just as "known" as this group's own.
+    known = folder_events(group_id)
     for e in events:
         e["is_known_event"] = False
         for ev in known:
@@ -161,6 +162,15 @@ def main():
         events = fetch_usgs(start, end_padded, args.min_mag)
         events = decluster(events)
         flag_known_events(events, group_id)
+        if len(sibling_group_ids(group_id)) > 1:
+            # Sibling groups (shared raw-data folder) all query this same date range: keep each
+            # catalog event in exactly one of them (decluster/known-flagging above ran on the
+            # whole window first, so a foreshock/aftershock pair straddling two groups is still
+            # declustered together), otherwise it would be counted once per sibling.
+            n_all = len(events)
+            events = [e for e in events if assign_group_for_time(group_id, e["_dt"]) == group_id]
+            print(f"  folder shared with {sibling_group_ids(group_id)}: kept {len(events)}/{n_all} "
+                  f"events nearest {group_id}'s anchor", file=sys.stderr)
         n_kept = sum(1 for e in events if e["declustered"])
         print(f"  {len(events)} raw -> {n_kept} declustered", file=sys.stderr)
         for e in events:

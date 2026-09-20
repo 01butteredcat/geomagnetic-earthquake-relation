@@ -170,7 +170,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
 import parser as sec_parser  # noqa: E402
-from events import GROUPS, get_group  # noqa: E402
+from events import GROUPS, folder_events, get_group  # noqa: E402
 from stat_utils import histogram_summary  # noqa: E402
 
 SEED = 20260805
@@ -529,7 +529,9 @@ def process_event(cfg: "common.GroupConfig", group, event, rng: np.random.Genera
     exclude_centers covers every event in `group` (not just this one) --
     see module docstring's "Extending to all 49 events" note on why."""
     event_utc = pd.Timestamp(event.time_utc)
-    exclude_centers = [pd.Timestamp(e.time_utc) for e in group.events]
+    # folder_events, not group.events: G2/G3 and G6/G7/G8 share a raw-data folder, and another
+    # group's real event in the same data must stay out of this group's null draws too.
+    exclude_centers = [pd.Timestamp(e.time_utc) for e in folder_events(group.group_id)]
     scan_half_sec = _effective_half_sec(SCAN_HALF_SEC, event_utc, exclude_centers)
 
     event_result = {

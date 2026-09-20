@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/run_pipeline.sh (through verify_pipeline.py, no report build)
-# for all 20 groups. A single group failing (e.g. a real verification
+# for all 23 groups. A single group failing (e.g. a real verification
 # check failure) does NOT abort the batch -- it's recorded and the script
 # moves on, since the whole point is to see the full 20-group picture
 # including groups with structurally degraded station coverage (G1 has no
@@ -18,7 +18,7 @@ if [ ! -x "$PYTHON" ]; then
   PYTHON="python3"
 fi
 
-ALL_GROUP_IDS="G1 G2_G3 G4 G5 G6_G7_G8 G9 G10 G11 G12 G13 G14 G15 G16 G17 G18 G19 G20 G21 G22 G23"
+ALL_GROUP_IDS="G1 G2 G3 G4 G5 G6 G7 G8 G9 G10 G11 G12 G13 G14 G15 G16 G17 G18 G19 G20 G21 G22 G23"
 SUMMARY_JSON="../data/interim/all_groups_run_summary.json"
 
 echo "[" > "$SUMMARY_JSON.tmp"

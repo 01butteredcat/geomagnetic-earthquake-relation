@@ -104,13 +104,21 @@ GROUPS: dict[str, Group] = {
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="Hualien. Mw 6.4 (USGS) / Mj 6.7 (JMA)."),
     )),
-    "G2_G3": Group("G2_G3", "G2_G3", (
+    # G2 and G3 share one raw-data folder (`G2_G3/`) purely because they were fetched together for
+    # convenience -- they are independent events (112 days and ~45km apart), so each is its own
+    # group with its own anchor. Split 2026-09-20 (previously one merged "G2_G3" group whose only
+    # anchor was G2, leaving G3 out of every cross-group test). See folder_events() below for how
+    # analyses that must exclude "every real event in this data" still see both.
+    "G2": Group("G2", "G2_G3", (
         Event("2019-04-18", "2019-04-18 13:01:07", 24.06, 121.54, 18.8, 6.3, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="Hualien Xiulin (花蓮秀林). Mw 6.1 (USGS)."),
+    )),
+    "G3": Group("G3", "G2_G3", (
         Event("2019-08-08", "2019-08-08 05:28:04", 24.44, 121.91, 24.2, 6.2, "ML", "CWA",
-              coord_source="CWA", coord_confidence="high",
-              note="Offshore Yilan. Mw 5.8 (USGS)."),
+              coord_source="CWA", coord_confidence="high", anchor=True,
+              note="Offshore Yilan. Mw 5.8 (USGS). Anchor of its own group since the 2026-09-20 split "
+                   "of G2_G3 (previously the non-anchor second event of the merged group)."),
     )),
     "G4": Group("G4", "G4", (
         Event("2020-12-10", "2020-12-10 21:19:58", 24.74, 122.03, 76.8, 6.7, "M", "CWA",
@@ -151,17 +159,24 @@ GROUPS: dict[str, Group] = {
                    "full run_all_groups.sh batch the same day and now records the corrected "
                    "ML6.26 anchor for G5."),
     )),
-    "G6_G7_G8": Group("G6_G7_G8", "G6_G7_G8", (
+    # G6, G7, G8 share one raw-data folder (`G6_G7_G8/`) for fetch convenience only (71 and 79 days
+    # apart, different epicenters); split into three groups 2026-09-20. G8 keeps its own aftershock
+    # sequence (2022-03-23b, 2022-05-09) as non-anchor events.
+    "G6": Group("G6", "G6_G7_G8", (
         Event("2021-10-24", "2021-10-24 13:11:34", 24.53, 121.78, 65.6, 6.5, "M", "CWA",
-              coord_source="CWA", coord_confidence="high",
+              coord_source="CWA", coord_confidence="high", anchor=True,
               note="Located in Nan'ao Township (南澳鄉), Yilan -- NOT Yilan City itself; 'Yilan City' in an "
                    "earlier internal doc was a location-name error. Mww 6.2 (USGS)."),
+    )),
+    "G7": Group("G7", "G6_G7_G8", (
         Event("2022-01-03", "2022-01-03 17:46:37", 24.0203, 122.1710, 22.35, 6.06, "ML", "CWA",
-              coord_source="CWA", coord_confidence="high",
+              coord_source="CWA", coord_confidence="high", anchor=True,
               note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
                    "(GDMScatalog.json, quality B, 99 stations, exact origin-time match to the second) -- "
                    "supersedes the previous USGS Mww6.2 (us7000g8n3) substitute coordinates. Offshore "
                    "Yilan/Hualien."),
+    )),
+    "G8": Group("G8", "G6_G7_G8", (
         Event("2022-03-23", "2022-03-23 01:41:39", 23.40, 121.61, 25.7, 6.7, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="Offshore Hualien. CWA revised this event after an initial rapid report of ML6.6/30.6km; "
@@ -552,6 +567,38 @@ def get_group(group_id: str) -> Group:
         return GROUPS[group_id]
     except KeyError:
         raise KeyError(f"unknown group_id {group_id!r}; valid: {sorted(GROUPS)}") from None
+
+
+def sibling_group_ids(group_id: str) -> tuple[str, ...]:
+    """Every group (including `group_id` itself) whose raw data lives in the same
+    `folder`. Groups normally have a folder of their own, so this is just
+    `(group_id,)`; G2/G3 share `G2_G3/` and G6/G7/G8 share `G6_G7_G8/` (split
+    2026-09-20 from what used to be one merged group each)."""
+    folder = get_group(group_id).folder
+    return tuple(gid for gid, g in GROUPS.items() if g.folder == folder)
+
+
+def folder_events(group_id: str) -> tuple[Event, ...]:
+    """Every registered event in `group_id`'s raw-data folder, i.e. its own events plus
+    its sibling groups'. Use this wherever the question is "which real earthquakes are in
+    this data?" (excluding them from null/random reference draws, flagging catalog rows as
+    already known, capping a search window at the nearest other event) rather than "which
+    events belong to this group's analysis?" -- for the latter use `get_group(id).events`.
+    Identical to `get_group(id).events` for every group that has a folder to itself."""
+    return tuple(ev for gid in sibling_group_ids(group_id) for ev in GROUPS[gid].events)
+
+
+def assign_group_for_time(group_id: str, when) -> str:
+    """Which of `group_id`'s folder-sharing groups an extra (non-registered) earthquake at
+    time `when` (UTC datetime/Timestamp, naive or tz-aware) should be attributed to: the one
+    whose anchor is nearest in time (ties go to the earlier anchor). Sibling groups query the
+    same date range, so without this rule the same catalog event would be counted once per
+    sibling."""
+    when = when.replace(tzinfo=None) if getattr(when, "tzinfo", None) is not None else when
+    def key(gid: str):
+        a = datetime.strptime(GROUPS[gid].anchor_event.time_utc, "%Y-%m-%d %H:%M:%S")
+        return (abs((when - a).total_seconds()), a)
+    return min(sibling_group_ids(group_id), key=key)
 
 
 if __name__ == "__main__":

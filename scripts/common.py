@@ -318,7 +318,7 @@ def load_group_config(group_id: str) -> GroupConfig:
 
 
 if __name__ == "__main__":
-    group_ids = sys.argv[1:] or ["G1", "G2_G3", "G4", "G5", "G6_G7_G8", "G9", "G10", "G11", "G12", "G13"]
+    group_ids = sys.argv[1:] or ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13"]
     for gid in group_ids:
         cfg = load_group_config(gid)
         a = cfg.anchor_event

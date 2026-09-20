@@ -30,11 +30,12 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 from catalog_utils import load_extended_events  # noqa: E402
+from events import folder_events  # noqa: E402
 from common import PROJECT_DIR, load_group_config  # noqa: E402
 from cross_group_analysis import sliding_baseline_rate  # noqa: E402
 from stat_utils import FIXED_RULE_THRESHOLD, mad_zscore  # noqa: E402
 
-ULF_GROUPS = ("G4", "G5", "G6_G7_G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
 BANDS = ("pc3", "pc4")
 WINDOWS_DAYS = [7, 14, 30]
 
@@ -87,7 +88,18 @@ def run_band(band: str, catalog_path: Path) -> dict:
             precursor_days: set[str] = set()
             for ev in g["events"]:
                 precursor_days |= precursor_window_dates(ev, w)
-            flagged_set = set(g["flagged"])
+            # Groups sharing a raw-data folder see the same days: another group's real event has a
+            # precursor window of its own, so those days say nothing about THIS group's index --
+            # drop them from the hit/false-alarm/denominator accounting rather than let a flag
+            # before a sibling's earthquake count as a false alarm here.
+            sibling_dates = {pd.Timestamp(e.time_utc.split(" ")[0]) for e in folder_events(group_id)} - set(g["events"])
+            sibling_only_days: set[str] = set()
+            for sd in sibling_dates:
+                sibling_only_days |= precursor_window_dates(sd, w)
+            sibling_only_days -= precursor_days
+            eval_dates = set(g["all_dates"]) - sibling_only_days
+            flagged_all = set(g["flagged"])
+            flagged_set = flagged_all - sibling_only_days
             hit_days = flagged_set & precursor_days
             false_alarm_days = flagged_set - precursor_days
 
@@ -96,11 +108,11 @@ def run_band(band: str, catalog_path: Path) -> dict:
             )
 
             baseline_rate, n_windows = sliding_baseline_rate(
-                sorted(g["all_dates"]), flagged_set, w, exclude_window=set()
+                sorted(g["all_dates"]), flagged_all, w, exclude_window=set()
             )
 
             per_group_detail[group_id] = {
-                "n_days": len(g["all_dates"]),
+                "n_days": len(eval_dates),
                 "n_flagged": len(flagged_set),
                 "n_events": len(g["events"]),
                 "n_events_with_hit": events_with_hit,
@@ -112,8 +124,8 @@ def run_band(band: str, catalog_path: Path) -> dict:
             total_flagged += len(flagged_set)
             total_hit_days += len(hit_days)
             total_false_alarm_days += len(false_alarm_days)
-            total_precursor_days += len(precursor_days & set(g["all_dates"]))
-            total_days += len(g["all_dates"])
+            total_precursor_days += len(precursor_days & eval_dates)
+            total_days += len(eval_dates)
             n_events += len(g["events"])
             n_events_with_hit += events_with_hit
 

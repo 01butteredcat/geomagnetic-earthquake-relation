@@ -39,7 +39,7 @@ Method, per group:
 
 Cross-group aggregation is reported in two separate confidence tiers (never
 pooled together): groups with a sufficient XYZ station pool (can run H/Z and
-ULF) vs. groups limited to the F-only method (G1, G2_G3) -- structurally
+ULF) vs. groups limited to the F-only method (G1, G2, G3) -- structurally
 different methods with different reliability, per common.py's GroupConfig.
 
 Outputs:
@@ -202,11 +202,9 @@ def aggregate(per_group: list[dict]) -> dict:
 
 
 def render_markdown(per_group: list[dict], agg: dict) -> str:
-    # "n_groups" here means independent numbered earthquake groups (G1, G2,
-    # ... G20), not GROUPS dict keys -- a merged key like "G2_G3" or
-    # "G6_G7_G8" folds multiple numbered groups into one dict entry/folder,
-    # so it must be counted by its underscore-separated parts, not as 1.
-    n_groups = sum(len(k.split("_")) for k in ALL_GROUP_IDS)
+    # One GROUPS key == one numbered earthquake group (G1 ... G23) since the
+    # 2026-09-20 split of the old merged G2_G3 / G6_G7_G8 keys.
+    n_groups = len(ALL_GROUP_IDS)
     group_range = f"{ALL_GROUP_IDS[0]}-{ALL_GROUP_IDS[-1]}"
     lines = []
     lines.append(f"# 跨組重現率分析（{group_range}）\n")

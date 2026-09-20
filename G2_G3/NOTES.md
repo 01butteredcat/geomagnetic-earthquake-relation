@@ -1,5 +1,9 @@
 # CLAUDE.md (G2_G3)
 
+**Update 2026-09-20:** this folder now holds two separate analysis groups, **G2** (2019-04-18 anchor) and **G3** (2019-08-08 anchor), which share this raw-data folder (`events.py::Group.folder`) but have their own `data/interim/G2/`, `data/interim/G3/` and their own near/far station pools chosen from each epicenter. The folder was merged only because the two were fetched together for convenience. The text below predates the split and describes the folder's data as a whole.
+
+Combined-folder description (historical): covering event sequences G2 and G3
+
 Combined group covering event sequences G2 and G3 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
 
 ## Event(s)

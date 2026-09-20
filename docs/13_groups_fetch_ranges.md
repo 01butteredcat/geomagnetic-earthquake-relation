@@ -38,4 +38,4 @@ cd scripts
 ../.venv/bin/python3 cross_group_analysis.py  # 需先跑完 run_all_groups.sh；輸出 data/interim/cross_group_summary.{json,md}
 ```
 
-各組實際可跑的方法（H/Z 向量篩選、ULF 極化、或僅 F 純量篩選）取決於該組向量站/純量站的實際站數（見 `common.py` 的 `MIN_STATIONS_FOR_METHOD` 門檻），`data/interim/all_groups_run_summary.json` 記錄每組實跑結果。G1 全組僅純量站、G2_G3 向量站僅 2 個不足門檻，因此這兩組只跑 F 法；G4 起向量站數足夠可跑 H/Z（+ULF）。
+各組實際可跑的方法（H/Z 向量篩選、ULF 極化、或僅 F 純量篩選）取決於該組向量站/純量站的實際站數（見 `common.py` 的 `MIN_STATIONS_FOR_METHOD` 門檻），`data/interim/all_groups_run_summary.json` 記錄每組實跑結果。G1 全組僅純量站、G2／G3（2026-09-20 前合稱 `G2_G3`，資料夾至今仍叫 `G2_G3/`）向量站僅 2 個不足門檻，因此這些組只跑 F 法；G4 起向量站數足夠可跑 H/Z（+ULF）。

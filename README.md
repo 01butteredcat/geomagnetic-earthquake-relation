@@ -65,7 +65,7 @@ cd scripts
 ./run_pipeline.sh --group G10 --full-report   # 多跑 2 步，另外產生敘事型 HTML 報告（只有 G10 的手寫敘事文字，其他組別跑 --full-report 沒有意義）
 ```
 
-全部 20 個 `group_id` 資料夾（對應 23 個事件序列，其中 `G2_G3`、`G6_G7_G8` 各自合併多起事件）各跑一輪：
+全部 23 個 `group_id`（放在 20 個原始資料夾裡：G2、G3 共用 `G2_G3/`，G6、G7、G8 共用 `G6_G7_G8/`；2026-09-20 起這兩個資料夾各自拆成獨立的組別，每組有自己的 anchor 與 `data/interim/<group>/`）各跑一輪：
 
 ```bash
 ./run_all_groups.sh
@@ -79,7 +79,7 @@ cd scripts
 ./cross_group_analysis.py   # 沒有命令列參數；輸出 data/interim/cross_group_summary.{json,md}
 ```
 
-跨組正式驗證方法論（假設 `ULF_GROUPS` 這 11 組已跑完前 6 步）：
+跨組正式驗證方法論（假設 `ULF_GROUPS` 這 13 組已跑完前 6 步）：
 
 ```bash
 ./run_validation_pipeline.sh   # 抓擴充地震目錄 → 洗牌檢定 → 疊加曆元分析 → 規則回測 → output/geomag_precursor_validation_report.html
@@ -89,7 +89,7 @@ cd scripts
 
 | 腳本 | 參數 | 說明 |
 |---|---|---|
-| `build_daily_features.py` / `timezone_check.py` / `fetch_space_weather.py` / `compute_indices.py` / `ulf_analysis.py` / `verify_pipeline.py` / `prepare_report_data.py` / `build_artifact.py` | `--group <ID>`（必填） | 單一 group_id，如 `G10`、`G2_G3` |
+| `build_daily_features.py` / `timezone_check.py` / `fetch_space_weather.py` / `compute_indices.py` / `ulf_analysis.py` / `verify_pipeline.py` / `prepare_report_data.py` / `build_artifact.py` | `--group <ID>`（必填） | 單一 group_id，如 `G10`、`G3` |
 | `fetch_earthquake_catalog.py` | `--min-mag <float>`（預設 5.5）、`--output <path>`、`--groups <ID...>`（預設全部 `ULF_GROUPS`） | 抓 USGS 擴充地震目錄 |
 | `surrogate_test.py` | `--group <ID>`、`--all` | 洗牌顯著性檢定 |
 | `superposed_epoch_analysis.py` / `backtest_rule.py` | `--catalog <path>`（必填）、`--label <str>`（必填，如 `m5.5`） | 疊加曆元分析／規則回測 |
@@ -147,7 +147,7 @@ cd scripts
 | `N_BOOTSTRAP` / `N_NULL` | `superposed_epoch_analysis.py` | 2000 / 1000 | 疊加曆元分析的 bootstrap CI 抽樣次數／null 抽樣次數 |
 | `WINDOW_BEFORE_DAYS` / `WINDOW_AFTER_DAYS` | `superposed_epoch_analysis.py` | 30 / 10 | 疊加曆元窗口（震前/震後天數） |
 | `FIXED_RULE_THRESHOLD` | `stat_utils.py` | −4.1 | 舊報告引用的固定判定門檻（z-score） |
-| `ULF_GROUPS` | `fetch_earthquake_catalog.py`／`surrogate_test.py`／`superposed_epoch_analysis.py`／`backtest_rule.py`（**4 個檔案各自定義一份，同一組值**） | `("G4","G5","G6_G7_G8","G9","G10","G11","G12","G13","G19","G20","G23")` | 哪些組別的向量站夠格跑跨組驗證。**改這個集合要記得同步改全部 4 個檔案**（`G23` 為 2026-08-20 補上，2020 年資料雖群組編號高但時間上晚於向量站升級，屬向量站齊全世代） |
+| `ULF_GROUPS` | `fetch_earthquake_catalog.py`／`surrogate_test.py`／`superposed_epoch_analysis.py`／`backtest_rule.py`（**5 個檔案各自定義一份，同一組值**，另含 `prepare_validation_report_data.py`） | `("G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G19","G20","G23")` | 哪些組別的向量站夠格跑跨組驗證。**改這個集合要記得同步改全部 5 個檔案**（`G23` 為 2026-08-20 補上，2020 年資料雖群組編號高但時間上晚於向量站升級，屬向量站齊全世代） |
 
 ### 同震（秒級）線
 
@@ -177,7 +177,7 @@ cd scripts
 
 ## 輸出產物與如何解讀
 
-- `data/interim/<group>/`（20 個資料夾）——各組日尺度線的中繼與最終產物：`daily_features.csv`、`minute_series_<station>.parquet`、`storm_days.csv`、`ulf_near_far_index.csv`、`local_anomaly_index.csv`、`candidate_windows.json`、`verification_report.json`。
+- `data/interim/<group>/`（23 個資料夾，每個 group_id 一個）——各組日尺度線的中繼與最終產物：`daily_features.csv`、`minute_series_<station>.parquet`、`storm_days.csv`、`ulf_near_far_index.csv`、`local_anomaly_index.csv`、`candidate_windows.json`、`verification_report.json`。
 - `data/interim/coseismic_step_analysis/`、`coseismic_stacking_analysis/`、`seismometer_comparison/`、`coseismic_joint_analysis/`——同震線四支腳本的輸出，各自有 `*_summary.csv`（總覽表）與逐事件/逐組合的 JSON 詳細檔。
 - `data/interim/cross_group_summary.{json,md}`、`all_groups_run_summary.json`、`validation_report_data.json`——跨組彙整與驗證報告用的中繼資料。
 - `output/`（**這個資料夾有被 git 追蹤**，其餘 `data/` 都沒有）：
@@ -188,8 +188,10 @@ cd scripts
 ## 已知限制與踩雷提醒
 
 - **G14 的 5 起事件永遠不會有地震儀比對資料**：地動資料源只回溯到約 2012 年，G14 最早的事件是 2009 年，結構性缺口，不是還沒抓而已。
-- **測站有純量／向量世代分野**：G14–G18（2009–2016 年資料）與 G21、G22（2010、2012 年資料）全數是純量站（只有總磁場 F），完全跑不動 H/Z 篩選法與 ULF 極化分析；G4 之後（含 G19、G20）以及 G23（2020 年資料，雖群組編號高但時間上已晚於向量站升級）才是向量站齊全的世代——這正是 `ULF_GROUPS` 只列這 11 組的原因。
+- **測站有純量／向量世代分野**：G14–G18（2009–2016 年資料）與 G21、G22（2010、2012 年資料）全數是純量站（只有總磁場 F），完全跑不動 H/Z 篩選法與 ULF 極化分析；G4 之後（含 G19、G20）以及 G23（2020 年資料，雖群組編號高但時間上已晚於向量站升級）才是向量站齊全的世代——這正是 `ULF_GROUPS` 只列這 13 組的原因（2026-09-20 `G6_G7_G8` 拆成 G6、G7、G8 之前是 11 組）。
 - **G21 永遠沒有地震儀比對資料**：2010-11-21 的事件早於地動資料源的回溯起點（2012-01-01），與 G14 同屬結構性缺口。G22、G23 已於 2026-09-20 補齊 mseed 與 PoleZero 並納入 `SEISMIC_DATA_DIRS`（`seismometer/` 現有 29 個 `GXX_MMDD` 資料夾），目前 49 個事件中 30 個可做比對。
+- **同資料夾的兄弟組並非完全獨立**：G2／G3（共用 `G2_G3/`）與 G6／G7／G8（共用 `G6_G7_G8/`）的原始資料相同，虛無抽樣、`is_known_event` 旗標與窗口上限已改用整個資料夾的所有事件（`events.py::folder_events()`），回測也把兄弟事件的震前窗口排除在命中／誤報／分母之外；但 `cross_group_analysis.py` 的 `sliding_baseline_rate` 基線窗口仍可能含到兄弟事件附近的日期，這一點尚未處理。也因此跨組檢定裡這 5 組的結果並非五個獨立樣本。
+- **日尺度候選日對測站池很敏感**：G2 與 G3 用同一批原始資料，但近站各自依震央挑選（G2 為 hln,slg,sme；G3 為 ncg,hln,lyn），候選日從 5 天變成 13 天，14 天窗口的 F 法命中因此由 4/9 變 5/10（p 0.452→0.298，仍不顯著）。解讀單組結果時要記得這一點。
 - **`ttn`（卑南）測站有已知的資料缺口**：2024 年 12 月起疑似永久停站，G12、G13、G20 完全沒有這一站；G11、G19 各有一段較短的缺測期。細節見本 repo 的 `CLAUDE.md`。
 - **`seismometer_comparison.py::SEISMIC_DATA_DIRS` 是手動維護的對照表**，新增地震儀資料要手動同步更新這個表，folder 名稱與 mseed 檔名的對應規則並非永遠一致（已知例外：G9）。
 - 空間天氣抓取（`fetch_space_weather.py`）已存在的 `storm_days.csv` 會直接跳過重抓，要強制更新需手動刪除該檔案。

@@ -10,7 +10,7 @@ report_template.html for G10's 2024-03-30) shows up by chance.
 
 Runs per (group, band) for every group that has ulf_near_far_index.csv
 (the 8 vector-sufficient groups; see stat_utils.py / the plan file for why
-G1/G2_G3 are out of scope). Reuses the exact whole-series median/MAD
+G1/G2/G3 are out of scope). Reuses the exact whole-series median/MAD
 z-score formula cross_group_analysis.py::ulf_candidate_dates already
 established, via stat_utils.mad_zscore, so results here are directly
 comparable to (and a rigor upgrade of) that existing analysis.
@@ -41,7 +41,7 @@ from stat_utils import (  # noqa: E402
     phase_randomize_surrogate,
 )
 
-ULF_GROUPS = ("G4", "G5", "G6_G7_G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
 BANDS = ("pc3", "pc4")
 N_SURROGATES = 2000
 SEED = 20260805  # fixed so re-running this script reproduces the same p-values

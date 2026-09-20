@@ -33,7 +33,7 @@ the way of the Gx geomagnetic folders.) Of the 19 uncovered events, 6 are a
 permanent, structural gap: G14's 5 (its earliest event, 2009-07-14, predates
 the seismic data source's 2012 cutoff) plus G21's 1 (2010-11-21, same reason
 -- confirmed 2026-09-19 that the data source's fetchable range only starts
-2012-01-01). The remaining 13 (spread across G5, G6_G7_G8, G9, G10, G11, G12,
+2012-01-01). The remaining 13 (spread across G5, G8, G9, G10, G11, G12,
 G15, G17) are simply not yet fetched. (G22's 1 event and G23's 2 events had
 mseed fetched 2026-09-19 and PZ files added 2026-09-20, and are now wired in;
 the PZ sets lack a few stations that appear in the mseed -- G22: CHK/ELD loc 11
@@ -93,7 +93,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
-from events import GROUPS, get_group  # noqa: E402
+from events import GROUPS, folder_events, get_group  # noqa: E402
 from stat_utils import mad_zscore  # noqa: E402
 from coseismic_step_analysis import (  # noqa: E402
     DETREND_WINDOW_SEC,
@@ -132,8 +132,12 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
         "2018-02-04": {"pz_dir": "G01_0204", "mseed": "G01_0204_w.mseed"},
         "2018-02-06": {"pz_dir": "G01_0206", "mseed": "G01_0206_w.mseed"},
     },
-    "G2_G3": {
+    # G2/G3 and G6/G7/G8 were one merged group each until the 2026-09-20 split; the seismometer
+    # folder/file names (fetched under the old merged names) are unchanged.
+    "G2": {
         "2019-04-18": {"pz_dir": "G02_G03_0418", "mseed": "G02_G03_0418_w.mseed"},
+    },
+    "G3": {
         "2019-08-08": {"pz_dir": "G02_G03_0808", "mseed": "G02_G03_0808_w.mseed"},
     },
     "G4": {
@@ -142,9 +146,13 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     "G5": {
         "2021-04-18": {"pz_dir": "G05_0418", "mseed": "G05_0418_w.mseed"},
     },
-    "G6_G7_G8": {
+    "G6": {
         "2021-10-24": {"pz_dir": "G06_G07_G08_1024", "mseed": "G06_G07_G08_1024_w.mseed"},
+    },
+    "G7": {
         "2022-01-03": {"pz_dir": "G06_G07_G08_0103", "mseed": "G06_G07_G08_0103_w.mseed"},
+    },
+    "G8": {
         "2022-03-23": {"pz_dir": "G06_G07_G08_0323", "mseed": "G06_G07_G08_0323_w.mseed"},
     },
     "G9": {
@@ -442,7 +450,7 @@ def _effective_half_sec(target_half_sec: int, event_utc: pd.Timestamp,
 def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channel_type: str,
                     half_sec: int = GEOMAG_HALF_SEC) -> dict | None:
     event_utc = pd.Timestamp(event.time_utc)
-    sibling_utcs = [pd.Timestamp(e.time_utc) for e in group.events]
+    sibling_utcs = [pd.Timestamp(e.time_utc) for e in folder_events(group.group_id)]
     half_sec = _effective_half_sec(half_sec, event_utc, sibling_utcs)
     effective_search_half_sec = min(SEARCH_HALF_SEC, half_sec)
     buffer_sec = half_sec + EXCLUSION_BUFFER_SEC + DETREND_WINDOW_SEC // 2 + 60

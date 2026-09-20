@@ -121,7 +121,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
-from events import GROUPS, get_group  # noqa: E402
+from events import GROUPS, folder_events, get_group  # noqa: E402
 from stat_utils import mad_zscore  # noqa: E402
 from coseismic_step_analysis import (  # noqa: E402
     DETREND_WINDOW_SEC,
@@ -227,7 +227,7 @@ def _build_event_series(cfg: "common.GroupConfig", group, event, station: str, d
                          raw: pd.Series) -> EventSeries | None:
     idx = raw.index
     event_utc = pd.Timestamp(event.time_utc)
-    exclude_centers = [pd.Timestamp(e.time_utc) for e in group.events]
+    exclude_centers = [pd.Timestamp(e.time_utc) for e in folder_events(group.group_id)]
 
     if idx.min() + pd.Timedelta(seconds=REQUIRED_MARGIN_SEC) > event_utc or \
        idx.max() - pd.Timedelta(seconds=REQUIRED_MARGIN_SEC) < event_utc:
