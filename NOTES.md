@@ -136,7 +136,7 @@ Orchestrated by `scripts/run_pipeline.sh --group <G1|...|G23> [--full-report]` (
 
 1. `build_daily_features.py` — parses raw `.sec`/`.sec.gz`/`.tgz` day files → `data/interim/<group>/daily_features.csv` + `minute_series_<station>.parquet`.
 2. `timezone_check.py` — confirms the `.sec` TIME column's timezone via diurnal-signal inference (dataset-wide constant `common.DATA_TIMEZONE = "UTC"`, not re-verified per group once established).
-3. `fetch_space_weather.py` — Dst/Kp storm-day flags (cached-skip if `storm_days.csv` exists).
+3. `fetch_space_weather.py` — Dst/Kp storm-day flags (cached-skip only if `storm_days.csv` exists AND `storm_days_summary.json` says `confidence: high`; a partial/failed earlier fetch is retried; a missing Dst month is now recorded in `dst_missing_months` and downgrades the confidence to `medium`).
 4. `compute_indices.py` — daily H/Z/F near-far regression anomaly index + candidate-date flagging (MAD z-score, threshold 2.5).
 5. `ulf_analysis.py` — Pc3/Pc4 polarization (XYZ-capable groups only).
 6. `verify_pipeline.py` — hard-gates everything downstream on all checks passing.

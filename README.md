@@ -31,7 +31,7 @@ python3 -m venv .venv
 |---|---|---|---|
 | 地磁 1 秒解析度資料（IAGA-2002 格式 `.sec`，也接受 `.sec.gz`/`.tgz`） | `G1/`、`G2_G3/`、…、`G23/`（本 repo 底下，每組一個資料夾，命名 `<station><YYYYMMDD>dsec.sec`；2026-09-14 整併進本目錄，讓這個 repo 自成一個完整自包的專案） | CWA GDMS 地磁資料下載系統（`gdms.cwb.gov.tw`），需申請帳號登入 | **使用者手動下載**，repo 完全不含 |
 | 地震儀/加速度計波形（SAC PoleZero 響應檔 + miniSEED） | `seismometer/<GXX_MMDD>/`（本 repo 底下，如 `seismometer/G10_0403/`；2026-09-14 跟著 `Gx` 一起整併進本目錄） | 使用者自行取得的地震儀網路資料 | **使用者手動下載**，且下載後要同步更新 `seismometer_comparison.py::SEISMIC_DATA_DIRS` 這個手動維護的對照表（folder 名稱 ↔ mseed 檔名，兩者並非永遠一致，例如 G9 的 folder 是 `G9_0918`、mseed 檔是 `G09_0918_w.mseed`） |
-| 空間天氣指數（Dst/Kp） | `data/external/<group>/{kp,dst}.csv`（在 repo 內，但被 `.gitignore` 排除） | `kp.gfz.de`、`wdc.kugi.kyoto-u.ac.jp` | `fetch_space_weather.py` **自動連網抓取**，已存在則跳過（要強制重抓需手動刪除快取檔） |
+| 空間天氣指數（Dst/Kp） | `data/external/<group>/{kp,dst}.csv`（在 repo 內，但被 `.gitignore` 排除） | `kp.gfz.de`、`wdc.kugi.kyoto-u.ac.jp` | `fetch_space_weather.py` **自動連網抓取**；只有 Kp＋Dst 完整（摘要 `confidence: high`）的快取才會被沿用，抓取不完整會自動重試（要強制重抓可刪除該組的 `storm_days.csv`） |
 | 擴充地震目錄 | `data/external/extended_catalog_m5.{0,5}.csv` | USGS FDSN Event API | `fetch_earthquake_catalog.py` **自動連網抓取** |
 
 只有地磁資料與地震儀資料需要使用者自己張羅；後兩項腳本會自己處理（前提是要有對外網路連線）。
@@ -192,6 +192,11 @@ cd scripts
 - **G21 永遠沒有地震儀比對資料**：2010-11-21 的事件早於地動資料源的回溯起點（2012-01-01），與 G14 同屬結構性缺口。G22、G23 已於 2026-09-20 補齊 mseed 與 PoleZero 並納入 `SEISMIC_DATA_DIRS`（`seismometer/` 現有 29 個 `GXX_MMDD` 資料夾），目前 49 個事件中 30 個可做比對。
 - **同資料夾的兄弟組並非完全獨立**：G2／G3（共用 `G2_G3/`）與 G6／G7／G8（共用 `G6_G7_G8/`）的原始資料相同，虛無抽樣、`is_known_event` 旗標與窗口上限已改用整個資料夾的所有事件（`events.py::folder_events()`），回測也把兄弟事件的震前窗口排除在命中／誤報／分母之外；但 `cross_group_analysis.py` 的 `sliding_baseline_rate` 基線窗口仍可能含到兄弟事件附近的日期，這一點尚未處理。也因此跨組檢定裡這 5 組的結果並非五個獨立樣本。
 - **日尺度候選日對測站池很敏感**：G2 與 G3 用同一批原始資料，但近站各自依震央挑選（G2 為 hln,slg,sme；G3 為 ncg,hln,lyn），候選日從 5 天變成 13 天，14 天窗口的 F 法命中因此由 4/9 變 5/10（p 0.452→0.298，仍不顯著）。解讀單組結果時要記得這一點。
+- **`verify_pipeline` 目前失敗的組別（2026-09-20）**：G2、G3、G6、G11、G19、G23。
+  - `storm_cancellation_test`（G2、G3、G11、G23 失敗）：2026-09-20 起改為**多日彙總**——把該組所有磁暴日（Kp≥5 或 Dst≤−30）納入，比較回歸前後的 `median|local_anomaly_index| / median|near_index|`，小於 0.6 才算過（0.6 為判斷值，沿用舊版）。磁暴日不在回歸擬合資料內，所以是樣本外檢驗；擬合天數少於 30 只在結果裡示警（G4、G13、G22），不影響判定。磁暴日少於 5 天或磁暴訊號中位數低於 0.5 z 判 inconclusive（G4）。舊版只看單一最高 Kp 日，對雜訊太敏感（例如 G6 單日 fail、彙總 65 個磁暴日後比值 0.23 明確通過；G23 舊版因最高 Kp 僅 4.67 被略過，彙總後才發現回歸完全沒消除磁暴訊號，比值 1.03）。
+  - 失敗的四組：G2（0.76，僅 7 個磁暴日、F 指數訊號約 1.5 z）、G3（0.77；壓低幅度不足但 Wilcoxon p=0.011）、G11（1.13，回歸幾乎沒作用）、G23（1.03，遠站與近站相關性極低、斜率約 0.12）。這四組的候選日應視為磁暴訊號可能未被濾乾淨。
+  - `baseline_window_excludes_storms`（G6、G11、G19 失敗）：事前基線窗口內乾淨天數不足，是真實的低基線（補入 Dst 後 G11 的磁暴／恢復期占範圍約七成），只在文件註明。
+- **Kp/Dst 抓取失敗不再被快取沿用**：`fetch_space_weather.py` 會保留已抓到的月份並在 `storm_days_summary.json` 記錄 `dst_missing_months`，缺漏時 `confidence` 降為 `medium`；`run_pipeline.sh` 只在 `high` 信心時才沿用快取。G1／G2／G3／G11 原本缺 Dst 卻標 high（2026-09-20 已補抓，候選日 G1 6→8、G2 5→0、G3 13→5、G11 H 25→3／Z 31→6）。
 - **`ttn`（卑南）測站有已知的資料缺口**：2024 年 12 月起疑似永久停站，G12、G13、G20 完全沒有這一站；G11、G19 各有一段較短的缺測期。細節見本 repo 的 `CLAUDE.md`。
 - **`seismometer_comparison.py::SEISMIC_DATA_DIRS` 是手動維護的對照表**，新增地震儀資料要手動同步更新這個表，folder 名稱與 mseed 檔名的對應規則並非永遠一致（已知例外：G9）。
 - 空間天氣抓取（`fetch_space_weather.py`）已存在的 `storm_days.csv` 會直接跳過重抓，要強制更新需手動刪除該檔案。

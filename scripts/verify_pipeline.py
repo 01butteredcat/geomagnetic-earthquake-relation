@@ -146,18 +146,32 @@ def check_timezone_conclusion(cfg):
     }
 
 
+# Storm-cancellation test (multi-day). The far->near regression is fit on
+# non-storm days only, so every storm day is an extrapolation, and a verdict
+# from any single day (the old "highest-Kp day" version) is dominated by that
+# day's noise: G2/G3's F index was only ~-2 z there, G6/G13's near and far
+# stations simply disagreed that day. Instead, pool EVERY storm-onset day
+# (Kp>=KP_STORM_THRESHOLD or Dst<=DST_STORM_THRESHOLD, from storm_days.csv)
+# on which the index is computable, and compare the group's typical storm-day
+# |near_index| with its typical |local_anomaly_index| after the regression.
+# Storm days are excluded from the regression fit, so this test is out-of-sample:
+# a thin fit (G13: 18 days) does not invalidate a strong pooled result, it only
+# earns a warning (WARN_FIT_DAYS_BELOW) -- the verdict rests on the storm days.
+WARN_FIT_DAYS_BELOW = 30
+MIN_STORM_DAYS_FOR_TEST = 5  # fewer usable storm days than this: no verdict
+STORM_SIGNAL_FLOOR = 0.5  # median |near_index| (z) below this: no measurable storm signal to cancel
+STORM_CANCELLATION_RATIO = 0.6  # pass if median|local| < this * median|near| (same 0.6 as the old single-day rule; a judgment call)
+
+
 def check_storm_cancellation(cfg):
-    kp_path = cfg.external_dir / "kp.csv"
     idx_field = "H" if cfg.xyz_pool.sufficient else ("F" if cfg.f_pool.sufficient else None)
-    if not kp_path.exists() or idx_field is None:
+    storm_path = cfg.interim_dir / "storm_days.csv"
+    if not storm_path.exists() or idx_field is None:
         checks["storm_cancellation_test"] = {
             "pass": None,
-            "note": "inconclusive -- Kp data unavailable or no station pool sufficient to compute an index",
+            "note": "inconclusive -- storm-day list unavailable or no station pool sufficient to compute an index",
         }
         return
-
-    kp = pd.read_csv(kp_path, dtype={"date": str})
-    kp_daily_max = kp.groupby("date")["kp"].max().sort_values(ascending=False)
 
     idx = pd.read_csv(cfg.interim_dir / "local_anomaly_index.csv", dtype={"date": str})
     near_col, local_col = f"near_index_{idx_field}", f"local_anomaly_index_{idx_field}"
@@ -165,33 +179,63 @@ def check_storm_cancellation(cfg):
         checks["storm_cancellation_test"] = {"pass": None, "note": f"inconclusive -- {near_col} not computed"}
         return
 
-    # walk the highest-Kp days in order until we find one with a computable
-    # index -- must check BOTH near_index and local_anomaly_index for NaN:
-    # local_anomaly_index also depends on far_index, which can be NaN (e.g.
-    # a far station that hasn't come online yet this early in the group's
-    # date range, or without enough trailing baseline) even when near_index
-    # itself is fine, so checking near_col alone is not sufficient.
-    for top_kp_date, top_kp_value in kp_daily_max.items():
-        row = idx[idx.date == top_kp_date]
-        if not row.empty and not row[near_col].isna().all() and not row[local_col].isna().all():
-            near = float(row[near_col].iloc[0])
-            local = float(row[local_col].iloc[0])
-            ok = abs(local) < 0.6 * abs(near) if abs(near) > 0.5 else None
-            checks["storm_cancellation_test"] = {
-                "pass": ok,
-                "field": idx_field,
-                "top_kp_date": top_kp_date,
-                "top_kp_value": float(top_kp_value),
-                "raw_near_index": near,
-                "local_anomaly_index_after_regression": local,
-                "note": "expect |local_anomaly_index| substantially < |near_index| on the highest-Kp day, showing the far-station regression absorbs common-mode storm signal",
-            }
-            return
+    storm = pd.read_csv(storm_path, dtype={"date": str})
+    storm_onsets = set(storm.loc[storm["is_storm_onset"], "date"])
+    rows = idx[idx.date.isin(storm_onsets)].dropna(subset=[near_col, local_col])
+    near_abs = rows[near_col].abs().to_numpy()
+    local_abs = rows[local_col].abs().to_numpy()
 
-    checks["storm_cancellation_test"] = {
+    cand_path = cfg.interim_dir / "candidate_windows.json"
+    cand = json.loads(cand_path.read_text()) if cand_path.exists() else {}
+    n_fit = (cand.get(f"fit_{idx_field}") or {}).get("n_fit_days")
+    summary_path = cfg.interim_dir / "storm_days_summary.json"
+    storm_conf = json.loads(summary_path.read_text()).get("confidence") if summary_path.exists() else None
+
+    result = {
         "pass": None,
-        "note": "inconclusive -- no Kp day in this group's range has a computable index (likely trailing-baseline gap)",
+        "field": idx_field,
+        "n_storm_days_total": len(storm_onsets),
+        "n_storm_days_used": int(len(rows)),
+        "n_fit_days": n_fit,
+        "storm_days_confidence": storm_conf,
+        "note": "",
     }
+    if len(rows):
+        med_near, med_local = float(np.median(near_abs)), float(np.median(local_abs))
+        near_v, local_v = rows[near_col].to_numpy(), rows[local_col].to_numpy()
+        result.update(
+            median_abs_near_index=med_near,
+            median_abs_local_anomaly_index=med_local,
+            ratio_local_over_near=(med_local / med_near) if med_near > 0 else None,
+            frac_days_reduced=float(np.mean(local_abs < near_abs)),
+            frac_days_sign_flipped=float(np.mean(np.sign(near_v) != np.sign(local_v))),
+        )
+        # informational: one-sided Wilcoxon signed-rank test that |local| < |near| across storm days
+        if len(rows) >= MIN_STORM_DAYS_FOR_TEST and np.any(near_abs != local_abs):
+            from scipy.stats import wilcoxon
+
+            result["wilcoxon_p_local_smaller"] = float(wilcoxon(near_abs, local_abs, alternative="greater").pvalue)
+
+    if len(rows) < MIN_STORM_DAYS_FOR_TEST:
+        result["note"] = (
+            f"inconclusive -- only {len(rows)} storm day(s) with a computable index (< {MIN_STORM_DAYS_FOR_TEST}); "
+            "too few to judge"
+        )
+    elif result["median_abs_near_index"] < STORM_SIGNAL_FLOOR:
+        result["note"] = (
+            f"inconclusive -- median storm-day |near_index| is only {result['median_abs_near_index']:.2f} z "
+            f"(< {STORM_SIGNAL_FLOOR}); this group shows no measurable storm signal to cancel"
+        )
+    else:
+        result["pass"] = bool(result["ratio_local_over_near"] < STORM_CANCELLATION_RATIO)
+        result["note"] = (
+            f"pooled over {len(rows)} storm days: median |local_anomaly_index| / median |near_index| = "
+            f"{result['ratio_local_over_near']:.2f} (pass if < {STORM_CANCELLATION_RATIO}); expect the far-station "
+            "regression to absorb the common-mode storm signal"
+        )
+    if n_fit is None or n_fit < WARN_FIT_DAYS_BELOW:
+        result["warning"] = f"only {n_fit} regression-fit days (< {WARN_FIT_DAYS_BELOW}); the far->near fit is thin"
+    checks["storm_cancellation_test"] = result
 
 
 def check_candidates_not_in_outage_windows(cfg):

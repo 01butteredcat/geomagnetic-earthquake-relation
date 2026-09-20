@@ -16,9 +16,12 @@ Data sources (plain-text, no auth, fetched once and cached per group):
        more likely for older groups and realtime more likely for the most
        recent one (G13, 2026).
 
-If either fetch fails, falls back to an internal proxy: days where the
+If BOTH fetches fail, falls back to an internal proxy: days where the
 group's far-reference stations show simultaneous large deviations are
-flagged as "globally disturbed", labeled lower confidence.
+flagged as "globally disturbed", labeled low confidence. If only one source
+(or only some Dst months) is missing, the storm days from what did arrive
+are still used, and the summary's "confidence" says which part is missing
+("medium (...)") instead of claiming full Kp+Dst coverage.
 """
 from __future__ import annotations
 
@@ -82,18 +85,28 @@ def fetch_kp(start: str, end: str) -> pd.DataFrame | None:
     return pd.DataFrame(rows)
 
 
-def fetch_dst(start: str, end: str) -> pd.DataFrame | None:
+def fetch_dst(start: str, end: str) -> tuple[pd.DataFrame | None, list[str]]:
+    """Returns (dataframe of the months that arrived, or None if none did,
+    list of YYYYMM months that could not be fetched). A month is tried as
+    final/provisional/realtime, and the whole sequence is retried once: a
+    single transient failure used to discard the entire range (and a group's
+    cached "FETCH FAILED" then stuck for weeks -- G1/G2/G3/G11)."""
     rows = []
+    missing: list[str] = []
     for yyyymm in _month_range(start, end):
         yymm = yyyymm[2:]
         text = None
-        for kind in DST_KINDS:
-            url = DST_URL_TMPL.format(kind=kind, yyyymm=yyyymm, yymm=yymm)
-            text = _curl(url)
+        for _attempt in range(2):
+            for kind in DST_KINDS:
+                url = DST_URL_TMPL.format(kind=kind, yyyymm=yyyymm, yymm=yymm)
+                text = _curl(url)
+                if text:
+                    break
             if text:
                 break
         if not text:
-            return None
+            missing.append(yyyymm)
+            continue
         for line in text.strip().splitlines():
             if not line.startswith("DST"):
                 continue
@@ -109,7 +122,7 @@ def fetch_dst(start: str, end: str) -> pd.DataFrame | None:
             for hr, v in enumerate(hourly, start=1):
                 rows.append({"date": date_str, "hour_utc": hr % 24, "dst": v})
             rows.append({"date": date_str, "hour_utc": -1, "dst": daily_mean})  # -1 = daily mean marker
-    return pd.DataFrame(rows)
+    return (pd.DataFrame(rows) if rows else None), missing
 
 
 def internal_proxy_storm_days(cfg) -> pd.DataFrame:
@@ -138,7 +151,7 @@ def main():
     print(f"[{args.group}] fetching space weather for {start}..{end}", file=sys.stderr)
 
     kp_df = fetch_kp(start, end)
-    dst_df = fetch_dst(start, end)
+    dst_df, dst_missing_months = fetch_dst(start, end)
 
     source_note = []
     storm_days = set()
@@ -159,11 +172,25 @@ def main():
         dst_storm_days = set(dst_daily_min[dst_daily_min <= DST_STORM_THRESHOLD].index)
         storm_days |= dst_storm_days
         source_note.append(f"Dst (Kyoto WDC): {len(dst_df)} records, {len(dst_storm_days)} storm days (min Dst<={DST_STORM_THRESHOLD}nT)")
+        if dst_missing_months:
+            source_note.append(f"Dst (Kyoto WDC): PARTIAL, missing months {dst_missing_months}")
     else:
         source_note.append("Dst (Kyoto WDC): FETCH FAILED")
 
-    confidence = "high (official Kp/Dst indices)"
-    if kp_df is None and dst_df is None:
+    kp_ok = kp_df is not None and len(kp_df) > 0
+    dst_ok = dst_df is not None and len(dst_df) > 0
+    if kp_ok and dst_ok and not dst_missing_months:
+        confidence = "high (official Kp/Dst indices)"
+    elif kp_ok or dst_ok:
+        gaps = []
+        if not kp_ok:
+            gaps.append("Kp unavailable")
+        if not dst_ok:
+            gaps.append("Dst unavailable")
+        elif dst_missing_months:
+            gaps.append(f"Dst missing {len(dst_missing_months)} month(s)")
+        confidence = f"medium (official indices incomplete: {', '.join(gaps)})"
+    else:
         proxy = internal_proxy_storm_days(cfg)
         storm_days |= set(proxy["date"])
         source_note.append(f"FALLBACK: internal far-station proxy, {len(proxy)} storm days")
@@ -187,6 +214,7 @@ def main():
         "date_range": [start, end],
         "sources": source_note,
         "confidence": confidence,
+        "dst_missing_months": dst_missing_months,
         "n_storm_onset_days": len(storm_days),
         "n_storm_or_recovery_days": len(extended),
         "storm_onset_dates": sorted(storm_days),

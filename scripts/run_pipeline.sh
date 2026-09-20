@@ -49,8 +49,11 @@ echo "== [$GROUP] 2/$STEPS timezone_check.py =="
 "$PYTHON" timezone_check.py --group "$GROUP"
 
 echo "== [$GROUP] 3/$STEPS fetch_space_weather.py =="
-if [ -f "../data/interim/$GROUP/storm_days.csv" ]; then
-  echo "  storm_days.csv already cached, skipping fetch (delete it to force a re-fetch)"
+# Only a complete Kp+Dst result ("confidence": "high...") is reused; a partial or
+# failed earlier fetch (transient Kyoto/GFZ error) is retried instead of being
+# cached forever -- that is how G1/G2/G3/G11 stayed without Dst for weeks.
+if [ -f "../data/interim/$GROUP/storm_days.csv" ] && grep -q '"confidence": "high' "../data/interim/$GROUP/storm_days_summary.json" 2>/dev/null; then
+  echo "  storm_days.csv already cached with high confidence, skipping fetch (delete it to force a re-fetch)"
 else
   "$PYTHON" fetch_space_weather.py --group "$GROUP"
 fi
