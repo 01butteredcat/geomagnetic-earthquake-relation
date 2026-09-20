@@ -25,8 +25,7 @@ from parser import DayFileRef, parse_header  # noqa: E402
 
 _TGZ_MEMBER_RE = re.compile(r"([a-z]{3})(\d{8})dsec\.sec$")
 
-DATA_ROOT = Path("/home/yuchi/earthquake")  # still needed for seismometer/ (see SEISMIC_ROOT), which did NOT move
-PROJECT_DIR = Path("/home/yuchi/earthquake/geomag_precursor")
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 GX_DATA_ROOT = PROJECT_DIR  # moved 2026-09-14: G1..G23 now live inside geomag_precursor/, not one level up
 OUTPUT_DIR = PROJECT_DIR / "output"
 

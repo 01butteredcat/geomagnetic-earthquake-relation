@@ -1,6 +1,6 @@
 # CLAUDE.md (G10)
 
-Group G10 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../geomag_precursor/docs/13_groups_fetch_ranges.md` for the full event/range rationale. This group is the original single-event (2024/4/3 M7.2) dataset that `geomag_precursor/` was first built around.
+Group G10 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale. This group is the original single-event (2024/4/3 M7.2) dataset that `geomag_precursor/` was first built around.
 
 ## Event(s)
 

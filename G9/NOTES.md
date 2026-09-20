@@ -1,6 +1,6 @@
 # CLAUDE.md (G9)
 
-Group G9 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../geomag_precursor/docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+Group G9 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
 
 ## Event(s)
 

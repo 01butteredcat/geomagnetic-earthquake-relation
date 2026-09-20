@@ -1,10 +1,10 @@
 # 從 CWA GDMS 地震目錄盤點的候選事件（尚未決定是否納入）
 
-**這份文件的信心等級介於 `13_groups_fetch_ranges.md`（已抓到資料、已跑過 pipeline）與 `candidate_groups_G14_G20.md`（USGS FDSN 查詢出的候選清單，當時尚未拿到 CWA 官方目錄）之間。** 這裡的候選事件全部來自使用者親自登入 CWA GDMS 取得、並於 2026-08-20 提供的官方區域地震目錄（`/home/yuchi/earthquake/GDMScatalog.json`），比對過程與結論見下方。
+**這份文件的信心等級介於 `13_groups_fetch_ranges.md`（已抓到資料、已跑過 pipeline）與 `candidate_groups_G14_G20.md`（USGS FDSN 查詢出的候選清單，當時尚未拿到 CWA 官方目錄）之間。** 這裡的候選事件全部來自使用者親自登入 CWA GDMS 取得、並於 2026-08-20 提供的官方區域地震目錄（`GDMScatalog.json`，外部提供、不包含在本 repo 內），比對過程與結論見下方。
 
 ## 來源與比對方法
 
-- **來源檔案**：`/home/yuchi/earthquake/GDMScatalog.json`，120 筆記錄，Hypoinverse 式區域網路定位目錄（欄位：`date, time, lat, lon, depth, ML, nstn, dmin, gap, trms, ERH, ERZ, fixed, nph, quality`；`time` 為 UTC），時間涵蓋 **2000-01-28 ~ 2026-05-01**，品質分 A（最佳，1 筆）/B（46 筆）/C（41 筆）/D（32 筆，多為測網邊緣或境外事件）四級。
+- **來源檔案**：`GDMScatalog.json`（外部提供，不包含在本 repo 內），120 筆記錄，Hypoinverse 式區域網路定位目錄（欄位：`date, time, lat, lon, depth, ML, nstn, dmin, gap, trms, ERH, ERZ, fixed, nph, quality`；`time` 為 UTC），時間涵蓋 **2000-01-28 ~ 2026-05-01**，品質分 A（最佳，1 筆）/B（46 筆）/C（41 筆）/D（32 筆，多為測網邊緣或境外事件）四級。
 - **比對方法**：把 `events.py` 現有 31 筆事件的 `time_local` 換算成 UTC，跟目錄逐筆比對（±60 秒視為同一起地震）。**30 筆全部比對上、時間差距在 30 秒內**（唯一沒比對上的是 G1 2018-02-04 ML5.8 前震——目錄本身門檻是 M≥6.0，5.8 本來就不會出現，不是資料缺失）。這也確認了 `events.py` 現有事件的發震時刻沒有錯誤；其中 12 筆先前因查無 CWA 官方座標、借用 USGS 座標的 `coord_confidence: low` 事件，已於同一次更新中改用這份目錄的 CWA 數值並升級信心（見 `events.py` 逐筆 `note`）。
 - 比對後剩下 **90 筆目錄記錄，完全沒有出現在 `events.py` 的 31 筆清單裡**，是這份文件的主體。
 

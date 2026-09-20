@@ -1,6 +1,6 @@
 # CLAUDE.md (G6_G7_G8)
 
-Combined group covering event sequences G6, G7, and G8 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../geomag_precursor/docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+Combined group covering event sequences G6, G7, and G8 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
 
 ## Event(s)
 

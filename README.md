@@ -29,8 +29,8 @@ python3 -m venv .venv
 
 | 資料 | 放置路徑 | 從哪裡拿 | 誰負責準備 |
 |---|---|---|---|
-| 地磁 1 秒解析度資料（IAGA-2002 格式 `.sec`，也接受 `.sec.gz`/`.tgz`） | `G1/`、`G2_G3/`、…、`G23/`（本 repo 底下，每組一個資料夾，命名 `<station><YYYYMMDD>dsec.sec`；2026-09-14 從父目錄 `/home/yuchi/earthquake/` 移進來，跟 EEPAS 一樣讓這個 repo 自成一個完整自包的專案） | CWA GDMS 地磁資料下載系統（`gdms.cwb.gov.tw`），需申請帳號登入 | **使用者手動下載**，repo 完全不含 |
-| 地震儀/加速度計波形（SAC PoleZero 響應檔 + miniSEED） | `seismometer/<GXX_MMDD>/`（本 repo 底下，如 `seismometer/G10_0403/`；2026-09-14 跟著 `Gx`一起從父目錄移進來） | 使用者自行取得的地震儀網路資料 | **使用者手動下載**，且下載後要同步更新 `seismometer_comparison.py::SEISMIC_DATA_DIRS` 這個手動維護的對照表（folder 名稱 ↔ mseed 檔名，兩者並非永遠一致，例如 G9 的 folder 是 `G9_0918`、mseed 檔是 `G09_0918_w.mseed`） |
+| 地磁 1 秒解析度資料（IAGA-2002 格式 `.sec`，也接受 `.sec.gz`/`.tgz`） | `G1/`、`G2_G3/`、…、`G23/`（本 repo 底下，每組一個資料夾，命名 `<station><YYYYMMDD>dsec.sec`；2026-09-14 整併進本目錄，讓這個 repo 自成一個完整自包的專案） | CWA GDMS 地磁資料下載系統（`gdms.cwb.gov.tw`），需申請帳號登入 | **使用者手動下載**，repo 完全不含 |
+| 地震儀/加速度計波形（SAC PoleZero 響應檔 + miniSEED） | `seismometer/<GXX_MMDD>/`（本 repo 底下，如 `seismometer/G10_0403/`；2026-09-14 跟著 `Gx` 一起整併進本目錄） | 使用者自行取得的地震儀網路資料 | **使用者手動下載**，且下載後要同步更新 `seismometer_comparison.py::SEISMIC_DATA_DIRS` 這個手動維護的對照表（folder 名稱 ↔ mseed 檔名，兩者並非永遠一致，例如 G9 的 folder 是 `G9_0918`、mseed 檔是 `G09_0918_w.mseed`） |
 | 空間天氣指數（Dst/Kp） | `data/external/<group>/{kp,dst}.csv`（在 repo 內，但被 `.gitignore` 排除） | `kp.gfz.de`、`wdc.kugi.kyoto-u.ac.jp` | `fetch_space_weather.py` **自動連網抓取**，已存在則跳過（要強制重抓需手動刪除快取檔） |
 | 擴充地震目錄 | `data/external/extended_catalog_m5.{0,5}.csv` | USGS FDSN Event API | `fetch_earthquake_catalog.py` **自動連網抓取** |
 
@@ -177,7 +177,6 @@ cd scripts
 ## 輸出產物與如何解讀
 
 - `data/interim/<group>/`（20 個資料夾）——各組日尺度線的中繼與最終產物：`daily_features.csv`、`minute_series_<station>.parquet`、`storm_days.csv`、`ulf_near_far_index.csv`、`local_anomaly_index.csv`、`candidate_windows.json`、`verification_report.json`。
-  - ⚠️ **`data/interim/` 根目錄下還散落著同名的舊檔案**（`daily_features.csv`、`local_anomaly_index.csv`、`minute_series_*.parquet` 等），是重構成逐組子資料夾之前的殘留物（本質是舊版 G10 輸出的拷貝），**已知過時，不要讀這些，一律用 `data/interim/<group>/...` 路徑**。
 - `data/interim/coseismic_step_analysis/`、`coseismic_stacking_analysis/`、`seismometer_comparison/`、`coseismic_joint_analysis/`——同震線四支腳本的輸出，各自有 `*_summary.csv`（總覽表）與逐事件/逐組合的 JSON 詳細檔。
 - `data/interim/cross_group_summary.{json,md}`、`all_groups_run_summary.json`、`validation_report_data.json`——跨組彙整與驗證報告用的中繼資料。
 - `output/`（**這個資料夾有被 git 追蹤**，其餘 `data/` 都沒有）：
@@ -189,17 +188,14 @@ cd scripts
 
 - **G14 的 5 起事件永遠不會有地震儀比對資料**：地動資料源只回溯到約 2012 年，G14 最早的事件是 2009 年，結構性缺口，不是還沒抓而已。
 - **測站有純量／向量世代分野**：G14–G18（2009–2016 年資料）與 G21、G22（2010、2012 年資料）全數是純量站（只有總磁場 F），完全跑不動 H/Z 篩選法與 ULF 極化分析；G4 之後（含 G19、G20）以及 G23（2020 年資料，雖群組編號高但時間上已晚於向量站升級）才是向量站齊全的世代——這正是 `ULF_GROUPS` 只列這 11 組的原因。
-- **G21–G23 目前沒有地震儀比對資料**：`seismometer_comparison.py::SEISMIC_DATA_DIRS` 與 `seismometer/` 底下都還沒有這 3 組事件（該資料夾仍停在原本 26 個 `GXX_MMDD` 資料夾），同震線第 3、4 步對這 3 組事件會直接跑不出比對結果，不是 bug。
+- **G21–G23 目前無法做地震儀比對**：G21（2010-11-21）同樣因資料源只回溯到 2012 年而永久抓不到；G22、G23 的 mseed 波形已放進 `seismometer/`（現有 29 個 `GXX_MMDD` 資料夾），但缺 SAC PoleZero 響應檔，也還沒寫進 `seismometer_comparison.py::SEISMIC_DATA_DIRS`，因此同震線第 3、4 步對這 3 組事件仍會跑不出比對結果，不是 bug。
 - **`ttn`（卑南）測站有已知的資料缺口**：2024 年 12 月起疑似永久停站，G12、G13、G20 完全沒有這一站；G11、G19 各有一段較短的缺測期。細節見本 repo 的 `CLAUDE.md`。
 - **`seismometer_comparison.py::SEISMIC_DATA_DIRS` 是手動維護的對照表**，新增地震儀資料要手動同步更新這個表，folder 名稱與 mseed 檔名的對應規則並非永遠一致（已知例外：G9）。
-- **這個 repo 目前還沒有任何一次 git commit**（`git status` 全部顯示為待加入的新檔案），`coseismic_joint_analysis.py` 甚至還沒 `git add`。clone 這個 repo 的人目前拿不到 commit 歷史可供比對。
 - 空間天氣抓取（`fetch_space_weather.py`）已存在的 `storm_days.csv` 會直接跳過重抓，要強制更新需手動刪除該檔案。
-- **`data/interim/G5/` 已知過時，`run_pipeline.sh --group G5` 需要重跑**：2026-09-14 訂正了 G5 anchor 事件(`2021-04-18`)的規模/座標/深度(`6.2/23.86N,121.48E/14.4km` → `6.26/23.8592N,121.48E/14.42km`，見 `events.py` 該事件的 note)，但上一次跑 pipeline 是 2026-08-21，早於這次訂正，所以 `data/interim/G5/` 的近/遠站排序是用舊座標算的。座標差距極小(第 4/5 位小數，換算約幾十公尺)，實務上幾乎不可能改變任何測站的近/遠分類，但嚴格來說在重跑前仍算過時。**對照組**：`data/interim/G12/`、`G17/`、`G18/` 雖然也各自經歷過 anchor 事件改派(見 `events.py` 對應 note)，但已確認 2026-08-21 那次 pipeline run 是在改派之後才跑的(`all_groups_run_summary.json` 記錄的 anchor 值就是新的)，所以這三組其實**不需要**重跑——這點本身也曾經被 `events.py` 的舊 note 誤植為「尚未重跑」，2026-09-14 已訂正。
 
 ## 延伸閱讀
 
 - `CLAUDE.md` — 給 AI 助理的操作指南，背景知識與已知陷阱記錄得更詳細（例如同震線的完整方法論演進過程，也包含原始地磁 `.sec` 資料本身的格式、測站代碼歷史、各組資料涵蓋範圍）。
-- `/home/yuchi/earthquake/CLAUDE.md`（父目錄，另一個獨立、未公開的 repo）— `earthquake/` 底下除了這個 repo 以外還有什麼（`EEPAS/`、`docs/`、`GDMScatalog.json`）。
 - `docs/13_groups_fetch_ranges.md` — G1–G13 資料抓取時間範圍規劃與理由。
 - `docs/candidate_groups_G14_G20.md` — G14–G20 候選地震評估紀錄。
 - `docs/candidate_groups_from_GDMScatalog.md`、`docs/candidate_fetch_ranges_from_GDMScatalog.md` — G21–G23 候選事件評估與抓取範圍規劃（源自使用者提供的 CWA GDMS 區域目錄 `GDMScatalog.json`）。

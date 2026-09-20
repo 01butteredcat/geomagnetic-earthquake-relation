@@ -24,20 +24,22 @@ script implements directly):
 27 of the 49 events in `events.py` have SAC PoleZero instrument-response
 files (`<GROUP_MMDD>/SAC_PZs_TW_<STA>_<CHAN>_...`) and a matching miniSEED
 waveform file (`<GROUP_MMDD>/<GROUP_MMDD>_w.mseed`, ~event_utc-60s to
-event_utc+600s, 100Hz), both under
-`/home/yuchi/earthquake/seismometer/<GROUP_MMDD>/` -- see `SEISMIC_DATA_DIRS`
-below, keyed by (group_id, event.date). (Reorganized 2026-08-17: previously
-the mseed files sat loose directly under /home/yuchi/earthquake/, one level
-up from their matching PZ folder; both now live together under `seismometer/`,
-one folder per event, out of the way of the Gx geomagnetic folders.) Of the
-22 uncovered events, G14's 5 are a permanent, structural gap (its earliest
-event, 2009-07-14, predates the seismic data source's 2012 cutoff) rather
-than a fetch that was simply skipped; the other 17 (spread across G5,
-G6_G7_G8, G9, G10, G11, G12, G15, G17, and the newer G21-G23) are simply not
-yet fetched -- `seismometer/` hasn't been extended past its original
-20-group/31-event scope since the 2026-08-16 fetch below, and G21-G23 in
-particular (added to `events.py` 2026-08-20) have no `seismometer/` folders
-at all yet.
+event_utc+600s, 100Hz), both under `seismometer/<GROUP_MMDD>/` -- see
+`SEISMIC_DATA_DIRS` below, keyed by (group_id, event.date). (Reorganized
+2026-08-17: previously the mseed files sat loose directly under this
+project's parent directory, one level up from their matching PZ folder;
+both now live together under `seismometer/`, one folder per event, out of
+the way of the Gx geomagnetic folders.) Of the 22 uncovered events, 6 are a
+permanent, structural gap: G14's 5 (its earliest event, 2009-07-14, predates
+the seismic data source's 2012 cutoff) plus G21's 1 (2010-11-21, same reason
+-- confirmed 2026-09-19 that the data source's fetchable range only starts
+2012-01-01). 3 more (G22's 1 event, G23's 2 events) had mseed waveforms
+fetched and placed under `seismometer/` on 2026-09-19, but have no matching
+SAC PoleZero response files yet and are not wired into `SEISMIC_DATA_DIRS`
+-- not usable by this script until PZ files are added. The remaining 13
+(spread across G5, G6_G7_G8, G9, G10, G11, G12, G15, G17) are simply not yet
+fetched -- `seismometer/` hasn't been extended past its original
+20-group/31-event functional scope since the 2026-08-16 fetch below.
 (As of 2026-08-13/14, only the 16 anchor events had been fetched; the
 remaining 11 non-anchor events plus the previously-missing G9 2022-09-17
 foreshock were fetched and verified 2026-08-16 -- see `coverage_summary.json`,
