@@ -137,6 +137,7 @@ cd scripts
 | `OUTAGE_PCT_MISSING_THRESHOLD` | `common.py` | 0.05 | 站/日缺測比例超過此值，該天不列入「乾淨基線日」 |
 | `SPIKE_THRESHOLD_NT` | `build_daily_features.py` | 300.0 | 秒級尖峰雜訊濾除門檻（nT） |
 | `NIGHT_HOURS_UTC` | `compute_indices.py`／`ulf_analysis.py`（各自定義一份） | `{17,18,19}`（本地 01:00–03:59） | 只用夜間（磁場最安靜）時段算異常指數 |
+| `MIN_NIGHT_MINUTES` | `compute_indices.py`（`verify_pipeline.py` 匯入同一值） | 90（夜間 180 分鐘的 50%） | 某站某夜有效分鐘數低於此值，該站當夜不貢獻指數；`verify_pipeline` 的 outage 判定也用同一標準（2026-09-20 新增，原本整天 `pct_missing>5%` 與實際使用的夜間窗口不一致） |
 | `TRAILING_WINDOW_DAYS` | `compute_indices.py` | 21 | 滾動基線窗長（天） |
 | `CANDIDATE_Z_THRESHOLD` | `compute_indices.py` | 2.5 | MAD z-score 超過此值標記為候選異常日 |
 | `ZOOM_WINDOW_DAYS` | `ulf_analysis.py` | 12 | 錨定事件前後放大檢視的天數 |

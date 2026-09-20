@@ -42,6 +42,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import auto_outage_dates, load_group_config  # noqa: E402
 
 NIGHT_HOURS_UTC = {17, 18, 19}  # == local 01:00-03:59
+# A station-night with fewer valid minutes than this (out of 180) contributes
+# no index value that day. Before this, a single valid minute was enough, so a
+# day whose whole-day pct_missing exceeded OUTAGE_PCT_MISSING_THRESHOLD could
+# still be flagged as a candidate from a near-empty night window (e.g. G18
+# 2016-02-29: kmn had 68/180 night minutes and hcn 0, and that thin far_index
+# produced a candidate). 90 (50% of the window) is a judgment call: 30-60
+# leaves that G18 day in, 90-150 all give the same set of removed candidates.
+MIN_NIGHT_MINUTES = 90
 # 7 days was too short for the G10/2024 case: the 2024-03-21..27 storm +
 # 2-day recovery consumed the entire trailing window for dates through early
 # April, leaving the most important pre-quake days (03-26..04-04) with no
@@ -68,6 +76,8 @@ def night_features_for_station(cfg, station: str, channel: str) -> pd.DataFrame:
     )
     out.index.name = "date"
     out["station"] = station
+    thin = out["night_n"] < MIN_NIGHT_MINUTES
+    out.loc[thin, [f"night_mean_{channel}", f"night_std_{channel}"]] = np.nan
     return out.reset_index()
 
 

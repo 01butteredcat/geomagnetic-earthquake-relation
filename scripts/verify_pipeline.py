@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import DATA_TIMEZONE, auto_outage_dates, list_day_refs, load_group_config, resolve_day_ref  # noqa: E402
 from parser import is_scalar_only, open_raw, parse_day_file  # noqa: E402
 from build_daily_features import SPIKE_THRESHOLD_NT  # noqa: E402
-from compute_indices import MIN_CLEAN_POINTS, TRAILING_WINDOW_DAYS  # noqa: E402
+from compute_indices import MIN_CLEAN_POINTS, MIN_NIGHT_MINUTES, NIGHT_HOURS_UTC, TRAILING_WINDOW_DAYS  # noqa: E402
 
 random.seed(42)
 checks: dict = {}
@@ -206,24 +206,41 @@ def check_candidates_not_in_outage_windows(cfg):
     than the earlier, over-strict "any one relevant station is dirty" union,
     which produced false failures once auto_outage_dates started finding
     long-running single-station outages that the near/far median already
-    routes around without issue."""
+    routes around without issue. Station-day "out" is judged on the night
+    window (see below), matching what compute_indices.py's night features
+    (MIN_NIGHT_MINUTES) actually gate on."""
     cand = json.loads((cfg.interim_dir / "candidate_windows.json").read_text())
     daily = pd.read_csv(cfg.interim_dir / "daily_features.csv", dtype={"date": str})
-    outage_by_station = auto_outage_dates(daily)
     all_days = sorted(daily["date"].unique())
 
-    def pool_outage_dates(pool):
-        near_out = {d for d in all_days if pool.near and all(d in outage_by_station.get(s, set()) for s in pool.near)}
-        far_out = {d for d in all_days if pool.far and all(d in outage_by_station.get(s, set()) for s in pool.far)}
+    # "Outage" here is judged on the NIGHT window the index is actually built
+    # from (NIGHT_HOURS_UTC, >= MIN_NIGHT_MINUTES valid minutes of that
+    # station+channel), not the whole-day pct_missing: a station can be >5%
+    # missing over 24h yet have a complete night window, and vice versa. That
+    # mismatch is what made this check flag G14/G18 candidates whose near or
+    # far median was in fact computed from full night data.
+    night_ok_cache: dict[tuple[str, str], set[str]] = {}
+
+    def night_ok_dates(station, channel):
+        key = (station, channel)
+        if key not in night_ok_cache:
+            df = pd.read_parquet(cfg.interim_dir / f"minute_series_{station}.parquet", columns=[channel])
+            night = df[df.index.hour.isin(NIGHT_HOURS_UTC)][channel].dropna()
+            n = night.groupby(night.index.strftime("%Y%m%d")).size()
+            night_ok_cache[key] = set(n[n >= MIN_NIGHT_MINUTES].index)
+        return night_ok_cache[key]
+
+    def pool_outage_dates(pool, channel):
+        near_out = {d for d in all_days if pool.near and not any(d in night_ok_dates(s, channel) for s in pool.near)}
+        far_out = {d for d in all_days if pool.far and not any(d in night_ok_dates(s, channel) for s in pool.far)}
         return near_out | far_out
 
-    xyz_outage = pool_outage_dates(cfg.xyz_pool)
-    f_outage = pool_outage_dates(cfg.f_pool)
-
     overlap = set()
-    overlap |= set(cand.get("candidate_dates_H", [])) & xyz_outage
-    overlap |= set(cand.get("candidate_dates_Z", [])) & xyz_outage
-    overlap |= set(cand.get("candidate_dates_F", [])) & f_outage
+    if cand.get("candidate_dates_H") or cand.get("candidate_dates_Z"):
+        overlap |= set(cand.get("candidate_dates_H", [])) & pool_outage_dates(cfg.xyz_pool, "H")
+        overlap |= set(cand.get("candidate_dates_Z", [])) & pool_outage_dates(cfg.xyz_pool, "Z")
+    if cand.get("candidate_dates_F"):
+        overlap |= set(cand.get("candidate_dates_F", [])) & pool_outage_dates(cfg.f_pool, "F")
 
     all_candidates = set(cand.get("candidate_dates_H", [])) | set(cand.get("candidate_dates_Z", [])) | set(cand.get("candidate_dates_F", []))
     checks["candidates_not_in_outage_windows"] = {
