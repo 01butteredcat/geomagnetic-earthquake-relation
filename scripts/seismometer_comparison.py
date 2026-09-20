@@ -21,7 +21,7 @@ script implements directly):
 
 ## Data used (fetched separately by the user, not by this pipeline)
 
-27 of the 49 events in `events.py` have SAC PoleZero instrument-response
+30 of the 49 events in `events.py` have SAC PoleZero instrument-response
 files (`<GROUP_MMDD>/SAC_PZs_TW_<STA>_<CHAN>_...`) and a matching miniSEED
 waveform file (`<GROUP_MMDD>/<GROUP_MMDD>_w.mseed`, ~event_utc-60s to
 event_utc+600s, 100Hz), both under `seismometer/<GROUP_MMDD>/` -- see
@@ -29,17 +29,16 @@ event_utc+600s, 100Hz), both under `seismometer/<GROUP_MMDD>/` -- see
 2026-08-17: previously the mseed files sat loose directly under this
 project's parent directory, one level up from their matching PZ folder;
 both now live together under `seismometer/`, one folder per event, out of
-the way of the Gx geomagnetic folders.) Of the 22 uncovered events, 6 are a
+the way of the Gx geomagnetic folders.) Of the 19 uncovered events, 6 are a
 permanent, structural gap: G14's 5 (its earliest event, 2009-07-14, predates
 the seismic data source's 2012 cutoff) plus G21's 1 (2010-11-21, same reason
 -- confirmed 2026-09-19 that the data source's fetchable range only starts
-2012-01-01). 3 more (G22's 1 event, G23's 2 events) had mseed waveforms
-fetched and placed under `seismometer/` on 2026-09-19, but have no matching
-SAC PoleZero response files yet and are not wired into `SEISMIC_DATA_DIRS`
--- not usable by this script until PZ files are added. The remaining 13
-(spread across G5, G6_G7_G8, G9, G10, G11, G12, G15, G17) are simply not yet
-fetched -- `seismometer/` hasn't been extended past its original
-20-group/31-event functional scope since the 2026-08-16 fetch below.
+2012-01-01). The remaining 13 (spread across G5, G6_G7_G8, G9, G10, G11, G12,
+G15, G17) are simply not yet fetched. (G22's 1 event and G23's 2 events had
+mseed fetched 2026-09-19 and PZ files added 2026-09-20, and are now wired in;
+the PZ sets lack a few stations that appear in the mseed -- G22: CHK/ELD loc 11
+and HEN, G23: HEN and SSH -- which only affects those stations' traces, none
+of which were the nearest-station pick.)
 (As of 2026-08-13/14, only the 16 anchor events had been fetched; the
 remaining 11 non-anchor events plus the previously-missing G9 2022-09-17
 foreshock were fetched and verified 2026-08-16 -- see `coverage_summary.json`,
@@ -122,9 +121,9 @@ SEISMIC_ROOT = common.GX_DATA_ROOT / "seismometer"
 # is the concrete counterexample. G14 intentionally absent: its 2009-12-19
 # anchor predates the seismic data source's 2012 cutoff.
 #
-# Keyed by (group_id, event.date) -- as of 2026-08-16 this covers all 27
-# non-G14 events (not just the 16 anchors from the original single-event-
-# per-group fetch), confirmed present on disk with mseed windows correctly
+# Keyed by (group_id, event.date) -- as of 2026-09-20 this covers 30 of the
+# 49 events (all except G14, G21 and 13 not-yet-fetched; not just the 16
+# anchors from the original single-event-per-group fetch), confirmed present on disk with mseed windows correctly
 # bracketing each event's origin second. G10's 2024-04-23a/2024-04-23b share
 # one PZ folder (same UTC calendar day, station metadata doesn't change
 # minute to minute) but have their own separate mseed files.
@@ -187,6 +186,13 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     "G20": {
         "2025-12-24": {"pz_dir": "G20_1224", "mseed": "G20_1224_w.mseed"},
         "2025-12-27": {"pz_dir": "G20_1227", "mseed": "G20_1227_w.mseed"},
+    },
+    "G22": {
+        "2012-06-10": {"pz_dir": "G22_0610", "mseed": "G22_0610_w.mseed"},
+    },
+    "G23": {
+        "2020-06-14": {"pz_dir": "G23_0614", "mseed": "G23_0614_w.mseed"},
+        "2020-07-26": {"pz_dir": "G23_0726", "mseed": "G23_0726_w.mseed"},
     },
 }
 
