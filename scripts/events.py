@@ -224,18 +224,22 @@ GROUPS: dict[str, Group] = {
                    "docs/candidate_groups_from_GDMScatalog.md Table 1."),
     )),
     "G10": Group("G10", "G10", (
-        Event("2024-04-03", "2024-04-03 07:58:11", 23.819, 121.562, 15.5, 7.2, "M", "CWA",
+        Event("2024-04-03", "2024-04-03 07:58:09", 23.8757, 121.5735, 19.72, 7.19, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="Hualien mainshock -- the original single-event pipeline's hardcoded values, carried "
-                   "over unchanged into this registry. NOTE (added 2026-09-14, web-verified): CWA's "
-                   "official catalog later revised this event from ML7.2 to ML7.1 (depth 19.7km, "
-                   "23.88N/121.57E) on 2025-02-01 after a second manual relocation -- but CWA's own "
-                   "2025-12-27 press statement (re: the G20 2025-12-27 Yilan earthquake) still quoted "
-                   "the original 7.2 figure, so 'the official CWA magnitude' is genuinely ambiguous "
-                   "depending on source/date. This registry keeps the original 7.2/23.819N,121.562E/"
-                   "15.5km values unchanged (not verified/switched to the revision) -- flagged here for "
-                   "a future accuracy pass. Sources: https://scweb.cwa.gov.tw/zh-tw/earthquake/"
-                   "Parameters/2024040307580971019 ; zh.wikipedia.org \"2024年花蓮地震\"."),
+              note="Hualien mainshock. UPDATED 2026-09-21 from the user-supplied CWA GDMS regional catalog "
+                   "export (GDMScatalog.json, 2024-04-02 23:58:09.94 UTC, quality B, 99 stations) -- "
+                   "supersedes the original single-event pipeline's hardcoded ML7.2 / 23.819N,121.562E / "
+                   "15.5km / 07:58:11, which were CWA's pre-revision values. CWA revised this event from "
+                   "ML7.2 (depth 22.5km) to ML7.1 on 2025-02-01 after a second manual relocation; CWA's "
+                   "scweb page now shows Mag 7.1, 23.88N/121.57E, 19.7km, which is the catalog's 7.19 / "
+                   "23.8757N,121.5735E / 19.72km at published precision (7.19 -> 7.1 suggests truncation "
+                   "rather than rounding; not confirmed). The catalog's two-decimal ML7.19 is used here, "
+                   "matching how every other catalog-sourced event in this registry is recorded. CWA's own "
+                   "2025-12-27 press statement (re: the G20 2025-12-27 Yilan earthquake) still quoted the "
+                   "original 7.2 figure. NOTE: this changes the anchor's coordinates (~6km from the old "
+                   "ones), which the near/far station ranking is keyed to -- G10's analysis outputs have "
+                   "NOT been re-run against the new values yet. Sources: https://scweb.cwa.gov.tw/zh-tw/"
+                   "earthquake/Parameters/2024040307580971019 ; zh.wikipedia.org \"2024年花蓮地震\"."),
         Event("2024-04-23a", "2024-04-23 02:26:52", 23.7400, 121.6127, 9.20, 6.16, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
               note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
@@ -540,22 +544,35 @@ GROUPS: dict[str, Group] = {
                    "2010-12-13) or G15's (starts 2013-03-01). Raw .sec data fetched by the user from GDMS "
                    "2026-08-20, matching that proposed window exactly (1276 files)."),
     )),
+    # G23 and G24 share one raw-data folder (`G23/`) purely because they were fetched together for
+    # convenience -- confirmed no foreshock/mainshock/aftershock relationship (42 days, ~1.6km apart),
+    # so each is its own group with its own anchor. Split 2026-09-22, mirroring the G2_G3/G6_G7_G8
+    # precedent. Unlike G2/G3 (each has a confirmed CWA place name), NEITHER event here does -- both
+    # are coordinate-derived only; do not add a place name to either note. See folder_events() below
+    # for how analyses that must exclude "every real event in this data" still see both.
     "G23": Group("G23", "G23", (
-        Event("2020-06-14", "2020-06-14 04:18:59", 24.2632, 122.4350, 55.55, 6.09, "ML", "CWA",
-              coord_source="CWA", coord_confidence="high",
-              note="Added 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
-                   "(GDMScatalog.json, quality B, 99 stations). Not the anchor -- its own +22-day window "
-                   "(through 2020-07-06) overlapped 2020-07-26's -93-day baseline (from 2020-04-24), so per "
-                   "the usual mechanical merge rule these two events were registered as one group rather "
-                   "than two standalone ones, mirroring the G2_G3/G6_G7_G8 precedent."),
         Event("2020-07-26", "2020-07-26 20:52:29", 24.2552, 122.4215, 53.59, 6.24, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="Added 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
                    "(GDMScatalog.json, quality B, 99 stations). ML6.24 is higher than 2020-06-14's ML6.09, "
-                   "so this is the group's anchor. Merged group's combined baseline/aftermath window "
-                   "(2020-03-13~2020-08-17) did not overlap G4's window (starts 2020-09-08). Raw .sec data "
-                   "fetched by the user from GDMS 2026-08-20, matching that proposed window exactly (1264 "
-                   "files)."),
+                   "so this was already the merged group's anchor -- unchanged by the 2026-09-22 split. "
+                   "Merged group's combined baseline/aftermath window (2020-03-13~2020-08-17) did not "
+                   "overlap G4's window (starts 2020-09-08). Raw .sec data fetched by the user from GDMS "
+                   "2026-08-20, matching that proposed window exactly (1264 files, shared with G24's "
+                   "raw-data folder)."),
+    )),
+    "G24": Group("G24", "G23", (
+        Event("2020-06-14", "2020-06-14 04:18:59", 24.2632, 122.4350, 55.55, 6.09, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high", anchor=True,
+              note="Added 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
+                   "(GDMScatalog.json, quality B, 99 stations). Anchor of its own group since the "
+                   "2026-09-22 split of the merged G23 group -- previously the non-anchor event: its own "
+                   "+22-day window (through 2020-07-06) overlapped 2020-07-26's -93-day baseline (from "
+                   "2020-04-24), so per the usual mechanical merge rule these two events were registered "
+                   "as one group rather than two standalone ones, mirroring the G2_G3/G6_G7_G8 precedent. "
+                   "Confirmed the two are not foreshock/mainshock/aftershock of the same sequence -- "
+                   "1.6km/42 days apart is a coincidental window overlap only. Shares G23's raw-data "
+                   "folder and combined fetch window (2020-03-13~2020-08-17, 1264 files)."),
     )),
 }
 
@@ -572,8 +589,9 @@ def get_group(group_id: str) -> Group:
 def sibling_group_ids(group_id: str) -> tuple[str, ...]:
     """Every group (including `group_id` itself) whose raw data lives in the same
     `folder`. Groups normally have a folder of their own, so this is just
-    `(group_id,)`; G2/G3 share `G2_G3/` and G6/G7/G8 share `G6_G7_G8/` (split
-    2026-09-20 from what used to be one merged group each)."""
+    `(group_id,)`; G2/G3 share `G2_G3/`, G6/G7/G8 share `G6_G7_G8/` (both split
+    2026-09-20), and G23/G24 share `G23/` (split 2026-09-22) -- each from what used
+    to be one merged group."""
     folder = get_group(group_id).folder
     return tuple(gid for gid, g in GROUPS.items() if g.folder == folder)
 

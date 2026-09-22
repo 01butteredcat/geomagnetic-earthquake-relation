@@ -41,7 +41,7 @@
 
 ### B1. 中位數/MAD 穩健 z-score
 - **用途**：本專案幾乎所有異常判定的共同基礎統計量——將夜間平均 H/Z/F 值、ULF near−far 差值序列等標準化，用來偵測偏離「正常」範圍的日子。
-- **程式碼**：`scripts/stat_utils.py:27-37`（全序列版，各腳本共用）；`scripts/compute_indices.py:74-89`（21 天滾動窗版，`TRAILING_WINDOW_DAYS=21`、`MIN_CLEAN_POINTS=5`）
+- **程式碼**：`scripts/stat_utils.py:27-37`（全序列版，各腳本共用）；`scripts/compute_indices.py:84-99`（21 天滾動窗版，`TRAILING_WINDOW_DAYS=21`、`MIN_CLEAN_POINTS=5`）
 - **數學式**：
 
   $$
@@ -58,7 +58,7 @@
 
 ### B2. Theil–Sen 穩健回歸（近-遠測站共模訊號校正）
 - **用途**：地磁日變化中很大一部分是全網共有的太陽風/磁暴訊號（共模雜訊），而非局部異常。此法用「遠測站指標」回歸「近測站指標」，殘差即為扣除共模訊號後的「局部異常指標」（local anomaly index）。
-- **程式碼**：`scripts/compute_indices.py:92-165`，呼叫 `scipy.stats.theilslopes`
+- **程式碼**：`scripts/compute_indices.py:102-175`，呼叫 `scipy.stats.theilslopes`
 - **數學式**：
 
   設 $y_t=$ 近測站群 MAD-z 中位數（near_index）、$x_t=$ 遠測站群 MAD-z 中位數（far_index），僅用「乾淨日」擬合：
@@ -172,7 +172,7 @@
 
 ### D4. 重抽樣式 p-value（觀測極值 vs. 虛無分布）
 - **用途**：以 D2/D3 產生的 2000 組替代序列各自算出「該序列最負的 MAD z-score」，形成虛無分布，再看觀測值/固定閾值落在此分布的哪個百分位，得到經驗 p-value。
-- **程式碼**：`scripts/surrogate_test.py:90-101`
+- **程式碼**：`scripts/surrogate_test.py:79-101`
 - **數學式**：
 
   $$
@@ -184,7 +184,7 @@
 - **缺點**：p-value 精度受 $N$ 限制（$N=2000$ 時最小可解析 p-value 約 0.0005）；「取序列中最負一日」本身是一種事後挑選最極端值的做法（multiple comparison / look-elsewhere effect），此重抽樣法有部分緩解但未完全校正（跨群組、跨頻帶多重比較的校正在別處以其他方式處理，見 D5）。
 
 ### D5. 二項式檢定（Binomial Test，跨群組再現性）
-- **用途**：檢驗「候選異常日落在震前視窗內」的命中率，是否顯著高於各群組自身的滑動窗基準率——用來評估整體規則跨 23 個獨立地震序列的再現性，而非單一事件的巧合。
+- **用途**：檢驗「候選異常日落在震前視窗內」的命中率，是否顯著高於各群組自身的滑動窗基準率——用來評估整體規則跨 24 個獨立地震序列的再現性，而非單一事件的巧合。
 - **程式碼**：`scripts/cross_group_analysis.py:92-201`，`scipy.stats.binomtest`
 - **數學式**：設 $n$ 為受測群組數、$k$ 為命中群組數、$p_0$ 為平均基準命中率，單尾檢定：
 
@@ -205,12 +205,18 @@
 
   （隨機打亂事件的兩組標籤 $N=2000$ 次，重新計算組間差異）
 - **優點**：置換檢定不需任何分布假設，天生適合處理小樣本、非常態的分組比較；分子/分母各加 1 的寫法（"add-one" 校正）避免 p-value 恰好為 0，是標準穩健做法。
-- **缺點**：事件總數少（本專案僅 26 個有定義分組的事件，noise 14／signal 12），置換檢定的解析度（可達到的最小 p-value）受限；分組本身（noise_arm vs. signal_arm）依賴前一步驟的人工分類規則，並非統計上獨立產生。
+- **缺點**：兩組事件數都很少（本專案 27 個事件有地震儀資料、其中 23 個有可用地磁，noise_arm 12／signal_arm 11），置換檢定的解析度（可達到的最小 p-value）受限；分組本身（noise_arm vs. signal_arm）依賴前一步驟 `alignment_verdict` 的規則式分類，並非統計上獨立產生。
 
 ### D7. 地震對照組重抽樣 p-value（Coseismic 隨機參考時刻）
 - **用途**：在地震發生時刻附近偵測「階躍/尖峰」統計量後，另外抽取同一群組中大量與真實地震保持一定緩衝距離的隨機參考時刻，計算相同統計量在「無地震」情境下有多極端，藉此得到經驗 p-value。
 - **程式碼**：`scripts/coseismic_step_analysis.py:292-338`（`_extremum_in_window`、`_draw_null_centers`），`N_NULL=2000`
-- **數學式**：
+- **數學式**：設 $d_t$ 為去趨勢（A2）後的序列，階躍統計量（$M \in \{10, 30, 90\}$ 秒）與尖峰統計量為：
+
+  $$
+  S_M(t) = \frac{1}{M}\sum_{i=t+1}^{t+M} d_i - \frac{1}{M}\sum_{i=t-M+1}^{t} d_i, \qquad \text{spike}(t) = |d_t - d_{t-1}|
+  $$
+
+  觀測值取發震秒 $t_0$ 前後 $\pm 180$ 秒內絕對值最大者 $\text{obs} = S(t^*),\ t^* = \arg\max_{|t-t_0|\le 180}|S(t)|$；虛無值以同一統計量、同一搜尋程序在隨機參考時刻取得：
 
   $$
   p = \frac{1+\#\{r : |\text{null}_r| \ge |\text{obs}|\}}{N_{\text{null}}+1}
@@ -226,7 +232,7 @@
 
 ### E1. 疊加時間分析（Superposed Epoch Analysis, SEA）+ Bootstrap 信賴區間 + Null Band
 - **用途**：將多個獨立地震事件的異常序列，依「距地震發生日/秒的相對時間（lag）」對齊堆疊，檢驗是否存在跨事件一致的異常型態（而非單一事件的偶然現象）。日尺度版本用於震前 ULF 差分序列；秒尺度版本（`coseismic_stacking_analysis.py`）用於 coseismic 階躍/尖峰統計量。
-- **程式碼**：`scripts/superposed_epoch_analysis.py:89-169`；`scripts/coseismic_stacking_analysis.py:157-407`
+- **程式碼**：`scripts/superposed_epoch_analysis.py:90-174`；`scripts/coseismic_stacking_analysis.py:157-407`
 - **數學式**：設 $M$ 為 $n_{\text{events}}\times n_{\text{lags}}$ 矩陣，各列為單一事件對齊後的序列：
 
   $$
@@ -244,11 +250,11 @@
 
   Null band：以同群組但earthquake-unrelated 的隨機參考日期重複整個堆疊流程 $R$ 次（$R=1000$），取其 5/50/95 百分位作為「純巧合下堆疊結果應落在的範圍」。
 - **優點**：直接檢驗「跨事件一致性」，是區分「單一事件的雜訊巧合」與「真正物理前兆」最有力的證據型態之一；Bootstrap CI 與 Null band 皆為非母數方法，適合小樣本、非常態資料；秒尺度版本额外用「虛無序列自身峰值分布」而非逐點百分位判斷顯著性，避免了 look-elsewhere 問題（見模組內文件字串說明，`coseismic_stacking_analysis.py:366-376`）。
-- **缺點**：事件數仍偏少（23 群/49 事件），bootstrap 對總體變異的估計在小樣本下可能偏窄；不同事件的資料品質/測站覆蓋不一致，堆疊時以 `nanmean`/`nanmedian` 處理缺值，可能讓「有效樣本數」隨 lag 而變動，邊緣 lag 的統計力較弱。
+- **缺點**：事件數仍偏少（日尺度版本僅 ULF_GROUPS 的 13 個向量站群組可用；秒尺度版本涵蓋 49 事件），bootstrap 對總體變異的估計在小樣本下可能偏窄；不同事件的資料品質/測站覆蓋不一致，堆疊時以 `nanmean`/`nanmedian` 處理缺值，可能讓「有效樣本數」隨 lag 而變動，邊緣 lag 的統計力較弱。
 
 ### E2. 規則回測（Precision / Recall / False-Alarm Rate）與滑動窗基準率
 - **用途**：把「z ≤ −4.1」這條固定規則當作實際的地震前兆警報規則，對照完整地震目錄回測其實務表現：抓到的天數中有多少真的在觸發窗、真正抓到的事件比例多少、非事件期間誤報率多高。
-- **程式碼**：`scripts/backtest_rule.py:69-136`；`sliding_baseline_rate`（`scripts/cross_group_analysis.py`）
+- **程式碼**：`scripts/backtest_rule.py:48-150`；`sliding_baseline_rate`（`scripts/cross_group_analysis.py`）
 - **數學式**：
 
   $$
@@ -269,14 +275,14 @@
 - **數學式**：
 
   $$
-  \text{STA}(t) = \frac{1}{n_s}\sum_{i=t-n_s+1}^{t} |x_i|, \qquad
-  \text{LTA}(t) = \frac{1}{n_l}\sum_{i=t-n_l+1}^{t} |x_i| \quad (n_s \ll n_l)
+  \text{STA}(t) = \frac{1}{n_s}\sum_{i=t-n_s+1}^{t} x_i^2, \qquad
+  \text{LTA}(t) = \frac{1}{n_l}\sum_{i=t-n_l+1}^{t} x_i^2 \quad (n_s \ll n_l)
   $$
   $$
   R(t) = \frac{\text{STA}(t)}{\text{LTA}(t)}
   $$
 
-  當 $R(t)$ 超過觸發閾值即判定震動開始，低於解除閾值則判定結束。
+  當 $R(t)$ 超過觸發閾值（預設 3.5）即判定震動開始，低於解除閾值（預設 1.0）則判定結束；STA 視窗 1 秒、LTA 視窗 10 秒。ObsPy 的 `classic_sta_lta` 以樣本平方（能量）計算，而非絕對值。
 - **優點**：地震學界數十年驗證過的標準方法，對突發性強震動極為敏感、計算成本低，適合即時/大量事件處理。
 - **缺點**：需要事件前有足夠長的「安靜期」估計 LTA 基準，對本專案中部分**短時觸發式**加速度計紀錄（`triggered_short_trace`，記錄本身就是被觸發後才開始存的）不適用，此時退回 F2 的方法。
 

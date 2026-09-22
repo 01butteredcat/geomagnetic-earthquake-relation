@@ -53,7 +53,7 @@ from events import ALL_GROUP_IDS, assign_group_for_time, folder_events, get_grou
 
 USGS_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 BBOX = {"minlatitude": 20.5, "maxlatitude": 27.0, "minlongitude": 117.5, "maxlongitude": 123.5}
-ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23", "G24")
 
 DECLUSTER_DAYS = 3
 DECLUSTER_KM = 100

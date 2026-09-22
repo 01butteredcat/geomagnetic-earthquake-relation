@@ -34,8 +34,10 @@ permanent, structural gap: G14's 5 (its earliest event, 2009-07-14, predates
 the seismic data source's 2012 cutoff) plus G21's 1 (2010-11-21, same reason
 -- confirmed 2026-09-19 that the data source's fetchable range only starts
 2012-01-01). The remaining 13 (spread across G5, G8, G9, G10, G11, G12,
-G15, G17) are simply not yet fetched. (G22's 1 event and G23's 2 events had
-mseed fetched 2026-09-19 and PZ files added 2026-09-20, and are now wired in;
+G15, G17) are simply not yet fetched. (G22's 1 event and G23's 1 event + G24's
+1 event -- G23/G24 split 2026-09-22 from a single merged "G23" that had 2
+events -- had mseed fetched 2026-09-19 and PZ files added 2026-09-20, and are
+now wired in;
 the PZ sets lack a few stations that appear in the mseed -- G22: CHK/ELD loc 11
 and HEN, G23: HEN and SSH -- which only affects those stations' traces, none
 of which were the nearest-station pick.)
@@ -199,8 +201,10 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
         "2012-06-10": {"pz_dir": "G22_0610", "mseed": "G22_0610_w.mseed"},
     },
     "G23": {
-        "2020-06-14": {"pz_dir": "G23_0614", "mseed": "G23_0614_w.mseed"},
         "2020-07-26": {"pz_dir": "G23_0726", "mseed": "G23_0726_w.mseed"},
+    },
+    "G24": {
+        "2020-06-14": {"pz_dir": "G23_0614", "mseed": "G23_0614_w.mseed"},
     },
 }
 

@@ -35,7 +35,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 if [ -z "$GROUP" ]; then
-  echo "usage: run_pipeline.sh --group <G1|G2|...|G23> [--full-report]" >&2
+  echo "usage: run_pipeline.sh --group <G1|G2|...|G24> [--full-report]" >&2
   exit 1
 fi
 

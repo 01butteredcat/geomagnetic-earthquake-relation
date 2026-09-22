@@ -36,7 +36,7 @@ from common import PROJECT_DIR, load_group_config  # noqa: E402
 from events import folder_events  # noqa: E402
 from stat_utils import mad_zscore  # noqa: E402
 
-ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23", "G24")
 BANDS = ("pc3", "pc4")
 WINDOW_BEFORE_DAYS = 30
 WINDOW_AFTER_DAYS = 10

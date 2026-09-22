@@ -41,7 +41,7 @@ from stat_utils import (  # noqa: E402
     phase_randomize_surrogate,
 )
 
-ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23")
+ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23", "G24")
 BANDS = ("pc3", "pc4")
 N_SURROGATES = 2000
 SEED = 20260805  # fixed so re-running this script reproduces the same p-values
