@@ -19,6 +19,7 @@ from common import DATA_TIMEZONE, auto_outage_dates, list_day_refs, load_group_c
 from parser import is_scalar_only, open_raw, parse_day_file  # noqa: E402
 from build_daily_features import SPIKE_THRESHOLD_NT  # noqa: E402
 from compute_indices import MIN_CLEAN_POINTS, MIN_NIGHT_MINUTES, NIGHT_HOURS_UTC, TRAILING_WINDOW_DAYS  # noqa: E402
+from stat_utils import bootstrap_ci  # noqa: E402
 
 random.seed(42)
 checks: dict = {}
@@ -161,6 +162,29 @@ WARN_FIT_DAYS_BELOW = 30
 MIN_STORM_DAYS_FOR_TEST = 5  # fewer usable storm days than this: no verdict
 STORM_SIGNAL_FLOOR = 0.5  # median |near_index| (z) below this: no measurable storm signal to cancel
 STORM_CANCELLATION_RATIO = 0.6  # pass if median|local| < this * median|near| (same 0.6 as the old single-day rule; a judgment call)
+# Judging on the point estimate alone let a lucky small-sample ratio pass
+# even though resampling uncertainty says it isn't reliably below the
+# threshold -- pass now requires the bootstrap CI's UPPER bound to clear
+# STORM_CANCELLATION_RATIO, not just the point estimate (a strict tightening:
+# ci_hi >= point_estimate always, so this can only turn a pass into a fail,
+# never the reverse). LOW_BOOTSTRAP_POWER_THRESHOLD flags (doesn't gate) days
+# counts where the bootstrap has little combinatorial room to work with: a
+# multiset resample of n items has only C(2n-1, n) distinct outcomes (126 at
+# n=5, ~92k at n=10, ~7.76e7 at n=15), so below ~15 the CI is coarser than
+# N_BOOTSTRAP=2000 draws would suggest.
+CI_LEVEL = 0.90
+N_BOOTSTRAP = 2000  # same as every other bootstrapping script in this repo (SEED below too) -- cost here is negligible either way
+SEED = 20260805
+LOW_BOOTSTRAP_POWER_THRESHOLD = 15
+
+
+def _median_ratio(near_abs: np.ndarray, local_abs: np.ndarray) -> float:
+    """statistic() for bootstrap_ci: median|local| / median|near| on one
+    paired resample. Returns NaN (not an exception) when a resample's
+    near-day median collapses to 0, so nanpercentile drops that rare
+    degenerate replicate instead of the whole bootstrap crashing."""
+    med_near = np.median(near_abs)
+    return float(np.median(local_abs) / med_near) if med_near > 0 else float("nan")
 
 
 def check_storm_cancellation(cfg):
@@ -216,6 +240,17 @@ def check_storm_cancellation(cfg):
 
             result["wilcoxon_p_local_smaller"] = float(wilcoxon(near_abs, local_abs, alternative="greater").pvalue)
 
+        if len(rows) >= MIN_STORM_DAYS_FOR_TEST:
+            rng = np.random.default_rng(SEED)
+            boot = bootstrap_ci((near_abs, local_abs), _median_ratio, N_BOOTSTRAP, rng, ci=CI_LEVEL)
+            result.update(
+                bootstrap_ci90_lo=boot["ci_lo"],
+                bootstrap_ci90_hi=boot["ci_hi"],
+                n_bootstrap=N_BOOTSTRAP,
+                seed=SEED,
+            )
+
+    result_warnings = []
     if len(rows) < MIN_STORM_DAYS_FOR_TEST:
         result["note"] = (
             f"inconclusive -- only {len(rows)} storm day(s) with a computable index (< {MIN_STORM_DAYS_FOR_TEST}); "
@@ -226,15 +261,31 @@ def check_storm_cancellation(cfg):
             f"inconclusive -- median storm-day |near_index| is only {result['median_abs_near_index']:.2f} z "
             f"(< {STORM_SIGNAL_FLOOR}); this group shows no measurable storm signal to cancel"
         )
-    else:
-        result["pass"] = bool(result["ratio_local_over_near"] < STORM_CANCELLATION_RATIO)
+    elif result.get("bootstrap_ci90_hi") is None or np.isnan(result["bootstrap_ci90_hi"]):
         result["note"] = (
-            f"pooled over {len(rows)} storm days: median |local_anomaly_index| / median |near_index| = "
-            f"{result['ratio_local_over_near']:.2f} (pass if < {STORM_CANCELLATION_RATIO}); expect the far-station "
-            "regression to absorb the common-mode storm signal"
+            "inconclusive -- bootstrap CI for the ratio is undefined (a degenerate share of resamples had "
+            "median|near_index| == 0); cannot judge against the ratio threshold"
         )
+    else:
+        ci_hi = result["bootstrap_ci90_hi"]
+        result["pass"] = bool(ci_hi < STORM_CANCELLATION_RATIO)
+        result["note"] = (
+            f"pooled over {len(rows)} storm days: point estimate = {result['ratio_local_over_near']:.2f}, "
+            f"{int(CI_LEVEL * 100)}% bootstrap CI = [{result['bootstrap_ci90_lo']:.2f}, {ci_hi:.2f}] over "
+            f"{N_BOOTSTRAP} resamples (seed={SEED}); pass requires the CI UPPER BOUND < {STORM_CANCELLATION_RATIO} "
+            "(stricter than the old point-estimate rule -- a marginal point-estimate pass can now fail if the CI is "
+            "wide); expect the far-station regression to absorb the common-mode storm signal"
+        )
+        if len(rows) < LOW_BOOTSTRAP_POWER_THRESHOLD:
+            result_warnings.append(
+                f"low_bootstrap_power -- only {len(rows)} storm day(s) used (< {LOW_BOOTSTRAP_POWER_THRESHOLD}); "
+                "the resample space is combinatorially thin at this n, so the CI edges are coarser/less "
+                "trustworthy -- this does NOT downgrade the verdict, it's a caveat on the CI's precision"
+            )
     if n_fit is None or n_fit < WARN_FIT_DAYS_BELOW:
-        result["warning"] = f"only {n_fit} regression-fit days (< {WARN_FIT_DAYS_BELOW}); the far->near fit is thin"
+        result_warnings.append(f"only {n_fit} regression-fit days (< {WARN_FIT_DAYS_BELOW}); the far->near fit is thin")
+    if result_warnings:
+        result["warnings"] = result_warnings
     checks["storm_cancellation_test"] = result
 
 
