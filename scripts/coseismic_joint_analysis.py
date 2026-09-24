@@ -42,6 +42,16 @@ This directly reuses `seismometer_comparison.py::alignment_verdict`'s own
 framing (its docstring already groups leads/persists together as "favors a
 real geophysical mechanism").
 
+(Counts above are from the original 27-event pass. As of 2026-09-24 the arms
+are 14 noise / 12 signal = 26 events. The 2026-09-23 registry backfill to 117
+events -- 68 M5.0-5.9 non-anchor events from the CWA GDMS export -- added no
+arm members, since none of the new events has seismometer data; the only newly
+matchable one, G11 2025-01-21b, is `insufficient_data`. It still nudges the
+results slightly: the new events widen the off-event exclusion around the 6 arm
+events in G11/G12/G13/G19/G20, which shifts their baselines. Rerun 2026-09-24:
+far-H deltas moved in the third decimal, min p_tail stayed 0.069, min p_peak
+went 0.095 -> 0.093.)
+
 ## Method
 
 1. Build `EventSeries` objects (`coseismic_stacking_analysis.py`'s own
