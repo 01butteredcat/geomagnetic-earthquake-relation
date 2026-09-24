@@ -145,7 +145,7 @@ COMPARISON_CSV = common.PROJECT_DIR / "data" / "interim" / "seismometer_comparis
 # recomputing alignment_verdict here -- single source of truth.
 # ---------------------------------------------------------------------------
 
-def load_arm_assignment(csv_path: Path = COMPARISON_CSV) -> dict[str, str]:
+def load_arm_assignment(csv_path: Path = COMPARISON_CSV, verdict_col: str = "alignment_verdict") -> dict[str, str]:
     """Returns {"<group_id>__<event_date>": "noise"|"signal"} for every row
     with status=="ok" and a verdict in one of the two known arms. Rows with
     any other status (e.g. no_geomag_data) or verdict (insufficient_data)
@@ -156,7 +156,7 @@ def load_arm_assignment(csv_path: Path = COMPARISON_CSV) -> dict[str, str]:
     for _, row in df.iterrows():
         if row.get("status") != "ok":
             continue
-        verdict = row.get("alignment_verdict")
+        verdict = row.get(verdict_col)
         key = f"{row['group']}__{row['date']}"
         if verdict in NOISE_VERDICTS:
             arm_of[key] = "noise"
@@ -345,18 +345,25 @@ def self_test() -> bool:
 # Real-data orchestration
 # ---------------------------------------------------------------------------
 
-def run_all(min_mag: float | None = None) -> dict:
+def run_all(min_mag: float | None = None, gated: bool = False) -> dict:
     """min_mag restricts both arms to events.py events of at least that
     magnitude, written to a separate directory (coseismic_joint_analysis_m<min_mag>).
     Worth running alongside the full set since the 2026-09-25 M5 batch: for a
     small event the magnetometer mostly records noise, and a noise peak anywhere
     in the +-180s search window lands before shaking onset about half the time,
-    so M5 "leads_shaking" labels are close to coin flips."""
-    out_dir = OUT_DIR if min_mag is None else OUT_DIR.with_name(f"{OUT_DIR.name}_m{min_mag:g}")
+    so M5 "leads_shaking" labels are close to coin flips.
+
+    gated uses seismometer_comparison.py's alignment_verdict_gated (a verdict
+    only where the event's own step30 anomaly has p < 0.05), written to
+    coseismic_joint_analysis_gated[_m<mag>]/. On 2026-09-25 that leaves 7 events
+    (5 aligned, 1 leads, 1 persists) -- too few to test; the run exists to make
+    that explicit rather than to be read as a result."""
+    name = OUT_DIR.name + ("_gated" if gated else "") + ("" if min_mag is None else f"_m{min_mag:g}")
+    out_dir = OUT_DIR.with_name(name)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "combos").mkdir(exist_ok=True)
 
-    arm_of = load_arm_assignment()
+    arm_of = load_arm_assignment(verdict_col="alignment_verdict_gated" if gated else "alignment_verdict")
     if min_mag is not None:
         mag = {f"{gid}__{e.date}": e.magnitude for gid, g in GROUPS.items() for e in g.events}
         arm_of = {k: v for k, v in arm_of.items() if mag.get(k, 0) >= min_mag}
@@ -417,6 +424,7 @@ def run_all(min_mag: float | None = None) -> dict:
                 run_summary["combos"].append({"combo_id": combo_id, "status": "ok", **perm_result})
 
     run_summary["min_mag"] = min_mag
+    run_summary["gated"] = gated
     pd.DataFrame(summary_rows).to_csv(out_dir / "joint_summary.csv", index=False)
     (out_dir / "all_joint_run_summary.json").write_text(json.dumps(run_summary, indent=2, default=str))
     print(f"[run] {len(summary_rows)} combos -> {out_dir}", file=sys.stderr)
@@ -427,6 +435,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--self-test", action="store_true", help="run only the synthetic sanity check")
     ap.add_argument("--all", action="store_true", help="run the real-data joint analysis (default action)")
+    ap.add_argument("--gated", action="store_true",
+                    help="arms from alignment_verdict_gated (significant anomalies only), separate _gated directory")
     ap.add_argument("--min-mag", type=float, default=None,
                     help="only events of at least this magnitude, output to a separate _m<mag> directory")
     args = ap.parse_args()
@@ -438,4 +448,4 @@ if __name__ == "__main__":
         print("[main] synthetic self-test FAILED -- aborting before touching real data", file=sys.stderr)
         sys.exit(1)
 
-    run_all(min_mag=args.min_mag)
+    run_all(min_mag=args.min_mag, gated=args.gated)

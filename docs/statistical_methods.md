@@ -312,7 +312,7 @@
 
 ### F1. STA/LTA 地震觸發偵測（Classic Short-Term/Long-Term Average Ratio）
 - **用途**：地震學標準的震動起訖偵測法，用於獨立標記地震波實際到達測站的時間窗，以便和地磁異常的時間點做比對，判斷地磁訊號是否只是「儀器被震動干擾」而非真正的磁場變化。
-- **程式碼**：`scripts/seismometer_comparison.py:358-380`，`obspy.signal.trigger.classic_sta_lta` / `trigger_onset`
+- **程式碼**：`scripts/seismometer_comparison.py:503-525`，`obspy.signal.trigger.classic_sta_lta` / `trigger_onset`
 - **數學式**：
 
   $$
@@ -329,7 +329,7 @@
 
 ### F2. 包絡閾值震動窗偵測
 - **用途**：作為 F1 的替代方案，用於沒有足夠事件前基準期的短觸發式紀錄，判斷震動的起訖時間窗。
-- **程式碼**：`scripts/seismometer_comparison.py:383-411`，`obspy.signal.filter.envelope`（先做 1–20 Hz 帶通）
+- **程式碼**：`scripts/seismometer_comparison.py:528-555`，`obspy.signal.filter.envelope`（先做 1–20 Hz 帶通）
 - **數學式**：
 
   $$
@@ -339,6 +339,24 @@
   震動窗 = envelope 超過此閾值的最早/最晚時間點。
 - **優點**：不需要事件前基準期，適用於任何長度的觸發式紀錄；實作簡單、對強震動訊號穩健。
 - **缺點**：閾值取「自身峰值的 10%」是相對而非絕對標準，不同事件間的震動窗定義口徑不完全一致；對訊噪比低或波形逐漸衰減不明顯的紀錄，起訖時間判定會較模糊。
+
+### F3. 劑量反應檢定（地磁異常 vs 地動強度 PGA）
+- **用途**：若同震地磁異常是磁力儀被搖晃造成的，異常大小應隨磁力儀附近的地動強度增加。以 PGA 為「劑量」、地磁異常為「反應」做等級相關，不需要 aligned／leads 標籤（加上顯著性門檻後，有顯著異常可判定的事件只剩 7 起）。
+- **程式碼**：`scripts/seismometer_comparison.py:449-500`（`peak_ground_acceleration`）、`:684-700`（`geomag_noise_ratio`）；`scripts/coseismic_dose_response.py:78-94`（`within_group_permutation_test`）
+- **數學式**：
+
+  $$
+  \text{PGA} = \max_{c\in\{N,E\}}\ \max_{t\in[-10,\,120]\,\text{s}} \frac{|a_c(t)|}{S_c}, \qquad R_{\text{noise}} = \frac{\operatorname{RMS}(\Delta B_{\text{震動窗}})}{\operatorname{RMS}(\Delta B_{[-660,\,-60]\,\text{s}})}
+  $$
+  $$
+  \rho = \operatorname{Spearman}\bigl(\log_{10}\text{PGA},\ y\bigr), \qquad y \in \{\,|z_{\text{step30}}|,\ R_{\text{noise}},\ -\log_{10} p_{\text{D7}}\,\}
+  $$
+
+  $a_c$ 為去平均、0.1–20 Hz 帶通後的 counts，$S_c$ 為 PoleZero 檔頭的 SENSITIVITY（counts per m/s²）；$\Delta B$ 為地磁 1 Hz 一階差分。p 值由「只在同一組內打亂 $y$」2000 次得到。
+- **虛無假說 H₀**：地磁異常大小與磁力儀附近的 PGA 無關（$\rho = 0$）。
+- **對立假說 H₁**：地磁異常隨 PGA 增加（$\rho > 0$，單尾），支持「儀器被震動干擾」的解釋。
+- **優點**：所有事件都能用，不需要二分法標籤；組內置換避免事件最多的組別（G11）主導結果；PGA 由儀器靈敏度直接換算，量級可檢查（G10 主震在 HWA 為 450 gal）。
+- **缺點**：PGA 在鄰近地震站量得（中位數 7 km），不是磁力儀本身的搖晃，地震站在 2 km 內的只有 11 起；雜訊放大倍數用 RMS，震前窗口有突跳時會低估；多個反應變數與子集同時檢定，未做多重比較校正。
 
 ---
 

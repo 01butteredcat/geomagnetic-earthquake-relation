@@ -281,6 +281,18 @@ MIN_POST_EVENT_SEC = 60      # a trace with less than this much post-origin data
 PERSISTENCE_Z_THRESHOLD = 2.0
 PERSISTENCE_TAIL_FRACTION = 0.3
 ALIGNMENT_TOLERANCE_SEC = 5
+# Gate for alignment_verdict_gated: the per-event step30 p-value from
+# coseismic_step_analysis.py (D7, 2000 random reference times, same +-180s
+# search). Without it the verdict times whatever the largest value in the
+# window happens to be -- on 2026-09-25 only 7 of 93 events reached p < 0.05.
+ANOMALY_P_THRESHOLD = 0.05
+STEP_SUMMARY_CSV = common.PROJECT_DIR / "data" / "interim" / "coseismic_step_analysis" / "summary.csv"
+NOISE_PRE_LAGS = (-660, -60)   # pre-event reference for the geomag 1Hz difference-noise ratio
+# The magnetometer itself can stop during strong shaking: twu at the 2025-01-21
+# Dapu mainshock (2065 gal nearby) went flat at origin, then 146 of the next 240 s
+# were missing -- "no anomaly" there is a sensor dropout, not a quiet field.
+DROPOUT_WINDOW_SEC = (0, 300)
+DROPOUT_MISSING_FRACTION = 0.2
 
 OUT_DIR = common.PROJECT_DIR / "data" / "interim" / "seismometer_comparison"
 
@@ -303,6 +315,9 @@ _PZ_FIELD_RE = {
     "lon": re.compile(r"LONGITUDE\s*:\s*([\-0-9.]+)"),
     "elevation": re.compile(r"ELEVATION\s*:\s*([\-0-9.]+)"),
 }
+# Optional (not required for a PZ file to parse): counts per m/s**2 -- every PZ
+# file here is an HL-band accelerometer with this unit (checked 2026-09-25).
+_PZ_SENSITIVITY_RE = re.compile(r"SENSITIVITY\s*:\s*([0-9.eE+\-]+)")
 
 
 def _parse_pz_header(text: str) -> dict | None:
@@ -316,6 +331,7 @@ def _parse_pz_header(text: str) -> dict | None:
         "station": vals["station"], "location": vals["location"], "channel": vals["channel"],
         "start_utc": pd.Timestamp(vals["start"]), "end_utc": pd.Timestamp(vals["end"]),
         "lat": float(vals["lat"]), "lon": float(vals["lon"]), "elevation_m": float(vals["elevation"]),
+        "sensitivity": (float(m.group(1)) if (m := _PZ_SENSITIVITY_RE.search(text)) else None),
     }
 
 
@@ -424,6 +440,58 @@ def load_trace(mseed_path: Path, pz_catalog: dict, station: str, channel: str,
 
     return {"status": "ok", "trace": tr, "response_removed": response_removed,
             "triggered_short_trace": bool(triggered_short)}
+
+
+PGA_BAND_HZ = (0.1, 20.0)
+PGA_WINDOW_SEC = (-10, 120)   # peak taken only in this window around the event's own origin
+
+
+def peak_ground_acceleration(mseed_path: Path, pz_catalog: dict, station: str,
+                              event_utc: pd.Timestamp, window_end_sec: float = PGA_WINDOW_SEC[1]) -> dict:
+    """PGA in gal (cm/s**2) at `station`: max |acceleration| over the two
+    horizontal components (HLZ only if neither horizontal is usable).
+
+    Acceleration = demeaned, PGA_BAND_HZ-bandpassed counts / the PZ header's
+    SENSITIVITY (counts per m/s**2) -- the standard strong-motion conversion
+    for these accelerometers. The peak is taken only from PGA_WINDOW_SEC[0] to
+    window_end_sec around this event's origin: some events share another
+    event's mseed file (G11 2025-01-21b sits 9 min into the anchor's window),
+    and an unwindowed max would return the other event's shaking. Deliberately not load_trace()'s response-removed
+    trace: the PZ files' INPUT UNIT is M, so removing the full response yields
+    displacement, not acceleration."""
+    from obspy import Stream, UTCDateTime
+
+    ev = UTCDateTime(event_utc.isoformat())
+    t0, t1 = ev + PGA_WINDOW_SEC[0], ev + window_end_sec
+    per_comp: dict[str, float] = {}
+    for comp in ("HLN", "HLE", "HLZ"):
+        info = load_trace(mseed_path, pz_catalog, station, comp, event_utc, remove_response=False)
+        if info["status"] != "ok":
+            continue
+        tr = info["trace"]
+        epoch = _select_pz_epoch(pz_catalog, station, comp, tr.stats.location, event_utc)
+        if epoch is None or not epoch.get("sensitivity"):
+            continue
+        peak = 0.0
+        for seg in Stream([tr]).split():  # merge() leaves a masked array where there are gaps
+            if seg.stats.npts < 2 * seg.stats.sampling_rate:
+                continue
+            seg.data = seg.data.astype(float)
+            seg.detrend("demean")
+            seg.filter("bandpass", freqmin=PGA_BAND_HZ[0],
+                       freqmax=min(PGA_BAND_HZ[1], seg.stats.sampling_rate / 2 - 0.5), zerophase=True)
+            win = seg.slice(t0, t1)  # filter the full segment first, then window, to avoid edge effects
+            if win.stats.npts:
+                peak = max(peak, float(np.max(np.abs(win.data))))
+        if peak > 0:
+            per_comp[comp] = peak / epoch["sensitivity"] * 100.0  # m/s**2 -> gal
+    horizontal = {c: v for c, v in per_comp.items() if c != "HLZ"}
+    use = horizontal or per_comp
+    if not use:
+        return {"pga_gal": None, "pga_component": None}
+    comp = max(use, key=use.get)
+    return {"pga_gal": round(use[comp], 4), "pga_component": comp,
+            "pga_by_component_gal": {c: round(v, 4) for c, v in per_comp.items()}}
 
 
 # ---------------------------------------------------------------------------
@@ -576,6 +644,14 @@ def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channe
     level_base = _off_event_baseline(d)
     level_z_profile = (_extract_profile(d) - level_base[0]) / level_base[1] if level_base is not None else None
 
+    # raw 1Hz first differences over a wide window, for the shaking-noise ratio
+    # compare_event computes once it knows the shaking window (popped before output)
+    p0 = _pos(idx, event_utc)
+    lo_d, hi_d = max(1, p0 + NOISE_PRE_LAGS[0]), min(len(raw), p0 + 601)
+    raw_vals = raw.to_numpy(dtype=float)
+    diff_lags = np.arange(lo_d, hi_d) - p0
+    raw_diff = raw_vals[lo_d:hi_d] - raw_vals[lo_d - 1:hi_d - 1]
+
     search_mask = np.abs(lags) <= effective_search_half_sec
     sub, sub_lags = z_profile[search_mask], lags[search_mask]
     if np.all(np.isnan(sub)):
@@ -592,7 +668,35 @@ def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channe
         "level_z_profile": (None if level_z_profile is None else
                              [None if np.isnan(v) else round(float(v), 4) for v in level_z_profile]),
         "obs_lag_sec": obs_lag_sec, "obs_peak_z": obs_peak_z,
+        "_diff_lags": diff_lags, "_diff": raw_diff,
     }
+
+
+def geomag_dropout(diff_lags: np.ndarray, diff: np.ndarray) -> bool | None:
+    """True if more than DROPOUT_MISSING_FRACTION of the magnetometer's samples
+    in DROPOUT_WINDOW_SEC after origin are missing."""
+    sel = (diff_lags >= DROPOUT_WINDOW_SEC[0]) & (diff_lags <= DROPOUT_WINDOW_SEC[1])
+    if not sel.any():
+        return None
+    return bool(np.mean(np.isnan(diff[sel])) > DROPOUT_MISSING_FRACTION)
+
+
+def geomag_noise_ratio(diff_lags: np.ndarray, diff: np.ndarray,
+                        onset: float | None, offset: float | None) -> float | None:
+    """RMS of the geomagnetic 1Hz first difference during shaking over the RMS
+    in the 10 minutes before the event (NOISE_PRE_LAGS) -- the shaking-noise
+    signature seen in the G10 pilot (~11.6x). Shaking window = [onset, offset],
+    or 60 s from onset if no offset was detected."""
+    if onset is None:
+        return None
+    end = offset if offset is not None else onset + 60
+    pre = diff[(diff_lags >= NOISE_PRE_LAGS[0]) & (diff_lags < NOISE_PRE_LAGS[1])]
+    shake = diff[(diff_lags >= max(onset, 0)) & (diff_lags <= end)]
+    pre, shake = pre[~np.isnan(pre)], shake[~np.isnan(shake)]
+    if len(pre) < 300 or len(shake) < 5:
+        return None
+    pre_rms = float(np.sqrt(np.mean(pre ** 2)))
+    return round(float(np.sqrt(np.mean(shake ** 2))) / pre_rms, 4) if pre_rms > 0 else None
 
 
 # ---------------------------------------------------------------------------
@@ -639,6 +743,7 @@ def compare_event(cfg: "common.GroupConfig", group, event, geomag_station: str, 
     geomag = geomag_profile(cfg, group, event, geomag_station, channel_type)
     if geomag is None:
         return {"status": "no_geomag_data"}
+    diff_lags, diff = geomag.pop("_diff_lags"), geomag.pop("_diff")
 
     seismic_channels: dict[str, dict] = {}
     best_comp = None
@@ -674,9 +779,15 @@ def compare_event(cfg: "common.GroupConfig", group, event, geomag_station: str, 
     persists = (assess_persistence(geomag["lags_sec"], geomag["level_z_profile"], shaking_offset)
                 if geomag.get("level_z_profile") is not None else None)
     verdict = alignment_verdict(geomag["obs_lag_sec"], shaking_onset, shaking_offset, persists)
+    others = [pd.Timestamp(e.time_utc) for e in folder_events(group.group_id)]
+    pga = peak_ground_acceleration(mseed_path, pz_catalog, seismic_station, event_utc,
+                                    _effective_half_sec(PGA_WINDOW_SEC[1], event_utc, others))
 
     return {
         "status": "ok",
+        **pga,
+        "geomag_noise_ratio": geomag_noise_ratio(diff_lags, diff, shaking_onset, shaking_offset),
+        "geomag_dropout": geomag_dropout(diff_lags, diff),
         "primary_seismic_channel": best_comp,
         "geomag": geomag,
         "seismic_channels": seismic_channels,
@@ -821,6 +932,34 @@ def build_coverage_summary() -> dict:
     return {"n_events_total": len(items), "n_available": n_available, "events": items}
 
 
+def gate_verdicts(rows: list[dict]) -> list[dict]:
+    """Attach the event's own step30 p-value (same station, H or F) from
+    coseismic_step_analysis.py and derive alignment_verdict_gated: the original
+    verdict when the anomaly is significant, otherwise no_significant_anomaly
+    (anomaly_p_unavailable if there is no matching p-value). The ungated
+    alignment_verdict is left as is."""
+    step = pd.read_csv(STEP_SUMMARY_CSV) if STEP_SUMMARY_CSV.exists() else pd.DataFrame()
+    if len(step):
+        step = step[(step.statistic_type == "step") & (step.window_sec == 30)]
+        lookup = {(r.group, r.event_date, r.station, r.channel): r.p_value for r in step.itertuples()}
+    else:
+        lookup = {}
+    for row in rows:
+        ch = "H" if row.get("channel_type") == "XYZ" else "F"
+        p = lookup.get((row["group"], row["date"], row["geomag_station"], ch))
+        p = None if p is None or p != p else float(p)
+        row["geomag_step30_p"] = p
+        row["anomaly_significant"] = None if p is None else bool(p < ANOMALY_P_THRESHOLD)
+        verdict = row.get("alignment_verdict")
+        if verdict in (None, "insufficient_data") or row.get("status") != "ok":
+            row["alignment_verdict_gated"] = verdict
+        elif p is None:
+            row["alignment_verdict_gated"] = "anomaly_p_unavailable"
+        else:
+            row["alignment_verdict_gated"] = verdict if p < ANOMALY_P_THRESHOLD else "no_significant_anomaly"
+    return rows
+
+
 def run_available_events(group_ids: tuple[str, ...] | None = None) -> dict:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "events").mkdir(exist_ok=True)
@@ -883,13 +1022,18 @@ def run_available_events(group_ids: tuple[str, ...] | None = None) -> dict:
                 "shaking_offset_lag_sec": result.get("shaking_offset_lag_sec"),
                 "geomag_persists_after_shaking": result.get("geomag_persists_after_shaking"),
                 "alignment_verdict": result.get("alignment_verdict"),
+                "geomag_obs_peak_z": (result.get("geomag") or {}).get("obs_peak_z"),
+                "geomag_noise_ratio": result.get("geomag_noise_ratio"),
+                "geomag_dropout": result.get("geomag_dropout"),
+                "pga_gal": result.get("pga_gal"), "pga_component": result.get("pga_component"),
+                "channel_type": channel_type,
             })
             run_summary["events"].append({"group": group_id, "date": event.date, "status": result.get("status"),
                                            "alignment_verdict": result.get("alignment_verdict")})
             print(f"[{group_id} {event.date}] geomag={geomag_station} seismic={seismic_station} "
                   f"status={result.get('status')} verdict={result.get('alignment_verdict')}", file=sys.stderr)
 
-    pd.DataFrame(rows).to_csv(OUT_DIR / "comparison_summary.csv", index=False)
+    pd.DataFrame(gate_verdicts(rows)).to_csv(OUT_DIR / "comparison_summary.csv", index=False)
     (OUT_DIR / "all_comparisons_run_summary.json").write_text(json.dumps(run_summary, indent=2))
     print(f"[run] {len(rows)} events compared -> {OUT_DIR}", file=sys.stderr)
 
