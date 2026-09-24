@@ -39,7 +39,7 @@ def main():
     sea = {}
     backtest = {}
     catalog_counts = {}
-    for label in ("m5.5", "m5.0"):
+    for label in ("m6.0", "m5.5", "m5.0"):
         for band in BANDS:
             p = interim / "superposed_epoch" / f"{band}_stack_{label}.json"
             data = load_json(p)

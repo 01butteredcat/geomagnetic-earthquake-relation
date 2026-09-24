@@ -15,6 +15,25 @@ group -- the one test point used for cross-group statistics (§7 of the
 G1-G13 plan), to avoid treating a foreshock/mainshock/aftershock sequence's
 members as pseudo-independent samples.
 
+2026-09-23: 68 non-anchor events added to G11 (30), G12 (13), G13 (12), G19 (2),
+and G20 (11) from a user-supplied CWA GDMS regional magnitude-report export
+(`GDMScatalog.txt`, container-root-relative, M>=5.0, 2024-09-01~2026-07-31) --
+this is a plain magnitude-report dump (date/time/lat/lon/depth/ML/nstn/.../
+quality columns), a different export than `GDMScatalog.json`'s used elsewhere
+in this file's history. Cross-checked programmatically against every existing
+event in the five affected groups' `folder_events()` (+-6h / +-0.3 magnitude
+tolerance, the same rule `fetch_earthquake_catalog.py::flag_known_events()`
+uses) -- 7 catalog rows matched already-registered events (including all 4 of
+this window's pre-existing anchors) and were skipped; the remaining 68 were
+new. One of those, 2025-08-07 ML6.32 in G12's window, is a real M6+ event this
+registry had not previously recorded at all (not flagged in any prior
+candidate doc) but does not exceed G12's 2025-06-11 ML6.42 anchor, so no
+anchor reassignment is triggered anywhere in this batch. 15 further catalog
+rows fall in calendar gaps between these groups' fetch windows (no raw
+geomagnetic data covers them) and were left out entirely -- not registered
+here, and not a "candidate" list either since this note isn't itself a
+candidate-groups doc; see `docs/candidate_events_gdms_2024_2026.md`.
+
 2026-08-20 (yet later same day): 3 new standalone groups (G21, G22, G23) were
 added, plus one non-anchor event each to G11, G17, and G6_G7_G8 -- all from
 raw .sec data the user fetched from GDMS covering the candidate fetch ranges
@@ -297,6 +316,196 @@ GROUPS: dict[str, Group] = {
                    "window, so it was registered as an extension of this group rather than a new standalone "
                    "one. ML6.15 does not exceed the 2025-01-21 anchor's ML6.4, so no anchor reassignment is "
                    "triggered."),
+        Event("2024-10-24", "2024-10-24 23:59:32", 24.2405, 122.345, 69.61, 5.02, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-10-27", "2024-10-27 18:21:45", 24.0125, 121.6213, 31.47, 5.45, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-01", "2024-11-01 00:18:19", 23.5625, 121.539, 33.14, 5.50, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-02", "2024-11-02 14:27:30", 21.1612, 121.1728, 64.58, 5.20, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-07", "2024-11-07 01:19:39", 23.5643, 121.5512, 32.52, 5.56, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-14", "2024-11-14 10:38:16", 23.9023, 121.6213, 33.23, 5.46, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-22", "2024-11-22 20:40:17", 23.1897, 120.2015, 13.99, 5.53, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-27", "2024-11-27 23:32:24", 24.0757, 121.6687, 40.33, 5.36, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-11-30", "2024-11-30 17:07:03", 23.817, 123.4173, 83.77, 5.58, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-12-10", "2024-12-10 21:56:47", 24.8033, 122.4835, 96.24, 5.12, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-12-26", "2024-12-26 16:08:51", 23.962, 121.708, 26.19, 5.31, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-12-30", "2024-12-30 03:51:36", 23.5383, 120.6845, 15.08, 5.20, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-01-12", "2025-01-12 04:27:09", 23.7973, 121.4622, 11.34, 5.01, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-01-21b", "2025-01-21 00:26:25", 23.182, 120.5273, 12.73, 5.00, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'b' (following the G10 2024-04-23a/b/c "
+                   "precedent) since this shares its calendar date with the 2025-01-21 anchor above -- "
+                   "`seismometer_comparison.py`/`coseismic_step_analysis.py` key per-event output by "
+                   "`(group_id, event.date)`, which would otherwise collide."),
+        Event("2025-01-21c", "2025-01-21 01:42:31", 23.1662, 120.5722, 14.22, 5.13, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'c' for the same reason as "
+                   "2025-01-21b's note above."),
+        Event("2025-01-22", "2025-01-22 02:48:19", 21.1258, 121.1365, 50.71, 5.70, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-01-24", "2025-01-24 19:18:42", 23.1588, 120.5103, 15.7, 5.41, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-01-25a", "2025-01-25 06:01:57", 23.166, 120.5023, 15.22, 5.19, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'a' (G10 2024-04-23a/b/c precedent) since "
+                   "this shares its calendar date with the 2025-01-25b event below -- see 2025-01-21b's note for "
+                   "why."),
+        Event("2025-01-25b", "2025-01-25 19:49:17", 23.2572, 120.4997, 9.2, 5.79, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'b' for the same reason as 2025-01-25a's "
+                   "note above."),
+        Event("2025-01-26a", "2025-01-26 00:10:50", 22.8205, 120.6782, 18.56, 5.43, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'a' (G10 2024-04-23a/b/c precedent) since "
+                   "this shares its calendar date with the 2025-01-26b event below -- see 2025-01-21b's note for "
+                   "why."),
+        Event("2025-01-26b", "2025-01-26 07:38:53", 23.1613, 120.5143, 14.4, 5.84, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'b' for the same reason as 2025-01-26a's "
+                   "note above."),
+        Event("2025-01-27", "2025-01-27 08:18:50", 22.7688, 121.0303, 6.66, 5.34, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-01-30", "2025-01-30 10:11:54", 23.2347, 120.5832, 12.09, 5.68, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-02-08", "2025-02-08 00:46:58", 23.2773, 120.589, 11.41, 5.30, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-03-05", "2025-03-05 21:27:39", 23.1493, 120.497, 15.95, 5.25, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-03-13", "2025-03-13 13:09:39", 23.1102, 121.4093, 18.55, 5.72, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-03-25", "2025-03-25 09:40:48", 23.9265, 121.6245, 34.8, 5.23, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-04-01", "2025-04-01 19:26:02", 22.6255, 122.5623, 53.34, 5.10, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-04-09", "2025-04-09 09:53:25", 24.5877, 121.8153, 68.71, 5.82, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-04-23", "2025-04-23 08:02:54", 24.0708, 122.5285, 53.46, 5.08, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G11's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
     )),
     "G12": Group("G12", "G12", (
         Event("2025-06-11", "2025-06-11 19:00:29", 23.4257, 121.5323, 34.61, 6.42, "ML", "CWA",
@@ -318,11 +527,164 @@ GROUPS: dict[str, Group] = {
                    "coordinates. Offshore Yilan, deep event. ML6.05 is now confirmed lower than "
                    "2025-06-11's ML6.42, so this event is **no longer G12's anchor** (was anchor=True "
                    "before 2026-08-20 later same-day update; see 2025-06-11's note)."),
+        Event("2025-05-30", "2025-05-30 08:02:24", 24.8692, 122.8572, 130.19, 5.36, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-06-12", "2025-06-12 00:01:04", 23.4043, 121.5322, 34.79, 5.11, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-06-20", "2025-06-20 04:18:39", 21.9103, 119.9202, 44.13, 5.20, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-06-24", "2025-06-24 02:00:57", 23.7833, 121.3857, 23.58, 5.06, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-07-07", "2025-07-07 20:01:28", 24.558, 121.7683, 62.05, 5.08, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-07-08", "2025-07-08 03:57:06", 23.9393, 121.4747, 19.47, 5.06, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-07-15", "2025-07-15 21:58:17", 21.6963, 120.9835, 38.51, 5.18, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-08-07", "2025-08-07 15:45:04", 24.5565, 122.9643, 108.29, 6.32, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-08-10", "2025-08-10 14:03:36", 23.7597, 121.5453, 21.93, 5.26, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-08-17", "2025-08-17 06:51:31", 21.2348, 119.9673, 76.25, 5.33, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-08-19", "2025-08-19 09:26:08", 23.9883, 121.7167, 25.77, 5.09, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-08-21", "2025-08-21 16:37:46", 23.2565, 120.5535, 15.44, 5.14, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-08-22", "2025-08-22 14:06:15", 23.1532, 120.5287, 16.92, 5.49, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G12's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
     )),
     "G13": Group("G13", "G13", (
         Event("2026-05-01", "2026-05-01 20:39:55", 24.93, 122.08, 98.3, 6.1, "M", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="CWA official report EQ115037. NE offshore Yilan, deep event. Mww 5.8 (USGS)."),
+        Event("2026-02-24", "2026-02-24 12:37:15", 24.6567, 121.9048, 63.99, 5.68, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-03-03", "2026-03-03 19:52:48", 23.2078, 120.4723, 9.22, 5.09, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-03-12", "2026-03-12 20:14:13", 23.7757, 121.551, 23.39, 5.78, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-03-15", "2026-03-15 16:14:56", 24.3528, 121.999, 29.61, 5.59, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-03-20", "2026-03-20 21:32:42", 23.8347, 121.6112, 36.53, 5.20, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-04-05a", "2026-04-05 01:14:58", 24.0437, 121.6313, 25.43, 5.74, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'a' (G10 2024-04-23a/b/c precedent) since "
+                   "this shares its calendar date with the 2026-04-05b event below -- see 2025-01-21b's note "
+                   "(G11) for why."),
+        Event("2026-04-05b", "2026-04-05 23:34:03", 24.821, 122.9833, 133.56, 5.26, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'b' for the same reason as 2026-04-05a's "
+                   "note above."),
+        Event("2026-05-04", "2026-05-04 00:18:55", 24.8417, 123.1363, 135.92, 5.69, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-05-09", "2026-05-09 03:26:39", 24.6535, 121.9998, 70.83, 5.00, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-05-12", "2026-05-12 14:53:33", 23.2922, 121.4407, 26.38, 5.61, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-05-13", "2026-05-13 18:43:30", 24.0278, 121.6147, 23.24, 5.10, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-05-17", "2026-05-17 08:46:14", 24.0065, 120.9998, 16.12, 5.16, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
     )),
     # --- G14-G20: added 2026-08-08. Candidate events were pre-researched (relative-bearing
     # locations + USGS-sourced approximate magnitudes only) in docs/candidate_groups_G14_G20.md;
@@ -494,6 +856,18 @@ GROUPS: dict[str, Group] = {
                    "aftershock label. Pre-fetch data-availability confidence per "
                    "candidate_groups_G14_G20.md: high (same era/network as G1-G13); confirmed present in "
                    "G19.tgz as of 2026-08-07."),
+        Event("2024-09-02", "2024-09-02 16:26:25", 23.9255, 121.6402, 32.68, 5.63, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G19's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2024-09-07", "2024-09-07 13:16:50", 23.9572, 121.6922, 29.49, 5.35, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G19's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
     )),
     "G20": Group("G20", "G20", (
         Event("2025-12-24", "2025-12-24 17:47:06", 22.85, 121.15, 11.9, 6.1, "ML", "CWA",
@@ -521,6 +895,75 @@ GROUPS: dict[str, Group] = {
                    "more authoritative finalized value. Pre-fetch data-availability confidence per "
                    "candidate_groups_G14_G20.md: high (same era/network as G1-G13); confirmed present "
                    "in G20.tgz as of 2026-08-07."),
+        Event("2025-09-29", "2025-09-29 05:23:50", 24.328, 123.2852, 80.82, 5.46, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-10-08a", "2025-10-08 07:52:13", 23.99, 121.5502, 10.53, 5.18, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'a' (G10 2024-04-23a/b/c precedent) since "
+                   "this shares its calendar date with the 2025-10-08b event below -- see 2025-01-21b's note "
+                   "(G11) for why."),
+        Event("2025-10-08b", "2025-10-08 11:33:54", 23.5133, 122.0388, 37.31, 5.20, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered. `date` suffixed 'b' for the same reason as 2025-10-08a's "
+                   "note above."),
+        Event("2025-10-18", "2025-10-18 10:04:13", 24.2967, 122.083, 27.48, 5.44, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-10-31", "2025-10-31 08:25:07", 23.3465, 122.9392, 62.49, 5.11, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-11-10", "2025-11-10 13:00:48", 23.184, 120.6643, 9.07, 5.40, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-11-21", "2025-11-21 07:36:07", 25.232, 124.9578, 168.88, 5.90, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-12-08", "2025-12-08 19:24:57", 23.859, 121.6222, 24.52, 5.80, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2025-12-18", "2025-12-18 19:32:50", 24.1158, 121.7225, 31.0, 5.18, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-01-12", "2026-01-12 21:31:49", 24.6893, 122.0058, 70.54, 5.37, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
+        Event("2026-01-18", "2026-01-18 16:47:46", 24.323, 121.8107, 7.67, 5.04, "ML", "CWA",
+              coord_source="CWA", coord_confidence="high",
+              note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
+                   "(GDMScatalog.txt, covers 2024-09-01~2026-07-31) -- previously unregistered independent event "
+                   "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
+                   "anchor reassignment is triggered."),
     )),
     # --- G21-G23: added 2026-08-20. New standalone candidate groups proposed in
     # docs/candidate_fetch_ranges_from_GDMScatalog.md (itself derived from GDMScatalog.json's Table 2),

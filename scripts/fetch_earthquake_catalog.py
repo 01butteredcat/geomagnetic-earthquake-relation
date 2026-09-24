@@ -44,7 +44,7 @@ import json
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -59,6 +59,17 @@ DECLUSTER_DAYS = 3
 DECLUSTER_KM = 100
 KNOWN_EVENT_HOURS = 6
 KNOWN_EVENT_MAG_TOL = 0.3
+
+# User-supplied CWA GDMS regional magnitude-report export (space-delimited, header
+# "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality"; date/time
+# confirmed UTC by cross-checking G11's 2025-01-21 anchor against this file's
+# 2025-01-20 16:17 UTC row, which only lands on 2025-01-21 in Taiwan local time).
+# Only covers this fixed range -- a group whose window falls entirely inside it uses
+# this CWA source (matches this project's CWA-primary convention) instead of USGS;
+# every other group keeps using fetch_usgs() unchanged.
+CWA_CATALOG_DEFAULT = PROJECT_DIR.parent / "GDMScatalog.txt"
+CWA_CATALOG_START = "2024-09-01"
+CWA_CATALOG_END = "2026-07-31"
 
 
 def group_date_window(group_id: str) -> tuple[str, str] | None:
@@ -105,6 +116,37 @@ def fetch_usgs(start: str, end: str, min_mag: float) -> list[dict]:
     return events
 
 
+def fetch_cwa(path: Path, start: str, end: str, min_mag: float) -> list[dict]:
+    """Parse the user-supplied CWA GDMS catalog export, filtered to [start, end]
+    (inclusive, YYYY-MM-DD) and mag >= min_mag. Returns the same dict shape as
+    fetch_usgs() so decluster()/flag_known_events() work unchanged."""
+    start_dt = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    end_dt = datetime.strptime(end, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
+    events = []
+    with path.open() as f:
+        header = f.readline()
+        assert header.split()[:6] == ["date", "time", "lat", "lon", "depth", "ML"], \
+            f"unexpected GDMS catalog header: {header!r}"
+        for line in f:
+            parts = line.split()
+            if not parts:
+                continue
+            date_s, time_s, lat_s, lon_s, depth_s, mag_s = parts[:6]
+            mag = float(mag_s)
+            if mag < min_mag:
+                continue
+            t = datetime.strptime(f"{date_s} {time_s}", "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
+            if not (start_dt <= t < end_dt):
+                continue
+            events.append({
+                "time_utc": t.strftime("%Y-%m-%d %H:%M:%S"),
+                "_dt": t,
+                "lat": float(lat_s), "lon": float(lon_s), "depth_km": float(depth_s),
+                "mag": mag, "place": "", "usgs_id": "",
+            })
+    return events
+
+
 def decluster(events: list[dict], days: float = DECLUSTER_DAYS, km: float = DECLUSTER_KM) -> list[dict]:
     kept: list[dict] = []
     for e in sorted(events, key=lambda x: x["_dt"]):
@@ -144,6 +186,9 @@ def main():
     ap.add_argument("--min-mag", type=float, default=5.5)
     ap.add_argument("--output", type=Path, default=None)
     ap.add_argument("--groups", nargs="*", default=list(ULF_GROUPS))
+    ap.add_argument("--cwa-catalog", type=Path, default=CWA_CATALOG_DEFAULT,
+                     help="CWA GDMS catalog export to prefer for groups whose window falls "
+                          "entirely inside it; pass a nonexistent path to force USGS for all groups.")
     args = ap.parse_args()
 
     out_path = args.output or (PROJECT_DIR / "data" / "external" / f"extended_catalog_m{args.min_mag}.csv")
@@ -158,8 +203,17 @@ def main():
         start, end = window
         # USGS endtime is exclusive-ish at day boundary in practice; pad by 1 day
         end_padded = (datetime.strptime(end, "%Y-%m-%d")).strftime("%Y-%m-%d")
-        print(f"[{group_id}] querying USGS {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
-        events = fetch_usgs(start, end_padded, args.min_mag)
+        use_cwa = args.cwa_catalog.exists() and CWA_CATALOG_START <= start and end <= CWA_CATALOG_END
+        if use_cwa:
+            print(f"[{group_id}] reading CWA GDMS catalog {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
+            events = fetch_cwa(args.cwa_catalog, start, end_padded, args.min_mag)
+            source = "CWA_GDMS"
+        else:
+            print(f"[{group_id}] querying USGS {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
+            events = fetch_usgs(start, end_padded, args.min_mag)
+            source = "USGS"
+        for e in events:
+            e["source"] = source
         events = decluster(events)
         flag_known_events(events, group_id)
         if len(sibling_group_ids(group_id)) > 1:
@@ -178,7 +232,7 @@ def main():
             all_rows.append(e)
 
     fields = ["group", "time_utc", "lat", "lon", "depth_km", "mag", "place", "usgs_id",
-              "declustered", "is_known_event"]
+              "declustered", "is_known_event", "source"]
     with out_path.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()

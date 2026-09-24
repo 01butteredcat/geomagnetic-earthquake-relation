@@ -99,7 +99,7 @@
     <b>這份報告在回答什麼問題：</b>
     先前報告指出 G10（2024/4/3 花蓮 M7.2）震前 4 天（2024-03-30）的 Pc3 近遠站極化差分，是整個 113 天窗口中最極端的一天（z ≈ -4.1 個 MAD 單位），但也自陳「z=4 很罕見」的常態直覺並不嚴謹適用、且未做多重比較校正。
     這份報告針對這個缺口做三件事：<b>(1)</b> 不假設常態分布，改用 block bootstrap／相位隨機化把序列洗牌成「統計長相一樣但跟地震無關」的代理序列，看多常會自己冒出這麼極端的下沉；
-    <b>(2)</b> 把「一次地震」擴充成這幾年測網附近所有 M≥5.5 的獨立地震（去叢集後 23 起，另附 M≥5.0／69 起當敏感度檢查），把各組序列依發震時刻對齊疊加，看 3/30 那種下沉疊完會不會浮現；
+    <b>(2)</b> 把「一次地震」擴充成這幾年測網附近所有 M≥5.5 的獨立地震（去叢集後 23 起，另附 M≥6.0／強震子集與 M≥5.0／全集當敏感度對照，見下方三層切換），把各組序列依發震時刻對齊疊加，看 3/30 那種下沉疊完會不會浮現；
     <b>(3)</b> 把 z ≤ -4.1 這條規則當成一條真正的警報規則，回測它在整個資料集上的命中與誤報表現。
     仍然缺乏獨立的「安靜期」對照資料，去叢集規則是簡化版，見文末「方法限制」。
   </div>
@@ -130,10 +130,15 @@
 
   <div class="gm-section" id="sec-sea">
     <h2 class="gm-h2">2. 多事件疊加對齊（Superposed Epoch Analysis）</h2>
-    <p class="gm-h2-note">events.py 既有 17 起事件 + fetch_earthquake_catalog.py 擴充目錄（M≥5.5，去叢集後）＝ 10 組共 <span id="sea-n-events">-</span> 起獨立地震；各組序列先各自轉成 median/MAD z-score 再疊加，相對發震日 -30 ~ +10 天</p>
+    <p class="gm-h2-note">events.py 既有事件 + fetch_earthquake_catalog.py 擴充目錄（去叢集後）；各組序列先各自轉成 median/MAD z-score 再疊加，相對發震日 -30 ~ +10 天。下方可切換頻段（Pc3/Pc4）與規模門檻（M≥6.0 強震集／M≥5.5 主要／M≥5.0 全集）——三層是取捨對照，不是要挑出「正確」的一組：M≥6.0 樣本數少但單一事件訊號較強，M≥5.0 樣本數多但單一事件訊號較弱，見「總覽」目前選中門檻的疊加事件數 <span id="sea-n-events">-</span> 起</p>
     <div class="gm-tabs" id="sea-tabs">
       <button class="gm-tab-btn active" data-band="pc3">Pc3</button>
       <button class="gm-tab-btn" data-band="pc4">Pc4</button>
+    </div>
+    <div class="gm-tabs" id="sea-mag-tabs">
+      <button class="gm-tab-btn" data-label="m6.0">M≥6.0 強震集</button>
+      <button class="gm-tab-btn active" data-label="m5.5">M≥5.5 主要</button>
+      <button class="gm-tab-btn" data-label="m5.0">M≥5.0 全集</button>
     </div>
     <div class="gm-card">
       <div class="gm-legend" id="legend-sea"></div>
@@ -145,20 +150,24 @@
     </div>
     <p class="gm-limits" id="sea-narrative"></p>
     <div class="gm-card">
-      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">疊加使用的事件清單（M≥5.5，去叢集後）</div>
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">疊加使用的事件清單（目前選中門檻，去叢集後）</div>
       <div class="gm-table-wrap"><table class="gm-table" id="sea-events-table"></table></div>
     </div>
   </div>
 
   <div class="gm-section" id="sec-backtest">
     <h2 class="gm-h2">3. z ≤ -4.1 規則回測</h2>
-    <p class="gm-h2-note">把 -4.1 當成一條真正的警報門檻，標記全部 10 組序列中 z ≤ -4.1 的日子，對照擴充地震目錄的震前 7/14/30 天窗口算命中與誤報</p>
+    <p class="gm-h2-note">把 -4.1 當成一條真正的警報門檻，標記全部組別序列中 z ≤ -4.1 的日子，對照擴充地震目錄的震前 7/14/30 天窗口算命中與誤報，三層規模門檻並列比較</p>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">M≥6.0 強震集</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="backtest-table-60"></table></div>
+    </div>
     <div class="gm-card">
       <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">M≥5.5 主要分析</div>
       <div class="gm-table-wrap"><table class="gm-table" id="backtest-table-55"></table></div>
     </div>
     <div class="gm-card">
-      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">M≥5.0 敏感度檢查</div>
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">M≥5.0 全集敏感度檢查</div>
       <div class="gm-table-wrap"><table class="gm-table" id="backtest-table-50"></table></div>
     </div>
     <p class="gm-limits" id="backtest-narrative"></p>
@@ -172,11 +181,12 @@
       <li><b>Near/far 站別分類每組只算一次</b>（依錨定事件距離），套用到同組內其他事件時沿用同一分類，沒有針對每個候選地震的實際震央重新計算——同組內震央通常相近，此簡化影響應該不大，但未驗證。</li>
       <li><b>Block bootstrap 與相位隨機化在多數組別給出矛盾的結論</b>（block bootstrap 通常不顯著、相位隨機化通常顯著）：這不是程式錯誤，而是兩種方法在檢定不同的虛無假設——block bootstrap 完整保留原始序列的重尾邊際分布，只打亂區塊的時間位置，所以「整條序列裡有一天特別極端」這件事本身在原始邊際分布下並不罕見；相位隨機化保留頻譜（自相關）結構但重新合成振幅，其代理序列的邊際分布會趨近常態、尾部比原始重尾資料更薄，因此更容易把觀測值判為「顯著」。更嚴謹的作法（如 IAAFT，迭代調整振幅同時逼近原始邊際分布與頻譜）留待後續。</li>
       <li><b>M≥5.5 的 23 起事件雖達到專案文件提到的「20-30 起」統計門檻</b>，但這只是達到樣本數量下限，不等於每起事件都有足夠資料品質／獨立性；G11 起 ttn 站缺測、部分組別震央座標信心較低（見 events.py 的 <code>coord_confidence</code>）等既有資料限制仍然適用。</li>
-      <li>本報告的地震目錄來自 USGS FDSN 公開目錄 API（即時查詢），CWA 官方目錄若有規模/座標修訂，數字可能隨之變動；此為公開資料來源的固有限制，非本報告特有。</li>
+      <li><b>M≥6.0 那一欄樣本數通常很小（常見個位數）</b>：樣本數過小時，binomial 檢定／empirical p 值有下限（即使全部命中，p 值也無法無限逼近 0），此時「不顯著」不代表訊號不存在，只代表這個規模門檻下的檢定力本身受限——這正是三層對照而非單一門檻的原因：M≥6.0 犧牲樣本數換取較強的單一事件訊噪比，M≥5.0 犧牲訊噪比換取樣本數，兩者互為印證而非互斥。</li>
+      <li>本報告的地震目錄：G11/G12/G13/G20（2024-09~2026-07 的窗口）採用使用者提供的 CWA GDMS 規模報告匯出（<code>GDMScatalog.txt</code>）；其餘組別仍用 USGS FDSN 公開目錄 API（即時查詢）。各筆事件的實際來源見「疊加使用的事件清單」/回測表格的「來源」欄。</li>
     </ul>
   </div>
 
-  <p class="gm-footnote">方法與程式碼：<code>scripts/fetch_earthquake_catalog.py</code>、<code>scripts/surrogate_test.py</code>、<code>scripts/superposed_epoch_analysis.py</code>、<code>scripts/backtest_rule.py</code>、<code>scripts/stat_utils.py</code>。地震目錄來源：USGS FDSN event webservice。</p>
+  <p class="gm-footnote">方法與程式碼：<code>scripts/fetch_earthquake_catalog.py</code>、<code>scripts/surrogate_test.py</code>、<code>scripts/superposed_epoch_analysis.py</code>、<code>scripts/backtest_rule.py</code>、<code>scripts/stat_utils.py</code>。地震目錄來源：CWA GDMS 規模報告匯出（2024-09~2026-07 涵蓋的組別）／USGS FDSN event webservice（其餘組別）。</p>
 
 </div>
 </div>
@@ -205,9 +215,11 @@ const DATA = /*__REPORT_DATA__*/null;
       ['常態性遭拒絕的序列', shapiroRejects + ' / ' + surKeys.length, 'Shapiro-Wilk p<0.05'],
       ['block bootstrap p(≤-4.1) 中位數', fmtNum([...blockPs].sort((a,b)=>a-b)[Math.floor(blockPs.length/2)], 3), '跨 20 組×頻段'],
       ['相位隨機化 p(≤-4.1) 中位數', fmtNum([...phasePs].sort((a,b)=>a-b)[Math.floor(phasePs.length/2)], 3), '跨 20 組×頻段'],
-      ['M≥5.5 疊加事件數', DATA.meta.catalog_counts['m5.5'].n_declustered, '去叢集後獨立地震'],
-      ['z≤-4.1 規則 14 天窗回測', fmtPct(recall14_pc3), 'Pc3 recall（命中事件／總事件）'],
-      ['同規則誤報率', far14_pc3==null?'—':(far14_pc3*100).toFixed(2)+'%', 'Pc3／每個非前兆日'],
+      ['M≥6.0 疊加事件數', DATA.meta.catalog_counts['m6.0'].n_declustered, '去叢集後獨立地震（強震集）'],
+      ['M≥5.5 疊加事件數', DATA.meta.catalog_counts['m5.5'].n_declustered, '去叢集後獨立地震（主要）'],
+      ['M≥5.0 疊加事件數', DATA.meta.catalog_counts['m5.0'].n_declustered, '去叢集後獨立地震（全集）'],
+      ['z≤-4.1 規則 14 天窗回測', fmtPct(recall14_pc3), 'Pc3 recall（命中事件／總事件，M≥5.5）'],
+      ['同規則誤報率', far14_pc3==null?'—':(far14_pc3*100).toFixed(2)+'%', 'Pc3／每個非前兆日（M≥5.5）'],
     ];
     document.getElementById('overview-stats').innerHTML = tiles.map(([label,val,sub]) => `
       <div class="gm-stat-tile">
@@ -321,8 +333,7 @@ const DATA = /*__REPORT_DATA__*/null;
   })();
 
   // ---------- SEA chart ----------
-  function buildSeaChart(band){
-    const label = 'm5.5';
+  function buildSeaChart(band, label){
     const d = DATA.sea[band+'_'+label];
     const svgEl = document.getElementById('chart-sea');
     const tooltipEl = document.getElementById('tooltip-sea');
@@ -429,24 +440,41 @@ const DATA = /*__REPORT_DATA__*/null;
       <p>邊界天數（接近 -30 或 +10）貢獻的事件數較少（部分組別資料窗口不夠長），估計較不穩定，解讀時應以 n_contributing（滑鼠懸停可見）較高的中段天數為主。</p>
     `;
   }
-  buildSeaChart('pc3');
-  document.querySelectorAll('#sea-tabs .gm-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#sea-tabs .gm-tab-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      buildSeaChart(btn.dataset.band);
-    });
-  });
-
   // ---------- SEA events table ----------
-  (function(){
-    const d = DATA.sea['pc3_m5.5'];
+  function sourceLabel(source){
+    if(source === 'events.py') return 'events.py（原 13 組主震/前震/餘震）';
+    if(source === 'CWA_GDMS') return 'CWA GDMS 目錄擴充';
+    return 'USGS 目錄擴充';
+  }
+  function buildSeaEventsTable(label){
+    const d = DATA.sea['pc3_' + label];
     if(!d || !d.events_used) return;
     const rows = [...d.events_used].sort((a,b)=> a.date.localeCompare(b.date));
     document.getElementById('sea-events-table').innerHTML = `
       <thead><tr><th>組</th><th>日期</th><th>規模</th><th>來源</th></tr></thead>
-      <tbody>${rows.map(e => `<tr><td>${e.group}</td><td>${e.date}</td><td>${e.mag}</td><td>${e.source==='events.py'?'events.py（原 13 組主震/前震/餘震）':'USGS 目錄擴充'}</td></tr>`).join('')}</tbody>`;
-  })();
+      <tbody>${rows.map(e => `<tr><td>${e.group}</td><td>${e.date}</td><td>${e.mag}</td><td>${sourceLabel(e.source)}</td></tr>`).join('')}</tbody>`;
+  }
+
+  let currentSeaBand = 'pc3', currentSeaLabel = 'm5.5';
+  buildSeaChart(currentSeaBand, currentSeaLabel);
+  buildSeaEventsTable(currentSeaLabel);
+  document.querySelectorAll('#sea-tabs .gm-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sea-tabs .gm-tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSeaBand = btn.dataset.band;
+      buildSeaChart(currentSeaBand, currentSeaLabel);
+    });
+  });
+  document.querySelectorAll('#sea-mag-tabs .gm-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sea-mag-tabs .gm-tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSeaLabel = btn.dataset.label;
+      buildSeaChart(currentSeaBand, currentSeaLabel);
+      buildSeaEventsTable(currentSeaLabel);
+    });
+  });
 
   // ---------- backtest tables ----------
   function buildBacktestTable(elId, label){
@@ -468,6 +496,7 @@ const DATA = /*__REPORT_DATA__*/null;
       <th>precision（命中/標記）</th><th>recall（有命中的事件/總事件）</th><th>誤報率（每非前兆日）</th></tr></thead>
       <tbody>${rows}</tbody>`;
   }
+  buildBacktestTable('backtest-table-60', 'm6.0');
   buildBacktestTable('backtest-table-55', 'm5.5');
   buildBacktestTable('backtest-table-50', 'm5.0');
 

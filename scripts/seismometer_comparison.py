@@ -21,7 +21,7 @@ script implements directly):
 
 ## Data used (fetched separately by the user, not by this pipeline)
 
-30 of the 49 events in `events.py` have SAC PoleZero instrument-response
+31 of the 117 events in `events.py` have SAC PoleZero instrument-response
 files (`<GROUP_MMDD>/SAC_PZs_TW_<STA>_<CHAN>_...`) and a matching miniSEED
 waveform file (`<GROUP_MMDD>/<GROUP_MMDD>_w.mseed`, ~event_utc-60s to
 event_utc+600s, 100Hz), both under `seismometer/<GROUP_MMDD>/` -- see
@@ -44,8 +44,15 @@ of which were the nearest-station pick.)
 (As of 2026-08-13/14, only the 16 anchor events had been fetched; the
 remaining 11 non-anchor events plus the previously-missing G9 2022-09-17
 foreshock were fetched and verified 2026-08-16 -- see `coverage_summary.json`,
-which enumerates all 49 events in `events.py` with an honest
+which enumerates all events in `events.py`'s current registry with an honest
 `seismic_data_status` so the report never implies more coverage than it has.)
+(2026-09-23: registry grew from 49 to 117 events, all 68 new ones non-anchor
+and none seismometer-fetched, so the "19 uncovered" breakdown above is stale
+-- it describes only the original 19, not the ~86 uncovered now; see
+`docs/candidate_events_gdms_2024_2026.md` for the new batch's own provenance.
+One of the new events, G11's 2025-01-21b, turned out to already have real
+data -- it falls inside the 2025-01-21 anchor's already-fetched mseed window
+-- and was wired into `SEISMIC_DATA_DIRS` below; see that key's comment.)
 
 Empirically confirmed quirks this module works around (see functions below
 for where): (1) the PZ-folder-name <-> mseed-filename mapping is NOT a
@@ -123,12 +130,20 @@ SEISMIC_ROOT = common.GX_DATA_ROOT / "seismometer"
 # is the concrete counterexample. G14 intentionally absent: its 2009-12-19
 # anchor predates the seismic data source's 2012 cutoff.
 #
-# Keyed by (group_id, event.date) -- as of 2026-09-20 this covers 30 of the
-# 49 events (all except G14, G21 and 13 not-yet-fetched; not just the 16
+# Keyed by (group_id, event.date) -- as of 2026-09-20 this covered 30 of the
+# 49 events then in the registry (all except G14, G21 and 13 not-yet-fetched; not just the 16
 # anchors from the original single-event-per-group fetch), confirmed present on disk with mseed windows correctly
 # bracketing each event's origin second. G10's 2024-04-23a/2024-04-23b share
 # one PZ folder (same UTC calendar day, station metadata doesn't change
-# minute to minute) but have their own separate mseed files.
+# minute to minute) but have their own separate mseed files -- the same a/b/c-suffixed-`date`
+# pattern used below for any other same-group, same-calendar-day events (see events.py's
+# 2026-09-23 note on why: `event.date` is used as a same-group unique key here and in
+# coseismic_step_analysis.py/coseismic_stacking_analysis.py's per-event output naming, which a
+# 2026-09-23 batch of 68 new non-anchor events -- registry now 117 events -- would otherwise
+# silently collide on for 7 same-day pairs across G11/G13/G20; all suffixed at the source in
+# events.py rather than worked around here). 31 of 117 events have real seismic data as of
+# 2026-09-23 (30 pre-existing + 2025-01-21b, recovered from the anchor's already-fetched window
+# below -- see that key's own comment).
 SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     "G1": {
         "2018-02-04": {"pz_dir": "G01_0204", "mseed": "G01_0204_w.mseed"},
@@ -169,6 +184,11 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     },
     "G11": {
         "2025-01-21": {"pz_dir": "G11_0121", "mseed": "G11_0121_w.mseed"},
+        # 2025-01-21b (00:26:25 local = 2025-01-20 16:26:25 UTC) falls inside the anchor's
+        # already-fetched event_utc-60s~+600s window (16:16:26~16:27:26 UTC) -- same mseed file,
+        # genuinely covers this event too. 2025-01-21c (01:42:31 local) does NOT (>1h outside the
+        # window) and is correctly left unmapped here (reports not_fetched).
+        "2025-01-21b": {"pz_dir": "G11_0121", "mseed": "G11_0121_w.mseed"},
     },
     "G12": {
         "2025-08-27": {"pz_dir": "G12_0827", "mseed": "G12_0827_w.mseed"},
