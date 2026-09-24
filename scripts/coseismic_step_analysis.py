@@ -17,8 +17,8 @@ pilot run found" below).
 Phase 1 (single-flagship-event pilot, see `~/.claude/plans/recursive-
 seeking-nova.md`): only G10's anchor event (2024-04-03 07:58:11 Taiwan time
 / 2024-04-02 23:58:11 UTC, M7.2) against its two nearest XYZ stations.
-Phase 2 (current): extended to every event in `events.py`'s 49-event
-registry via `run_all()` / `--all` -- see "Extending to all 49 events"
+Phase 2 (current): extended to every event in `events.py`'s 117-event
+registry via `run_all()` / `--all` -- see "Extending to all 117 events"
 below for exactly what changed and why.
 
 ### What the G10 pilot run found (motivates why this needs to be run at
@@ -34,7 +34,7 @@ station -- consistent with the arrival of strong ground shaking physically
 jostling the magnetometer housing, not a piezomagnetic-type field change.
 Whether this "shaking-noise" pattern is the general story across the
 dataset, or G10 (the largest, best-instrumented event) was a special case,
-is exactly what the 49-event run is for.
+is exactly what the 117-event run is for.
 
 ## Why this needs new machinery
 
@@ -94,12 +94,23 @@ methodology)
   `multiple_comparisons_context` in the output) -- no multiple-comparisons
   correction is applied (not needed at this scale), but the count is
   reported so it can be compared against a future multi-event expansion.
+- No geomagnetic-storm exclusion, by design: storm main/recovery phases
+  vary over hours-to-days and are mostly removed by the 1hr detrend, and
+  the null is drawn from the same loaded window, so a storm-elevated noise
+  floor raises obs and null together. The residual risk is a single
+  external transient (SSC, substorm onset, Pi2) inside the search window.
+  Each event is flagged instead (`is_storm_day` / `is_storm_onset` from the
+  group's `storm_days.csv`, see `_storm_status`) and `--all` reports a
+  storm vs. quiet split in `all_events_run_summary.json::storm_sensitivity`.
+  Excluding flagged events outright isn't practical: with the daily
+  pipeline's Kp>=5 / Dst<=-30nT (+recovery days) definition, about half of
+  all events fall on a flagged day.
 - The step-statistic's "post minus pre" implementation (see
   `_step_statistic`) has a known ~1-sample edge-alignment approximation from
   the reverse-rolling trick used to compute a forward-looking mean; this is
   irrelevant at the +-SCAN_HALF_SEC (180s) search-window scale used here.
 
-## Extending to all 49 events (done -- `run_all()` / `--all`)
+## Extending to all 117 events (done -- `run_all()` / `--all`)
 
 - Uses `events.py`'s `GROUPS` dict and each `Event.time_utc` directly (NOT
   `catalog_utils.load_extended_events()`, which truncates to date-only
@@ -139,7 +150,7 @@ methodology)
   since a day's data is guaranteed a complete 86400-row grid and
   concatenated adjacent days have no gap, so timestamp arithmetic against
   the array's own start gives an exact integer array position.
-- Positive-control injection testing is NOT repeated across all 49 events
+- Positive-control injection testing is NOT repeated across all 117 events
   (see plan file) -- the method was already validated once on G10
   (`injection_power_curve.json`, untouched by `run_all()`); `--all` always
   runs with `run_injection=False`.
@@ -147,13 +158,13 @@ methodology)
   `stat_utils.mad_zscore` on its own off-event statistic values, then
   averaging across events the way `superposed_epoch_analysis.py` stacks
   day-scale series, with a null band built from random per-event reference
-  times) is the natural next step if the 49-event run shows many
+  times) is the natural next step if the 117-event run shows many
   individually-underpowered-but-suggestive events, but is deliberately not
   implemented in this pass -- see plan file.
 
 Usage:
   coseismic_step_analysis.py                  # G10 anchor only, both pools, full run (smoke test)
-  coseismic_step_analysis.py --all             # all 49 events in events.py's registry
+  coseismic_step_analysis.py --all             # all 117 events in events.py's registry
   coseismic_step_analysis.py --self-test       # synthetic white-noise sanity check only
   coseismic_step_analysis.py --no-injection    # skip the positive-control injection test (G10-only path)
 """
@@ -282,7 +293,7 @@ def _load_station_days(gdms_dir: Path, station: str, event_utc: pd.Timestamp,
 # adjacent days have no gap, so `index[0]` + integer seconds gives an exact
 # array position -- O(window) per call instead of O(len(index)). The
 # original boolean-mask version was this script's runtime bottleneck at
-# 49-event scale (see module docstring's "Extending to all 49 events").
+# 117-event scale (see module docstring's "Extending to all 117 events").
 # ---------------------------------------------------------------------------
 
 def _pos(index: pd.DatetimeIndex, t: pd.Timestamp) -> int:
@@ -323,7 +334,7 @@ def _effective_half_sec(target_half_sec: int, event_utc: pd.Timestamp,
                          exclude_centers: list[pd.Timestamp]) -> int:
     """Cap the search/scan half-window so it never reaches past the midpoint
     to the nearest *other* real event in the same group. Needed because
-    SCAN_HALF_SEC is a shared target across all 49 events, but G10's
+    SCAN_HALF_SEC is a shared target across all 117 events, but G10's
     2024-04-23a/b are only 357s apart -- once the target exceeds ~178s, an
     uncapped +-SCAN_HALF_SEC search around one of them would reach into the
     other's own real anomaly, contaminating the "observed value" search
@@ -494,7 +505,7 @@ def self_test() -> bool:
 # ---------------------------------------------------------------------------
 # Per-event orchestration: tests one Event against every non-empty
 # (F/XYZ) station pool, all its stations, all their channels. Shared by the
-# single-event `run()` entry point and the 49-event `run_all()` sweep.
+# single-event `run()` entry point and the 117-event `run_all()` sweep.
 # ---------------------------------------------------------------------------
 
 def _rank_stations_for_event(cfg: "common.GroupConfig", event, channel_type: str, n: int) -> list[tuple[str, float]]:
@@ -523,21 +534,50 @@ def _iter_test_payloads(result: dict):
         yield "spike", None, result["spike"]
 
 
+def _storm_status(cfg: "common.GroupConfig", event_utc: pd.Timestamp) -> dict:
+    """Look up the event's UTC date in the group's daily-scale storm_days.csv
+    (fetch_space_weather.py output, keyed by UTC file date). A flag only, for
+    sensitivity analysis -- nothing is excluded here. The local in-window null
+    already absorbs a uniformly storm-elevated noise floor; what it can't
+    absorb is a single transient (SSC, substorm onset) landing inside the
+    +-SCAN_HALF_SEC search window, which is what the flag lets you check for.
+    Flags are None (unknown) if the file is missing or the event falls outside
+    the fetched date range, rather than silently reading as "quiet"."""
+    unknown = {"is_storm_day": None, "is_storm_onset": None, "storm_flag_confidence": None}
+    csv_path = cfg.interim_dir / "storm_days.csv"
+    summary_path = cfg.interim_dir / "storm_days_summary.json"
+    if not csv_path.exists() or not summary_path.exists():
+        return unknown
+    summary = json.loads(summary_path.read_text())
+    lo, hi = summary["date_range"]
+    if not (pd.Timestamp(lo) <= event_utc.normalize() <= pd.Timestamp(hi)):
+        return unknown
+    storm_days = pd.read_csv(csv_path, dtype={"date": str})
+    row = storm_days[storm_days.date == event_utc.strftime("%Y%m%d")]
+    return {
+        "is_storm_day": bool(row.is_storm_or_recovery.iloc[0]) if len(row) else False,
+        "is_storm_onset": bool(row.is_storm_onset.iloc[0]) if len(row) else False,
+        "storm_flag_confidence": summary.get("confidence"),
+    }
+
+
 def process_event(cfg: "common.GroupConfig", group, event, rng: np.random.Generator,
                    run_injection: bool = False) -> tuple[dict, list[dict], list[dict]]:
     """Run every (channel_type, station, channel) test for one Event.
     exclude_centers covers every event in `group` (not just this one) --
-    see module docstring's "Extending to all 49 events" note on why."""
+    see module docstring's "Extending to all 117 events" note on why."""
     event_utc = pd.Timestamp(event.time_utc)
     # folder_events, not group.events: G2/G3 and G6/G7/G8 share a raw-data folder, and another
     # group's real event in the same data must stay out of this group's null draws too.
     exclude_centers = [pd.Timestamp(e.time_utc) for e in folder_events(group.group_id)]
     scan_half_sec = _effective_half_sec(SCAN_HALF_SEC, event_utc, exclude_centers)
+    storm = _storm_status(cfg, event_utc)
 
     event_result = {
         "group": cfg.group_id, "event_date": event.date, "event_time_local": event.time_local,
         "event_time_utc": event.time_utc, "magnitude": f"{event.magnitude_type}{event.magnitude}",
         "coord_confidence": event.coord_confidence, "anchor": event.anchor,
+        **storm,
         "seed": SEED, "n_null": N_NULL, "step_windows_sec": list(STEP_WINDOWS_SEC),
         "scan_half_sec": scan_half_sec, "scan_half_sec_target": SCAN_HALF_SEC,
         "exclusion_buffer_sec": EXCLUSION_BUFFER_SEC,
@@ -572,6 +612,7 @@ def process_event(cfg: "common.GroupConfig", group, event, rng: np.random.Genera
                         "group": cfg.group_id, "event_date": event.date,
                         "magnitude": f"{event.magnitude_type}{event.magnitude}",
                         "coord_confidence": event.coord_confidence,
+                        "is_storm_day": storm["is_storm_day"], "is_storm_onset": storm["is_storm_onset"],
                         "channel_type": channel_type, "station": station,
                         "distance_km": round(distance_km, 1), "channel": ch_label,
                         "statistic_type": stat_type, "window_sec": window,
@@ -631,8 +672,32 @@ def run(group_id: str = GROUP_ID, run_injection: bool = True) -> dict:
     return event_result
 
 
+def _storm_sensitivity(items: list[dict]) -> dict:
+    """Split run_all's per-event rollup by storm flag and compare the
+    fraction of tests with p<0.05 in each subset. If storms were driving the
+    detections, the storm subset's rate would sit clearly above the quiet
+    subset's; similar rates mean the result isn't storm-sensitive."""
+    def _rollup(subset: list[dict]) -> dict:
+        n_tests = sum(i["n_tests"] for i in subset)
+        n_sig = sum(i["n_significant_p_lt_05"] for i in subset)
+        return {
+            "n_events": len(subset),
+            "n_tests": n_tests,
+            "n_significant_p_lt_05": n_sig,
+            "frac_tests_p_lt_05": round(n_sig / n_tests, 4) if n_tests else None,
+            "n_events_with_any_p_lt_05": sum(1 for i in subset if i["n_significant_p_lt_05"]),
+        }
+
+    out = {"all": _rollup(items)}
+    for flag in ("is_storm_day", "is_storm_onset"):
+        out[f"{flag}=True"] = _rollup([i for i in items if i[flag] is True])
+        out[f"{flag}=False"] = _rollup([i for i in items if i[flag] is False])
+    out["storm_flag_unknown"] = _rollup([i for i in items if i["is_storm_day"] is None])
+    return out
+
+
 def run_all(run_injection: bool = False) -> dict:
-    """Sweep every event in events.py's 49-event registry (all 20 groups,
+    """Sweep every event in events.py's 117-event registry (all 20 groups,
     all events per group -- not just the 20 anchors). Writes one JSON per
     event under events/, a combined summary.csv across all events, and
     all_events_run_summary.json (the run_all_groups.sh-style per-item
@@ -664,6 +729,7 @@ def run_all(run_injection: bool = False) -> dict:
                 "group": group_id, "event_date": event.date, "anchor": event.anchor,
                 "magnitude": f"{event.magnitude_type}{event.magnitude}",
                 "coord_confidence": event.coord_confidence,
+                "is_storm_day": event_result["is_storm_day"], "is_storm_onset": event_result["is_storm_onset"],
                 "n_stations_tested": n_stations, "n_tests": len(summary_rows),
                 "n_significant_p_lt_05": sum(1 for p in p_values if p < 0.05),
                 "min_p": min(p_values) if p_values else None,
@@ -678,6 +744,7 @@ def run_all(run_injection: bool = False) -> dict:
     run_summary["bonferroni_alpha_at_p05"] = (
         round(0.05 / len(all_summary_rows), 8) if all_summary_rows else None
     )
+    run_summary["storm_sensitivity"] = _storm_sensitivity(run_summary["events"])
 
     (OUT_DIR / "all_events_run_summary.json").write_text(json.dumps(run_summary, indent=2))
     pd.DataFrame(all_summary_rows).to_csv(OUT_DIR / "summary.csv", index=False)
@@ -695,7 +762,7 @@ if __name__ == "__main__":
     ap.add_argument("--self-test", action="store_true", help="run only the synthetic sanity check")
     ap.add_argument("--no-injection", action="store_true", help="skip the positive-control injection test")
     ap.add_argument("--all", action="store_true",
-                     help="run every event in events.py's 49-event registry instead of just G10's anchor")
+                     help="run every event in events.py's 117-event registry instead of just G10's anchor")
     args = ap.parse_args()
 
     if args.self_test:

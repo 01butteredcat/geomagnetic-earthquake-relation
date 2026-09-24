@@ -1,13 +1,13 @@
 """Cross-event superposed-epoch stacking of the coseismic step/spike
 statistics -- the task `coseismic_step_analysis.py`'s own docstring
-(see its "Extending to all 49 events" section) explicitly named as the
+(see its "Extending to all 117 events" section) explicitly named as the
 natural next step but deliberately did not implement:
 
     "Cross-event stacking (normalizing each event's window via
     stat_utils.mad_zscore on its own off-event statistic values, then
     averaging across events the way superposed_epoch_analysis.py stacks
     day-scale series, with a null band built from random per-event
-    reference times) is the natural next step if the 49-event run shows
+    reference times) is the natural next step if the 117-event run shows
     many individually-underpowered-but-suggestive events, but is
     deliberately not implemented in this pass."
 
@@ -34,7 +34,7 @@ helpers directly (not a duplicated copy -- unlike that script's own
 deliberate duplication of `ulf_analysis.py::_detrend`, which exists because
 the two scripts serve genuinely different purposes; this one is a direct,
 same-author continuation of coseismic_step_analysis.py itself, reusing
-machinery already validated on real data at 49-event scale) but writes its
+machinery already validated on real data at 117-event scale) but writes its
 own new output tree, so nothing about the existing artifacts changes.
 
 ## What gets stacked
@@ -136,6 +136,7 @@ from coseismic_step_analysis import (  # noqa: E402
     _rank_stations_for_event,
     _spike_statistic,
     _step_statistic,
+    _storm_status,
 )
 
 STACK_HALF_SEC = 300
@@ -221,6 +222,8 @@ class EventSeries:
     valid_lo: pd.Timestamp
     valid_hi: pd.Timestamp
     exclude_centers: list       # list[pd.Timestamp], every real event in this EventSeries' group
+    is_storm_day: bool | None = None    # storm_days.csv flags (see coseismic_step_analysis._storm_status);
+    is_storm_onset: bool | None = None  # None = unknown, used only by the storm-sensitivity subsets
 
 
 def _build_event_series(cfg: "common.GroupConfig", group, event, station: str, distance_km: float,
@@ -239,6 +242,7 @@ def _build_event_series(cfg: "common.GroupConfig", group, event, station: str, d
     if nan_frac > MISSING_FRACTION_THRESHOLD:
         return None
 
+    storm = _storm_status(cfg, event_utc)
     d = _detrend(raw)
     stat_arrays, baselines = {}, {}
     for stat_name in STAT_NAMES:
@@ -260,6 +264,7 @@ def _build_event_series(cfg: "common.GroupConfig", group, event, station: str, d
         valid_lo=idx.min() + pd.Timedelta(seconds=STACK_HALF_SEC),
         valid_hi=idx.max() - pd.Timedelta(seconds=STACK_HALF_SEC),
         exclude_centers=exclude_centers,
+        is_storm_day=storm["is_storm_day"], is_storm_onset=storm["is_storm_onset"],
     )
 
 
@@ -268,7 +273,7 @@ def load_all_event_series(group_ids: tuple[str, ...]) -> dict[tuple[str, str, st
     Every event in every requested group is attempted at both channel-type
     pools ("F"/"XYZ", whichever the group actually has stations for -- same
     dual-pool loop as coseismic_step_analysis.py::process_event) and both
-    station tiers. All 49 events across all 20 groups are eligible -- this
+    station tiers. All 117 events across all 20 groups are eligible -- this
     only needs the existing .sec geomagnetic data, no seismometer dependency."""
     out: dict[tuple[str, str, str], EventSeries] = {}
     for group_id in group_ids:
@@ -468,6 +473,45 @@ def self_test() -> bool:
 # Real-data orchestration
 # ---------------------------------------------------------------------------
 
+# Storm-sensitivity subsets: the same stack, re-run with storm-flagged events
+# dropped (and, separately, only the stricter onset days dropped). Uses its own
+# rng so the main combos above stay bit-identical to a run without this pass.
+# Events with an unknown flag are kept -- dropping them would conflate "no
+# space-weather data" with "storm".
+STORM_SUBSETS = {
+    "exclude_storm_or_recovery": lambda es: es.is_storm_day is not True,
+    "exclude_storm_onset": lambda es: es.is_storm_onset is not True,
+}
+
+
+def _storm_sensitivity_stacks(all_series: dict) -> list[dict]:
+    rng = np.random.default_rng(SEED + 100)
+    rows: list[dict] = []
+    for channel_type, ch_label in (("XYZ", "H"), ("F", "F")):
+        for tier in STATION_TIERS:
+            events = [es for (ct, t, _key), es in all_series.items() if ct == channel_type and t == tier]
+            if not events:
+                continue
+            for subset_name, keep in STORM_SUBSETS.items():
+                kept = [es for es in events if keep(es)]
+                for stat_name in STAT_NAMES:
+                    combo_id = f"{tier}__{ch_label}__{stat_name}"
+                    row = {"combo_id": combo_id, "subset": subset_name,
+                           "n_events_before": len(events), "n_events_kept": len(kept)}
+                    result = stack_series(kept, stat_name, rng) if kept else {"error": "no events left"}
+                    if "error" in result:
+                        row["error"] = result["error"]
+                    else:
+                        row.update({k: result[k] for k in ("n_events_used", "peak_abs_z", "peak_lag_sec",
+                                                            "p_value", "outside_null_band_at_peak")})
+                    rows.append(row)
+                    detail = row.get("error") or f"peak_abs_z={row['peak_abs_z']} p={row['p_value']}"
+                    print(f"[storm:{subset_name}] {combo_id} kept={len(kept)}/{len(events)} {detail}",
+                          file=sys.stderr)
+    pd.DataFrame(rows).to_csv(OUT_DIR / "stack_storm_sensitivity.csv", index=False)
+    return rows
+
+
 def run_group_ids(group_ids: tuple[str, ...]) -> dict:
     all_series = load_all_event_series(group_ids)
     rng = np.random.default_rng(SEED)
@@ -518,6 +562,7 @@ def run_group_ids(group_ids: tuple[str, ...]) -> dict:
                 })
 
     pd.DataFrame(summary_rows).to_csv(OUT_DIR / "stack_summary.csv", index=False)
+    run_summary["storm_sensitivity"] = _storm_sensitivity_stacks(all_series)
     (OUT_DIR / "all_stacks_run_summary.json").write_text(json.dumps(run_summary, indent=2))
     print(f"[run] {len(summary_rows)} combos -> {OUT_DIR}", file=sys.stderr)
     return run_summary
