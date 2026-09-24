@@ -54,6 +54,14 @@ One of the new events, G11's 2025-01-21b, turned out to already have real
 data -- it falls inside the 2025-01-21 anchor's already-fetched mseed window
 -- and was wired into `SEISMIC_DATA_DIRS` below; see that key's comment.)
 
+(2026-09-25: the remaining 80 fetchable events were fetched in one batch --
+14 M>=6, 66 M5 -- and laid out under one naming rule that
+`_register_convention_dirs()` derives rather than lists. Coverage is now 111 of
+117; the other 6 predate the data source (G14's 5, G21's 1) and report
+`no_data_pre_2012`. The batch carried no PoleZero files; each new folder holds
+copies of the existing folders' PZ files whose epoch covers the event, since
+same-named PZ files differ only in their CREATED line.)
+
 Empirically confirmed quirks this module works around (see functions below
 for where): (1) the PZ-folder-name <-> mseed-filename mapping is NOT a
 derivable pattern -- G9's PZ folder is `G9_0918` but its mseed file is
@@ -228,6 +236,32 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     },
 }
 
+# Everything fetched from 2026-09-25 on follows one naming rule, so it is derived
+# instead of listed: G<2-digit group>_<MMDD of event.date, i.e. Taiwan local
+# date><a/b/c suffix if any>/, holding <that name>_w.mseed plus the SAC PoleZero
+# files whose epoch covers the event. (The hand-listed entries above predate the
+# rule: mixed zero-padding, some UTC-dated folders, pre-split G06_G07_G08 names.)
+# The 2026-09-25 batch added 80 events this way (14 M>=6, 66 M5).
+SEISMIC_DATA_SOURCE_START_UTC = pd.Timestamp("2012-01-01")  # nothing earlier is fetchable
+
+
+def convention_dir_name(group_id: str, event_date: str) -> str:
+    m = re.fullmatch(r"\d{4}-(\d{2})-(\d{2})([a-z]?)", event_date)
+    return f"G{int(group_id[1:]):02d}_{m.group(1)}{m.group(2)}{m.group(3)}"
+
+
+def _register_convention_dirs() -> None:
+    for group_id, group in GROUPS.items():
+        for event in group.events:
+            if event.date in SEISMIC_DATA_DIRS.get(group_id, {}):
+                continue
+            name = convention_dir_name(group_id, event.date)
+            if (SEISMIC_ROOT / name / f"{name}_w.mseed").exists():
+                SEISMIC_DATA_DIRS.setdefault(group_id, {})[event.date] = {"pz_dir": name, "mseed": f"{name}_w.mseed"}
+
+
+_register_convention_dirs()
+
 GEOMAG_HALF_SEC = 240        # target: window for the geomagnetic side's z-scored step30 profile
 SEARCH_HALF_SEC = 180        # target: peak-search sub-window, same convention as coseismic_step_analysis.py's
                               # SCAN_HALF_SEC (widened 120->180 2026-08-16 -- was pinning G12/G13/G20's
@@ -305,13 +339,16 @@ def _select_pz_epoch(catalog: dict, station: str, channel: str, location: str,
                       event_utc: pd.Timestamp) -> dict | None:
     """Match on `location` (read directly off the miniSEED trace's own
     stats.location -- unambiguous per-trace metadata, not a guess), then
-    pick the entry with the latest start_utc <= event_utc. Falls back to
-    ignoring the location match only if nothing at all matches the
-    station/channel (shouldn't normally happen)."""
+    pick the entry in force at event_utc (start_utc <= event_utc <= end_utc)
+    with the latest start_utc. Falls back to ignoring the location match only
+    if no in-force epoch matches it (shouldn't normally happen)."""
     entries = catalog.get((station, channel), [])
-    candidates = [e for e in entries if e["location"] == location and e["start_utc"] <= event_utc]
+    # the epoch has to still be in force at the event, not just have started --
+    # otherwise a station re-instrumented before the event would get its old response
+    in_force = [e for e in entries if e["start_utc"] <= event_utc <= e["end_utc"]]
+    candidates = [e for e in in_force if e["location"] == location]
     if not candidates:
-        candidates = [e for e in entries if e["start_utc"] <= event_utc]
+        candidates = in_force
     if not candidates:
         return None
     return max(candidates, key=lambda e: e["start_utc"])
@@ -774,8 +811,8 @@ def build_coverage_summary() -> dict:
         for event in group.events:
             if event.date in group_dirs:
                 status = "available"
-            elif group_id == "G14":
-                status = "no_data_group_g14"
+            elif pd.Timestamp(event.time_utc) < SEISMIC_DATA_SOURCE_START_UTC:
+                status = "no_data_pre_2012"
             else:
                 status = "not_fetched"
             items.append({"group": group_id, "date": event.date, "anchor": event.anchor,

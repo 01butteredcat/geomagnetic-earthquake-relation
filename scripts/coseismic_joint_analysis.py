@@ -52,6 +52,13 @@ events in G11/G12/G13/G19/G20, which shifts their baselines. Rerun 2026-09-24:
 far-H deltas moved in the third decimal, min p_tail stayed 0.069, min p_peak
 went 0.095 -> 0.093.)
 
+(2026-09-25: after the 80-event seismometer batch, all verdicts give 94 armed
+events (48 noise / 46 signal), 38 of them M>=6 (18 / 20). Use --min-mag 6 for
+the M>=6-only run; the M5 labels are close to coin flips -- see run_all().
+All events: 3 of 32 p-values < 0.05 (far-H spike peak 0.010 and tail 0.048,
+both with the NOISE arm stronger; near-H step30 tail 0.024, signal arm
+stronger), none surviving Bonferroni. M>=6 only: none below 0.05, min 0.062.)
+
 ## Method
 
 1. Build `EventSeries` objects (`coseismic_stacking_analysis.py`'s own
@@ -104,7 +111,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
-from events import get_group  # noqa: E402
+from events import GROUPS, get_group  # noqa: E402
 from coseismic_step_analysis import (  # noqa: E402
     EXCLUSION_BUFFER_SEC,
     SEED,
@@ -338,11 +345,21 @@ def self_test() -> bool:
 # Real-data orchestration
 # ---------------------------------------------------------------------------
 
-def run_all() -> dict:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "combos").mkdir(exist_ok=True)
+def run_all(min_mag: float | None = None) -> dict:
+    """min_mag restricts both arms to events.py events of at least that
+    magnitude, written to a separate directory (coseismic_joint_analysis_m<min_mag>).
+    Worth running alongside the full set since the 2026-09-25 M5 batch: for a
+    small event the magnetometer mostly records noise, and a noise peak anywhere
+    in the +-180s search window lands before shaking onset about half the time,
+    so M5 "leads_shaking" labels are close to coin flips."""
+    out_dir = OUT_DIR if min_mag is None else OUT_DIR.with_name(f"{OUT_DIR.name}_m{min_mag:g}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "combos").mkdir(exist_ok=True)
 
     arm_of = load_arm_assignment()
+    if min_mag is not None:
+        mag = {f"{gid}__{e.date}": e.magnitude for gid, g in GROUPS.items() for e in g.events}
+        arm_of = {k: v for k, v in arm_of.items() if mag.get(k, 0) >= min_mag}
     event_keys = [tuple(k.split("__", 1)) for k in arm_of]
     print(f"[joint] {len(event_keys)} events with a defined arm "
           f"(noise={sum(1 for v in arm_of.values() if v=='noise')}, "
@@ -381,7 +398,7 @@ def run_all() -> dict:
                     "permutation_test": perm_result,
                     "noise_arm_stack": noise_stack, "signal_arm_stack": signal_stack,
                 }
-                (OUT_DIR / "combos" / f"joint__{combo_id}.json").write_text(json.dumps(result, indent=2, default=str))
+                (out_dir / "combos" / f"joint__{combo_id}.json").write_text(json.dumps(result, indent=2, default=str))
 
                 if "error" in perm_result:
                     print(f"[{combo_id}] {perm_result['error']}", file=sys.stderr)
@@ -399,9 +416,10 @@ def run_all() -> dict:
                 summary_rows.append(row)
                 run_summary["combos"].append({"combo_id": combo_id, "status": "ok", **perm_result})
 
-    pd.DataFrame(summary_rows).to_csv(OUT_DIR / "joint_summary.csv", index=False)
-    (OUT_DIR / "all_joint_run_summary.json").write_text(json.dumps(run_summary, indent=2, default=str))
-    print(f"[run] {len(summary_rows)} combos -> {OUT_DIR}", file=sys.stderr)
+    run_summary["min_mag"] = min_mag
+    pd.DataFrame(summary_rows).to_csv(out_dir / "joint_summary.csv", index=False)
+    (out_dir / "all_joint_run_summary.json").write_text(json.dumps(run_summary, indent=2, default=str))
+    print(f"[run] {len(summary_rows)} combos -> {out_dir}", file=sys.stderr)
     return run_summary
 
 
@@ -409,6 +427,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--self-test", action="store_true", help="run only the synthetic sanity check")
     ap.add_argument("--all", action="store_true", help="run the real-data joint analysis (default action)")
+    ap.add_argument("--min-mag", type=float, default=None,
+                    help="only events of at least this magnitude, output to a separate _m<mag> directory")
     args = ap.parse_args()
 
     if args.self_test:
@@ -418,4 +438,4 @@ if __name__ == "__main__":
         print("[main] synthetic self-test FAILED -- aborting before touching real data", file=sys.stderr)
         sys.exit(1)
 
-    run_all()
+    run_all(min_mag=args.min_mag)
