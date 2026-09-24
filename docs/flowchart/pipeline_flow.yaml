@@ -1,0 +1,898 @@
+# pipeline_flow.yaml -- 流程圖的「唯一內容來源」。
+#
+# 改文字 / 公式 / 新增步驟只需編輯這個檔，然後：
+#     .venv/bin/python3 docs/flowchart/check_flowchart.py     # 驗證
+#     .venv/bin/python3 docs/flowchart/build_flowchart.py     # 產生 output/pipeline_flowchart.html
+#
+# 撰寫規則
+#  * 文字欄位可用行內數學式 $...$（KaTeX），顯示式數學放在 formula 清單。
+#  * LaTeX 一律寫在 `|-` 區塊內（YAML 區塊內的反斜線不需跳脫）；一般文字用 `>-`。
+#    不要把 LaTeX 寫進雙引號字串（YAML 會把 \ 當跳脫字元）。
+#  * 程式碼位置用 {file, lines, symbol}；symbol 是函式或常數名，check_flowchart.py 會驗證
+#    它真的還在該檔案，且行號沒有漂移。
+#  * consts 只寫「檔案 + 常數名」，數值由 build 時直接從程式碼讀出，不會過期。
+#  * 步驟的 after 是資料相依（誰的輸出被它讀），版面（欄位位置）由此自動推導，不需給座標。
+
+meta:
+  title: 地磁前兆分析 pipeline 流程圖
+  subtitle: 每個步驟的用途、輸入輸出、統計方法與數學式
+  source_doc: docs/statistical_methods.md
+  # scripts/ 內不屬於任何 pipeline 步驟、只是被 import 的共用模組（check_flowchart.py 不會為它們報「未出現在圖中」）
+  helper_scripts: [common.py, parser.py, events.py, stat_utils.py, catalog_utils.py]
+
+lanes:
+  - id: daily
+    title: 日尺度前兆篩選
+    desc: 每個地震群組各跑一次（run_pipeline.sh 步驟 1–6），把 1Hz 原始資料濃縮成每日指標並標出候選異常日。
+  - id: cross
+    title: 跨群驗證
+    desc: run_validation_pipeline.sh 與 cross_group_analysis.py：用替代資料、疊加時間分析與回測檢驗規則是否跨群可重現。
+  - id: coseismic
+    title: 震時 (coseismic) 分析
+    desc: 直接看每個地震發生那一秒的 1Hz 階躍/尖峰，並跨事件堆疊。未接進 shell 協調器，需手動執行。
+  - id: seismo
+    title: 地震儀對照
+    desc: 用獨立的地震儀/加速度計波形，判斷震時訊號是真實磁場變化還是震動造成的儀器雜訊。
+
+kinds:
+  data: 資料 / 抓取
+  stat: 統計 / 訊號處理
+  gate: 檢查 / 閘門
+  report: 報告產出
+
+# ---------------------------------------------------------------------------
+# 統計方法（每個只定義一次，可被多個步驟引用）
+# ---------------------------------------------------------------------------
+methods:
+
+  A1:
+    name: 去尖峰濾波（一階差分跳點偵測）
+    group: A. 資料前處理
+    purpose: >-
+      在計算日摘要統計之前，先剔除 1Hz X/Y/Z/F 中的儀器或傳輸尖峰。以相鄰兩秒的差值超過固定閾值判定為跳點，
+      將該點設為缺值（NaN）；原本就缺值的點不會被算成尖峰。
+    formula:
+      - |-
+        d_t = |x_t - x_{t-1}|
+      - |-
+        x_t' = \begin{cases} \text{NaN} & d_t > \texttt{SPIKE\_THRESHOLD\_NT} \\ x_t & \text{otherwise} \end{cases}
+    consts:
+      - {name: SPIKE_THRESHOLD_NT, file: scripts/build_daily_features.py}
+    pros:
+      - 計算極輕量（O(n)），對單點尖峰非常敏感，不需假設資料分布。
+    cons:
+      - 固定絕對閾值，沒有隨測站或季節雜訊水準自適應。
+      - 連續多點的「階梯」異常不會被偵測（差分本身可能小於閾值）。
+      - 可能誤刪真實的快速磁暴變化。
+    code:
+      - {file: scripts/build_daily_features.py, lines: "37-47", symbol: _despike}
+
+  A2:
+    name: 去趨勢（1 小時置中滾動平均）
+    group: A. 資料前處理
+    purpose: >-
+      在做 ULF 頻帶濾波（C1）或震時階躍偵測（D7）之前，先移除長週期背景趨勢（如日變 Sq 曲線），
+      避免其能量洩漏進目標頻帶。
+    formula:
+      - |-
+        \bar{x}_t = \frac{1}{3601}\sum_{i=t-1800}^{t+1800} x_i, \qquad x_t^{\text{detrend}} = x_t - \bar{x}_t
+    notes:
+      - >-
+        置中、視窗寬 3601 秒（約 1 小時）。兩個腳本各自保留一份相同公式的複本（不互相 import），修改時要同步。
+    pros:
+      - 實作簡單、線性相位（不造成時間位移），足以壓制日變等長週期成分。
+    cons:
+      - 資料頭尾視窗不完整（min_periods=1），邊界平滑效果較弱。
+      - 相較真正的高通濾波器，滾動平均頻率響應較差（旁瓣大），並非嚴謹的頻域設計。
+    code:
+      - {file: scripts/ulf_analysis.py, lines: "52-54", symbol: _detrend}
+      - {file: scripts/coseismic_step_analysis.py, lines: "219-223", symbol: _detrend}
+
+  B1:
+    name: 中位數 / MAD 穩健 z-score
+    group: B. 穩健標準化與異常偵測
+    purpose: >-
+      本專案幾乎所有異常判定的共同基礎：將夜間平均 H/Z/F、ULF near−far 差值序列等標準化，偵測偏離「正常」範圍的日子。
+      有兩種用法：整段序列一次標準化（stat_utils，供替代資料、疊加分析、回測共用），以及只用「前 21 個乾淨日」的滾動視窗版本（compute_indices，因果式）。
+    formula:
+      - |-
+        \begin{aligned}
+        \text{med} &= \operatorname{median}(x) \\
+        \text{MAD} &= 1.4826 \times \operatorname{median}\bigl(|x_i - \text{med}|\bigr) \\
+        z_i &= \frac{x_i - \text{med}}{\text{MAD}}
+        \end{aligned}
+      - |-
+        \begin{aligned}
+        W_i &= \{\, j : i-21 \le j < i,\ j\ \text{為乾淨日} \,\}, \quad |W_i| \ge 5 \\
+        z_i &= \frac{x_i - \operatorname{med}(x_{W_i})}{\text{MAD}(x_{W_i})}
+        \end{aligned}
+    where: >-
+      第一組為整段序列版；第二組為滾動版（compute_indices）：每天只用「前 21 天中的乾淨日」估計 med 與 MAD（至少 5 點），
+      不看當天與未來，因此是因果式。
+    notes:
+      - >-
+        常數 1.4826 使 MAD 在真常態分布下與標準差同尺度。MAD ≈ 0（序列非常平坦）時回傳 NaN。
+    consts:
+      - {name: MAD_SCALE, file: scripts/stat_utils.py}
+      - {name: TRAILING_WINDOW_DAYS, file: scripts/compute_indices.py}
+      - {name: MIN_CLEAN_POINTS, file: scripts/compute_indices.py}
+    pros:
+      - 對離群值與厚尾分布穩健（崩潰點遠高於平均值/標準差），不需假設常態。
+      - 計算快速，易於逐日滾動更新。
+    cons:
+      - 樣本數過少（滾動窗內乾淨天數 < 5）時 MAD 估計本身不穩定。
+      - MAD 接近 0 時 z 值會爆炸或無定義。
+      - 仍是單變量、逐點的統計量，沒有考慮序列自相關（因此顯著性推論才需要 D 類替代資料法補強）。
+    code:
+      - {file: scripts/stat_utils.py, lines: "27-37", symbol: mad_zscore}
+      - {file: scripts/compute_indices.py, lines: "84-99", symbol: mad_zscore}
+
+  B2:
+    name: Theil–Sen 穩健回歸（近-遠測站共模訊號校正）
+    group: B. 穩健標準化與異常偵測
+    purpose: >-
+      地磁日變化有很大一部分是全網共有的太陽風/磁暴訊號（共模雜訊），而非局部異常。
+      用「遠測站指標」回歸「近測站指標」，殘差即為扣除共模後的局部異常指標（local anomaly index）。只用乾淨日（非磁暴日）擬合。
+    formula:
+      - |-
+        \hat{\beta} = \operatorname{median}_{i<j}\left(\frac{y_j-y_i}{x_j-x_i}\right), \qquad \hat{\alpha} = \operatorname{median}(y_t - \hat{\beta} x_t)
+      - |-
+        \text{local\_anomaly}_t = y_t - (\hat{\beta} x_t + \hat{\alpha})
+      - |-
+        \text{候選異常日：}\; |\text{local\_anomaly}_t| > 2.5 \times \text{MAD}(\text{residual})
+    where: >-
+      $y_t$＝近測站群各站 MAD-z 的中位數（near_index），$x_t$＝遠測站群各站 MAD-z 的中位數（far_index）；
+      每站的輸入是本地夜間（UTC 17–19 時，且有效分鐘數 ≥ 90）的平均值。
+    consts:
+      - {name: CANDIDATE_Z_THRESHOLD, file: scripts/compute_indices.py}
+      - {name: MIN_NIGHT_MINUTES, file: scripts/compute_indices.py}
+    pros:
+      - 斜率估計對離群值穩健（崩潰點約 29%，最小二乘為 0%），不需誤差常態假設。
+      - 有效扣除全網共模的磁暴/日變訊號，凸顯局部異常。
+    cons:
+      - 假設 near/far 為線性且斜率在整個視窗內恆定；局部異常本身很大時會被擬合部分吸收而低估。
+      - 乾淨日少於 10 天時退化為零斜率（不校正），可能失真。
+      - 僅雙變量迴歸，未考慮測站間的空間相關結構。
+    code:
+      - {file: scripts/compute_indices.py, lines: "102-175", symbol: build_field_index}
+
+  B3:
+    name: 全天日變幅比值（Diurnal Range Ratio，Liu et al., 2006）
+    group: B. 穩健標準化與異常偵測
+    purpose: >-
+      另一種扣除全網共模訊號的做法：比較震央附近觀測站 o 與 100 km 內參考站 r 的總磁場 F 全天日變幅。
+      全球性擾動在近距離兩站幾乎相同，比值在平靜期接近常數；觀測站下方地殼導電度改變時，比值會往任一方向偏離。
+      用在跨方法比較（夜間平均值殘差 B2 vs 本法），不參與候選日判定。
+    formula:
+      - |-
+        \Delta B_i = \max_{\text{UTC 日}} F_i - \min_{\text{UTC 日}} F_i, \qquad F = \sqrt{X^2+Y^2+Z^2}\ \text{（向量站）}
+      - |-
+        x_d = \log R_{or,d} = \log\frac{\Delta B_{o,d}}{\Delta B_{r,d}}
+      - |-
+        z_d = \frac{x_d - \operatorname{median}(x_{\text{背景}})}{\operatorname{MAD}(x_{\text{背景}})}, \qquad
+        T = \max_{d\in\text{震前 30 天}}|z_d|
+    where: >-
+      o＝測站池中離主震最近的站；r＝距 o ≤ 100 km、離震央比 o 遠的站中離震央最遠者。只用乾淨日（非磁暴、兩站皆無斷線）。
+      向量站的 F 由每分鐘平均的 X、Y、Z 重建。背景＝震前窗口以外的乾淨日（留一窗）；虛無分布由背景做區塊拔靴（D3）或相位隨機化（D2）產生。
+    hypotheses:
+      h0: >-
+        震前 30 天窗口內的最大 $|z|$，與從背景期重抽樣得到的同長度窗口最大 $|z|$ 來自同一分布；也就是震前的比值沒有比平常更偏離。
+      h1: >-
+        震前窗口的最大 $|z|$ 較大（單尾；統計量已取絕對值，比值增加或減少都算）。
+    notes:
+      - >-
+        重抽樣改用留一窗：若像 D4 那樣由整條觀測序列重抽樣，被檢定的極值會混進自己的虛無分布，區塊拔靴的 p 值會有約 0.2–0.4 的結構下限。
+      - >-
+        以不與真實窗口重疊的假主震日（每 7 天一個）做安慰劑校準：留一窗虛無分布在本專案資料上偏寬鬆（p<0.05 比例約 13–15%／22–25%），
+        因此跨組二項檢定以安慰劑比例、而非 5% 為基準。
+    consts:
+      - {name: PAIR_MAX_KM, file: scripts/method_comparison.py}
+      - {name: PRE_WINDOW_DAYS, file: scripts/method_comparison.py}
+      - {name: N_SURROGATES, file: scripts/method_comparison.py}
+      - {name: PLACEBO_STEP_DAYS, file: scripts/method_comparison.py}
+    pros:
+      - 只需兩站同日的日變幅，概念簡單、有文獻（Liu et al., 2006）依據；取 log 讓增減對稱。
+      - 近距離兩站的比值天然抵銷全網共模擾動，不需回歸擬合。
+    cons:
+      - 只用一對站，對單站的儀器問題或斷線很敏感；部分群組因每日資料完整度不足而無法計算。
+      - 與 B2 用的測站、場分量（F vs H）都不同，兩者比較的是兩套完整方法。
+      - 最近站離震央超過 100 km 的群組（G17、G18、G23、G24）可信度低。
+    code:
+      - {file: scripts/method_comparison.py, lines: "101-118", symbol: pick_station_pair}
+      - {file: scripts/method_comparison.py, lines: "121-139", symbol: range_ratio_series}
+      - {file: scripts/method_comparison.py, lines: "158-210", symbol: surrogate_test}
+      - {file: scripts/method_comparison.py, lines: "243-261", symbol: placebo_counts}
+
+  C1:
+    name: Butterworth 零相位帶通濾波
+    group: C. 訊號處理與頻譜分析（ULF Pc3/Pc4）
+    purpose: >-
+      從 1Hz X/Y/Z 萃取 Pc3（10–45 秒週期）與 Pc4（45–150 秒週期）地磁脈動頻帶，
+      這是文獻中常見的「震前 ULF 磁擾動」候選頻段。
+    formula:
+      - |-
+        \begin{aligned}
+        \text{Pc4:}\ & f_{\text{low}} = \tfrac{1}{150\,\text{s}},\ f_{\text{high}} = \tfrac{1}{45\,\text{s}} \\
+        \text{Pc3:}\ & f_{\text{low}} = \tfrac{1}{45\,\text{s}},\ f_{\text{high}} = \tfrac{1}{10\,\text{s}}
+        \end{aligned}
+      - |-
+        x^{\text{band}} = \texttt{filtfilt}\bigl(\text{Butter}_4(f_{\text{low}}/f_N,\ f_{\text{high}}/f_N),\ x^{\text{detrend}}\bigr), \qquad f_N = 0.5\ \text{Hz}
+    notes:
+      - >-
+        4 階 Butterworth 帶通，以 filtfilt（正向＋反向）消除相位延遲，等效 8 階零相位濾波器。
+    pros:
+      - 通帶內響應平坦；filtfilt 保證零相位失真，不影響事件時間對齊。
+      - 頻帶邊界對應標準 IAGA ULF 波段命名，方便與文獻比較。
+    cons:
+      - 資料有缺值（gap）會破壞 filtfilt 的連續性假設，程式直接跳過該日而非插值，可能造成選擇性缺失。
+      - 4 階濾波器過渡帶仍有一定寬度，頻帶邊緣能量會互相滲漏。
+    code:
+      - {file: scripts/ulf_analysis.py, lines: "46-49", symbol: _bandpass}
+      - {file: scripts/ulf_analysis.py, lines: "37-40", symbol: BANDS}
+
+  C2:
+    name: Hilbert 包絡線與 Z/H 極化比
+    group: C. 訊號處理與頻譜分析（ULF Pc3/Pc4）
+    purpose: >-
+      計算每個頻帶在「本地夜間」（UTC 17–19 時）的訊號包絡能量，再取垂直分量對水平分量的比值（Z/H ratio）——
+      地磁極化分析中常見的震前異常指標。最終的候選前兆序列是近站群與遠站群 Z/H 比中位數之差。
+    formula:
+      - |-
+        \begin{aligned}
+        \text{env}_c(t) &= |\mathcal{H}(x_c^{\text{band}}(t))|\quad (c \in \{X,Y,Z\}) \\
+        \text{env}_H(t) &= \sqrt{\text{env}_X(t)^2+\text{env}_Y(t)^2}
+        \end{aligned}
+      - |-
+        \begin{aligned}
+        \text{RMS}_H &= \sqrt{\frac{1}{N}\sum_{t\in\text{night}}\text{env}_H(t)^2} \\
+        \text{RMS}_Z &= \sqrt{\frac{1}{N}\sum_{t\in\text{night}}\text{env}_Z(t)^2}
+        \end{aligned}
+      - |-
+        \begin{aligned}
+        \text{ZH ratio} &= \frac{\text{RMS}_Z}{\text{RMS}_H} \\
+        \text{diff\_zh} &= \operatorname{median}(\text{near\_zh}) - \operatorname{median}(\text{far\_zh})
+        \end{aligned}
+    consts:
+      - {name: NIGHT_HOURS_UTC, file: scripts/ulf_analysis.py}
+    pros:
+      - Hilbert 包絡是萃取瞬時振幅的標準方法；限定本地夜間可避開人為電磁雜訊最嚴重的時段。
+      - near−far 差分設計再次扣除共模效應。
+    cons:
+      - 只取夜間 3 小時，單日估計變異大。
+      - 水平分量接近零時比值不穩定（雖有 1e-9 保護）。
+      - 物理機制（地下電性/壓磁效應）在文獻中仍有爭議，這是觀測型指標而非嚴格物理模型。
+    code:
+      - {file: scripts/ulf_analysis.py, lines: "57-87", symbol: _process_day}
+      - {file: scripts/ulf_analysis.py, lines: "153-170", symbol: build_near_far_differential}
+
+  C3:
+    name: 短時傅立葉頻譜圖（STFT Spectrogram）
+    group: C. 訊號處理與頻譜分析（ULF Pc3/Pc4）
+    purpose: >-
+      於錨點事件前後 ±12 天視窗內，視覺化 X 分量在 ULF 頻段的功率隨時間變化，供人工診斷判讀頻譜異常。
+    formula:
+      - |-
+        S_{xx}(f,t) = \bigl|\mathrm{FFT}\{x^{\text{detrend}}\ \text{的第 } t \text{ 個 3600 秒分段}\}\bigr|^2 \ \text{（功率譜密度）}, \qquad
+        \text{圖示值} = \log_{10}\bigl(S_{xx} + 10^{-6}\bigr)
+    notes:
+      - >-
+        分段 3600 秒、重疊 1800 秒；頻率解析度約 $1/3600 \approx 0.28$ mHz。僅保留 Pc4 下緣到 Pc3 上緣的頻率列。
+    pros:
+      - 直觀呈現時頻演化，適合人工判讀；與 filtfilt 管道互為獨立驗證。
+    cons:
+      - 純視覺化/診斷，沒有產生量化統計檢定。
+      - 時間與頻率解析度互相牽制（1 小時分段對應約 0.28 mHz）。
+    code:
+      - {file: scripts/ulf_analysis.py, lines: "118-150", symbol: build_zoom_spectrogram}
+
+  D1:
+    name: Shapiro–Wilk 常態性檢定
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      檢驗 ULF near−far 差分序列是否服從常態，用來說明後續為何改用重抽樣式檢定而非傳統母數檢定。
+      這只是動機說明，並非分析結論本身。
+    formula:
+      - |-
+        W = \frac{\left(\sum_{i=1}^n a_i x_{(i)}\right)^2}{\sum_{i=1}^n (x_i-\bar{x})^2}
+    where: >-
+      $x_{(i)}$ 為排序統計量，$a_i$ 為由常態分位數導出的係數。
+    hypotheses:
+      h0: >-
+        ULF near−far 差分序列來自常態分布。
+      h1: >-
+        序列不服從常態分布（例如厚尾或偏態）。若拒絕 $H_0$，後續就不能用假設常態的母數檢定。
+    pros:
+      - 小樣本下檢定力優於 K-S 等其他常態性檢定，是廣被接受的標準做法。
+    cons:
+      - 只告訴你「是否顯著偏離常態」，不說明偏離的方向與程度。
+      - 樣本數很小或很大時，可能分別低估/過度偵測偏態。
+    code:
+      - {file: scripts/surrogate_test.py, lines: "89-91", symbol: shapiro}
+
+  D2:
+    name: 傅立葉相位隨機化替代資料法
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      產生與觀測序列振幅頻譜（等價於自相關結構）相同、但與真實地震時間完全無關的虛擬序列，作為虛無假設分布的一種來源。
+    formula:
+      - |-
+        X(f) = \mathcal{F}\{x_t-\bar{x}\}, \qquad A(f)=|X(f)|
+      - |-
+        X'(f) = A(f)\,e^{i\theta(f)}, \qquad \theta(f)\sim \text{Uniform}(0,2\pi)\ \text{i.i.d.}
+      - |-
+        x_t' = \mathcal{F}^{-1}\{X'(f)\} + \bar{x}
+    notes:
+      - >-
+        DC 與 Nyquist 分量的相位固定為 0，並保持 Hermitian 對稱使反轉換為實數。
+    hypotheses:
+      h0: >-
+        序列是一個保留原始功率譜（自相關結構）的線性高斯隨機過程；觀測到的任何「異常」都可以由這個頻譜結構解釋，與地震無關。
+      h1: >-
+        序列含有頻譜無法重現的結構（例如非線性、局部突發、厚尾），使觀測極值比相位隨機化替代序列更極端。
+    pros:
+      - 嚴格保留功率譜，比單純打亂順序（shuffle）更貼近真實序列的統計性質；是非線性時間序列分析的標準替代資料法。
+    cons:
+      - 只保留二階統計量，真實序列的非線性結構（高階矩、局部突發特徵）不會被重現，可能低估某些非線性訊號的顯著性。
+      - 相位完全隨機化也會破壞合理但非隨機的局部相位耦合。
+    code:
+      - {file: scripts/stat_utils.py, lines: "81-101", symbol: phase_randomize_surrogate}
+
+  D3:
+    name: 循環區塊拔靴法（Circular Block Bootstrap）
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      另一種虛無假設替代序列：重組「連續區塊」而非單點打亂，保留短期自相關（而非只保留頻譜）。
+    formula:
+      - |-
+        \rho(k) = \frac{\sum_t (x_t-\bar x)(x_{t+k}-\bar x)}{n\cdot\operatorname{Var}(x)}, \qquad
+        \ell = \min\{k : |\rho(k)| < e^{-1}\}
+    notes:
+      - >-
+        區塊長度 $\ell$ 取 ACF 首次降到 $1/e$ 以下的落後期，下限 3、上限 $n/5$。
+        替代序列由隨機起點的長度-$\ell$ 連續區塊（首尾循環相接）拼接到補滿原長度。
+    hypotheses:
+      h0: >-
+        序列是保留短期自相關與原始數值分布（邊際分布）的平穩過程；觀測到的「異常」可以由這種局部相依與厚尾性質解釋，與地震無關。
+      h1: >-
+        觀測極值超出這種平穩過程所能產生的範圍。
+    pros:
+      - 保留區塊內的局部自相關；區塊長度由資料驅動而非任意選定。
+    cons:
+      - 區塊長度是簡化經驗法則（非 Politis–White 最適區塊長度），區塊邊界處會人為引入不連續。
+      - 區塊間仍視為可交換，更長程的相依（如季節性）無法保留。
+      - 用來檢定「觀測序列自身的極值」時有循環問題：被檢定的極值本身會被抽進替代序列，p 值有結構下限（本專案序列長度下約 0.2–0.4），無法拒絕 $H_0$。要避免，虛無分布需只用被檢定區段以外的資料建構。
+    code:
+      - {file: scripts/stat_utils.py, lines: "40-59", symbol: estimate_block_length}
+      - {file: scripts/stat_utils.py, lines: "62-78", symbol: block_bootstrap_surrogate}
+
+  D4:
+    name: 重抽樣式 p-value（觀測極值 vs. 虛無分布）
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      對 D2/D3 產生的每組替代序列，各自算出「該序列最負的 MAD z-score」，形成虛無分布；
+      再看觀測極值（或固定規則閾值 −4.1）落在此分布的哪個位置，得到經驗 p-value。
+    formula:
+      - |-
+        p = \frac{1}{N}\sum_{k=1}^{N} \mathbb{1}\bigl[z^{(k)}_{\min} \le z_{\text{ref}}\bigr], \qquad
+        z_{\text{ref}} \in \{\, z_{\text{obs}},\ -4.1 \,\}
+    consts:
+      - {name: N_SURROGATES, file: scripts/surrogate_test.py}
+      - {name: FIXED_RULE_THRESHOLD, file: scripts/stat_utils.py}
+    hypotheses:
+      h0: >-
+        觀測序列最負的 z 值，與替代序列（D2 或 D3）的最負 z 值來自同一分布；也就是說，觀測到的極端異常只是序列本身統計性質造成的，與地震無關。注意 D2、D3 代表兩個不同的 $H_0$，所以同一份資料可能得到不同結論；但區塊拔靴的「全部不拒絕」不能當成證據：它的替代序列是由觀測序列本身的區塊重組，被檢定的極值會被抽進虛無分布，使 p 值有結構下限（本專案 100–300 天的序列約 0.2–0.4，即使注入 100 倍標準差的尖峰也一樣，2026-09-24 以模擬確認）。
+      h1: >-
+        觀測值比替代序列的極值更負（單尾，左尾）：$P(z_{\min} \le z_{\text{obs}} \mid H_0)$ 很小。
+    pros:
+      - 不依賴任何母數分布假設，p-value 直接由資料自身的重抽樣分布給出。
+    cons:
+      - 精度受 $N$ 限制（$N=2000$ 時最小可解析約 0.0005）。
+      - 「取序列中最負一日」是事後挑選極端值（look-elsewhere），此法有部分緩解但未完全校正；跨群組、跨頻帶的多重比較另在 D5 處理。
+    notes:
+      - >-
+        2026-09-24 起另加「震前窗口版」：主震前 30 天內最負的 z，以窗口外背景期的中位數／MAD 標準化，虛無分布只由背景期重抽樣（留一窗），只用非磁暴日，並以不重疊的假主震日做安慰劑校準；跨組以每組安慰劑比例（向合併比例收縮）做 Poisson-二項檢定。舊版整條序列結果保留供驗證報告使用。
+    code:
+      - {file: scripts/surrogate_test.py, lines: "102-124", symbol: null_min_z}
+
+  D5:
+    name: 二項式檢定（跨群組再現性）
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      檢驗「候選異常日落在震前視窗內」的命中率，是否顯著高於各群組自身滑動窗基準率，
+      評估規則跨獨立地震序列的再現性，而非單一事件的巧合。向量站層與純純量站層分開統計，不合併。
+    formula:
+      - |-
+        P(K\ge k \mid n, p_0) = \sum_{j=k}^{n}\binom{n}{j}p_0^j(1-p_0)^{n-j}
+    where: >-
+      $n$＝受測群組數、$k$＝震前視窗內有命中的群組數、$p_0$＝各群組滑動窗基準命中率的平均；單尾（greater）檢定。
+    consts:
+      - {name: WINDOWS_DAYS, file: scripts/cross_group_analysis.py}
+    hypotheses:
+      h0: >-
+        每個群組在震前視窗內出現候選異常的機率等於其基準率 $p_0$，也就是候選異常出現的時間與地震無關。
+      h1: >-
+        震前視窗內出現候選異常的機率大於 $p_0$（單尾，greater）。
+    pros:
+      - 精確檢定（非常態近似），小樣本下仍有效；直接回答「這不只是單一事件湊巧」。
+    cons:
+      - 把每個群組視為獨立白努利試驗，忽略群組間可能的地理/時間相依（共用原始資料夾的兄弟組並非獨立樣本）。
+      - $p_0$ 由滑動窗方法估計，偏誤會直接傳導到檢定結果。
+      - 3 個視窗大小 × 多種方法同時檢定，沒有多重比較校正，只能視為探索性再現性訊號。
+    code:
+      - {file: scripts/cross_group_analysis.py, lines: "92-107", symbol: sliding_baseline_rate}
+      - {file: scripts/cross_group_analysis.py, lines: "159-201", symbol: aggregate}
+
+  D6:
+    name: 標籤置換檢定（Label-Permutation Test）
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      在震時分析中，比較「與震動同步」（noise_arm）與「領先或持續於震動」（signal_arm）兩組事件的堆疊統計量差異，
+      檢驗差異是否顯著大於隨機分組所致。
+    formula:
+      - |-
+        \Delta_{\text{peak}} = \text{peak}_{\text{signal}} - \text{peak}_{\text{noise}}, \qquad
+        \Delta_{\text{tail}} = \text{tail}_{\text{signal}} - \text{tail}_{\text{noise}}
+      - |-
+        p = \frac{1+\#\{k : |\Delta^{(k)}_{\text{perm}}| \ge |\Delta_{\text{obs}}|\}}{N+1}
+    where: >-
+      peak＝堆疊均值的最大 $|z|$，tail＝lag>0 部分 $|z|$ 的平均；隨機打亂兩組標籤 $N$ 次後重算差異。
+    consts:
+      - {name: N_PERM, file: scripts/coseismic_joint_analysis.py}
+    hypotheses:
+      h0: >-
+        「與震動同步」和「領先或持續於震動」兩組標籤可以互換：兩組事件的堆疊統計量來自同一分布，差異 $\Delta$ 只是隨機分組造成的。
+      h1: >-
+        兩組的堆疊統計量確實不同（雙尾，以 $|\Delta|$ 判斷）。
+    pros:
+      - 不需任何分布假設，天生適合小樣本、非常態的分組比較；分子分母各加 1 避免 p 恰為 0。
+    cons:
+      - 兩組事件數都很少（雙方各約十餘件），置換檢定可達到的最小 p-value 受限。
+      - 分組本身依賴前一步 alignment_verdict 的規則式分類，並非統計上獨立產生。
+    code:
+      - {file: scripts/coseismic_joint_analysis.py, lines: "200-262", symbol: permutation_test}
+
+  D7:
+    name: 震時階躍/尖峰統計量與隨機參考時刻 p-value
+    group: D. 假設檢定與顯著性推論
+    purpose: >-
+      在每個地震發生時刻附近，用階躍與尖峰統計量掃描 ±180 秒視窗取極值；另外抽取大量與真實地震保持緩衝距離的隨機參考時刻，
+      以完全相同的程序算出「無地震」情境下的極值分布，得到經驗 p-value。
+    formula:
+      - |-
+        S_M(t) = \frac{1}{M}\sum_{i=t+1}^{t+M} d_i - \frac{1}{M}\sum_{i=t-M+1}^{t} d_i, \qquad M \in \{10, 30, 90\}\ \text{s}
+      - |-
+        \text{spike}(t) = |d_t - d_{t-1}|, \qquad
+        \text{obs} = S(t^*),\ \ t^* = \arg\max_{|t-t_0|\le 180}|S(t)|
+      - |-
+        p = \frac{1+\#\{r : |\text{null}_r| \ge |\text{obs}|\}}{N_{\text{null}}+1}
+    where: >-
+      $d_t$ 為去趨勢（A2）後的序列，$t_0$ 為地震發生秒；null 值以同一組統計量與同一搜尋程序在隨機參考時刻取得。
+    notes:
+      - >-
+        隨機參考時刻與所有真實地震保持 EXCLUSION_BUFFER_SEC 以上距離；_effective_half_sec 讓搜尋窗不越過鄰近另一起真實地震的中點。
+    consts:
+      - {name: SCAN_HALF_SEC, file: scripts/coseismic_step_analysis.py}
+      - {name: STEP_WINDOWS_SEC, file: scripts/coseismic_step_analysis.py}
+      - {name: N_NULL, file: scripts/coseismic_step_analysis.py}
+      - {name: EXCLUSION_BUFFER_SEC, file: scripts/coseismic_step_analysis.py}
+    hypotheses:
+      h0: >-
+        地震發生時刻 ±180 秒內的階躍／尖峰極值，與同一測站、同一時期隨機參考時刻用相同程序取得的極值來自同一分布；也就是地震時沒有額外的磁場跳動。
+      h1: >-
+        地震時刻附近的極值大於隨機參考時刻的極值（單尾；統計量已取絕對值，正負方向的跳動都算）。
+    pros:
+      - 虛無分布直接來自同一測站、同一時期的真實雜訊特性，不需假設雜訊分布形式。
+    cons:
+      - 搜尋窗越寬，「窗內最大值」越容易偶然偏大（look-elsewhere）；換成更寬視窗時，非邊界事件的峰值也會被改變。
+      - 單事件層級的 p-value 仍需謹慎解讀多重比較（秒級堆疊 E1 用虛無序列自身峰值分布緩解）。
+    code:
+      - {file: scripts/coseismic_step_analysis.py, lines: "226-246", symbol: _step_statistic}
+      - {file: scripts/coseismic_step_analysis.py, lines: "292-338", symbol: _extremum_in_window}
+      - {file: scripts/coseismic_step_analysis.py, lines: "382-396", symbol: _summarize_test}
+
+  E1:
+    name: 疊加時間分析（SEA）＋ Bootstrap 信賴區間 ＋ Null Band
+    group: E. 疊加時間分析與規則回測
+    purpose: >-
+      將多個獨立地震事件的異常序列，依「距地震發生日/秒的相對時間（lag）」對齊堆疊，檢驗是否存在跨事件一致的異常型態。
+      日尺度版本用於震前 ULF 差分序列（先各群 B1 標準化再堆疊）；秒尺度版本用於震時階躍/尖峰統計量，且以「虛無序列自身峰值分布」判斷顯著性。
+    formula:
+      - |-
+        \bar{S}(\text{lag}) = \frac{1}{n}\sum_{i=1}^n M_{i,\text{lag}}
+      - |-
+        \begin{aligned}
+        \bar{S}^{(b)}(\text{lag}) &= \frac{1}{n}\sum_{i\in I_b} M_{i,\text{lag}}, \quad I_b \sim \text{均勻放回抽樣} \\
+        \text{CI}_{90\%} &= \bigl[P_5(\bar{S}^{(1..B)}),\ P_{95}(\bar{S}^{(1..B)})\bigr]
+        \end{aligned}
+      - |-
+        p_{\text{peak}} = \frac{1+\#\{r : \max_{\text{lag}}|\bar{S}_r^{\text{null}}| \ge \max_{\text{lag}}|\bar{S}|\}}{R+1}
+    where: >-
+      $M$ 為 $n_{\text{events}}\times n_{\text{lags}}$ 矩陣，每列是單一事件對齊後的序列；最後一式是秒尺度版本的峰值檢定（$p_{\text{peak}}$）。Null band 以同群組但與地震無關的隨機參考時刻重複整個堆疊流程 $R$ 次，取 5/50/95 百分位。
+    consts:
+      - {name: N_BOOTSTRAP, file: scripts/superposed_epoch_analysis.py}
+      - {name: N_NULL, file: scripts/superposed_epoch_analysis.py}
+      - {name: WINDOW_BEFORE_DAYS, file: scripts/superposed_epoch_analysis.py}
+      - {name: STACK_HALF_SEC, file: scripts/coseismic_stacking_analysis.py}
+      - {name: N_NULL_STACK, file: scripts/coseismic_stacking_analysis.py}
+    hypotheses:
+      h0: >-
+        以地震時刻對齊堆疊出的平均序列，和以隨機、與地震無關的參考時刻堆疊出的序列來自同一分布；跨事件沒有一致的異常型態。
+      h1: >-
+        秒尺度：堆疊後的峰值 $|z|$ 大於虛無序列自身的峰值分布（單尾）。日尺度：某些 lag 落在 null band（5–95 百分位）之外；因為是逐點比較，只作描述性參考，不是正式檢定。
+    pros:
+      - 直接檢驗「跨事件一致性」，是區分單一事件雜訊巧合與真正前兆的最有力證據型態；Bootstrap CI 與 Null band 皆為非母數方法。
+      - 秒尺度版本用峰值分布而非逐點百分位，避免 601 個 lag 「多次機會」造成的 look-elsewhere 偏誤。
+    cons:
+      - 日尺度只有 ULF_GROUPS（向量站群組）可用，事件數仍偏少；小樣本下 bootstrap 對總體變異的估計可能偏窄。
+      - 各事件資料品質與測站覆蓋不一，以 nanmean/nanmedian 處理缺值，有效樣本數隨 lag 變動，邊緣 lag 統計力較弱。
+    code:
+      - {file: scripts/superposed_epoch_analysis.py, lines: "90-174", symbol: run_band}
+      - {file: scripts/coseismic_stacking_analysis.py, lines: "304-407", symbol: stack_series}
+
+  E2:
+    name: 規則回測（Precision / Recall / False-Alarm Rate）
+    group: E. 疊加時間分析與規則回測
+    purpose: >-
+      把「z ≤ −4.1」這條固定規則當作實際的前兆警報規則，對照完整地震目錄回測其實務表現：
+      被標記的日子中有多少真的落在觸發窗、多少事件被抓到、非事件期間誤報率多高。7/14/30 天三種視窗並列報告。
+    formula:
+      - |-
+        \begin{aligned}
+        \text{Precision} &= \frac{\text{hit\_days}}{\text{flagged\_days}} \\
+        \text{Recall} &= \frac{\text{events\_with\_hit}}{n_{\text{events}}} \\
+        \text{FAR} &= \frac{\text{false\_alarm\_days}}{\text{non\_precursor\_days}}
+        \end{aligned}
+    notes:
+      - >-
+        共用原始資料夾的兄弟組事件，其震前視窗天數不計入本組的命中/誤報/分母（避免把兄弟組地震前的旗標算成誤報）。
+    consts:
+      - {name: FIXED_RULE_THRESHOLD, file: scripts/stat_utils.py}
+      - {name: WINDOWS_DAYS, file: scripts/backtest_rule.py}
+    pros:
+      - 直接以「作為警報系統的實際效用」評估，比單純統計顯著性更貼近應用；同時報告三個指標，避免單看某一項造成誤導。
+    cons:
+      - 閾值 −4.1 是從單一案例（G10 2024-03-30）事後選定，用同批資料回測有資料窺探（data snooping）之嫌，需獨立樣本外驗證。
+      - 小樣本下點估計變異大，應搭配信賴區間或至少報告樣本數。
+      - 共用資料夾的兄弟組不是獨立樣本；sliding_baseline_rate 的基線窗口目前仍可能含到兄弟事件附近的日期。
+    code:
+      - {file: scripts/backtest_rule.py, lines: "48-64", symbol: flagged_dates}
+      - {file: scripts/backtest_rule.py, lines: "70-150", symbol: run_band}
+
+  E3:
+    name: 三層規模門檻敏感度分析（M≥6.0／M≥5.5／M≥5.0）
+    group: E. 疊加時間分析與規則回測
+    purpose: >-
+      E1/E2 的地震母體定義依賴一個規模門檻，但這是取捨：M≥6.0 樣本數少、單一事件訊噪比預期較強（Hattori
+      2004/2007 經驗門檻不等式 0.025R ≤ M-4.5）；M≥5.0 樣本數多、單一事件訊噪比預期較弱。與其擇一，
+      run_validation_pipeline.sh 對 E1/E2 都同時跑三層並列比較。
+    formula:
+      - |-
+        0.025\,R \le M - 4.5
+    where: >-
+      $R$ 為測站至震央距離（km）、$M$ 為地震規模；此為 Hattori 對 ULF 前兆可偵測距離的經驗門檻，僅作三層設計的理論背景，未直接用於程式篩選。
+    consts:
+      - {name: CWA_CATALOG_START, file: scripts/fetch_earthquake_catalog.py}
+      - {name: CWA_CATALOG_END, file: scripts/fetch_earthquake_catalog.py}
+    pros:
+      - 三層互相印證：M≥6.0 欄若也顯著，補強小樣本下的結論；M≥5.0 欄的大樣本補強統計檢定力。
+      - G11/G12/G13/G20（抓取窗口落在 2024-09~2026-07）改用使用者提供的 CWA GDMS 規模報告匯出而非 USGS，精度更高，符合本專案 CWA 優先慣例。
+    cons:
+      - M≥6.0 那一欄樣本數常是個位數，binomial/empirical p 值有下限，「不顯著」不代表訊號不存在，只代表檢定力受限。
+      - Hattori 距離-規模公式目前只是文件記載的理論背景，尚未實作成程式裡的距離篩選條件。
+    code:
+      - {file: scripts/fetch_earthquake_catalog.py, lines: "119-147", symbol: fetch_cwa}
+      - {file: scripts/prepare_validation_report_data.py, lines: "27-77", symbol: main}
+
+  F1:
+    name: STA/LTA 地震觸發偵測
+    group: F. 地震對照驗證
+    purpose: >-
+      地震學標準的震動起訖偵測法：獨立標記地震波實際到達測站的時間窗，用來和地磁異常的時間點比對，
+      判斷地磁訊號是否只是「儀器被震動干擾」。
+    formula:
+      - |-
+        \begin{aligned}
+        \text{STA}(t) &= \frac{1}{n_s}\sum_{i=t-n_s+1}^{t} x_i^2 \\
+        \text{LTA}(t) &= \frac{1}{n_l}\sum_{i=t-n_l+1}^{t} x_i^2 \quad (n_s \ll n_l)
+        \end{aligned}
+      - |-
+        R(t) = \frac{\text{STA}(t)}{\text{LTA}(t)}
+    notes:
+      - >-
+        R(t) 超過觸發閾值（預設 3.5）判定震動開始，回落到解除閾值（預設 1.0）判定結束；STA=1 秒、LTA=10 秒。
+        ObsPy 的 classic_sta_lta 以樣本平方（能量）計算，而非絕對值。
+    pros:
+      - 地震學界數十年驗證的標準方法，對突發強震動敏感、計算成本低。
+    cons:
+      - 需要事件前有足夠長的安靜期估計 LTA；對短時觸發式加速度計紀錄（triggered_short_trace）不適用，此時退回 F2。
+    code:
+      - {file: scripts/seismometer_comparison.py, lines: "374-396", symbol: detect_window_sta_lta}
+
+  F2:
+    name: 包絡閾值震動窗偵測
+    group: F. 地震對照驗證
+    purpose: >-
+      F1 的替代方案：用於沒有足夠事件前基準期的短觸發式紀錄，以帶通後的包絡超過自身峰值 10% 的最早/最晚時間點作為震動窗。
+    formula:
+      - |-
+        \text{env}(t) = |\mathcal{H}(x_{1\text{–}20\,\text{Hz}}(t))|, \qquad \text{threshold} = 0.1 \times \max_t \text{env}(t)
+    pros:
+      - 不需事件前基準期，適用於任何長度的觸發式紀錄；實作簡單、對強震動穩健。
+    cons:
+      - 閾值取自身峰值的 10%（相對而非絕對標準），不同事件的震動窗口徑不完全一致。
+      - 訊噪比低或波形逐漸衰減時，起訖時間判定較模糊。
+    code:
+      - {file: scripts/seismometer_comparison.py, lines: "399-426", symbol: detect_window_envelope_threshold}
+
+# ---------------------------------------------------------------------------
+# Pipeline 步驟
+# ---------------------------------------------------------------------------
+steps:
+
+  # ---- 日尺度前兆篩選（每個群組）-------------------------------------------
+  - id: raw
+    lane: daily
+    kind: data
+    title: 原始 1Hz 日檔（.sec / .tgz）
+    scripts: []
+    summary: >-
+      CWA 地磁網 IAGA-2002 格式檔，每站每天 86400 列 1 秒資料（X/Y/Z 單位 nT，F 通常為佔位值 88888；ttn 為純純量站）。
+      23 個地震群組、49 個 M≥6.0 事件，資料夾 G1…G23（部分資料夾含多個群組）。
+    inputs: [GDMS 批次下載的 .sec / .sec.gz / .tgz]
+    outputs: [每站每日一檔的 1Hz 序列]
+    notes:
+      - 檔名 <站碼><YYYYMMDD>dsec.sec；.tgz 內的成員由 common.list_day_refs 直接讀取，不需解壓。
+      - 早期群組（G1–G3、G14–G18、G21–G22）只有純量 F 通道，無法做 ULF 極化分析。
+    after: []
+
+  - id: build_daily_features
+    lane: daily
+    kind: stat
+    title: 解析與每日特徵
+    scripts: [build_daily_features.py]
+    summary: >-
+      平行解析每個日檔：先用一階差分去尖峰（A1），再彙整成每站每日的摘要特徵，並重採樣成 1 分鐘序列，
+      全程一次只處理一個檔案的 1Hz 資料。
+    inputs: [原始 1Hz 日檔]
+    outputs: [daily_features.csv, minute_series_<站碼>.parquet]
+    methods: [A1]
+    after: [raw]
+
+  - id: timezone_check
+    lane: daily
+    kind: gate
+    title: 時區驗證
+    scripts: [timezone_check.py]
+    summary: >-
+      IAGA-2002 標頭沒有時區欄位，故以資料本身反推：取最安靜的 18 天，看 Sq 日變曲線極值與高頻雜訊功率的日週期，
+      確認 TIME 欄位確實是 UTC（全資料集常數 DATA_TIMEZONE = "UTC"，確立後不再逐群重驗）。
+    inputs: [daily_features.csv, 原始日檔]
+    outputs: [時區判定結論（供 verify_pipeline 檢查）]
+    after: [build_daily_features]
+
+  - id: fetch_space_weather
+    lane: daily
+    kind: data
+    title: 磁暴日旗標（Kp / Dst）
+    scripts: [fetch_space_weather.py]
+    summary: >-
+      抓取 GFZ 的 Kp 與京都 WDC 的 Dst，Kp ≥ 5 或 Dst ≤ −30 nT 判定為磁暴日，並在每個磁暴日後加 1–2 天恢復期。
+      官方指數不可得時退回內部代理指標（遠測站 H/F 全距的 MAD z-score > 3，信心降為 low）。
+      這些日子會被排除在 B1/B2 的「乾淨日」基線之外。
+    inputs: [網路上的 Kp/Dst 指數, daily_features.csv（僅代理指標時）]
+    outputs: [storm_days.csv, storm_days_summary.json]
+    consts:
+      - {name: KP_STORM_THRESHOLD, file: scripts/fetch_space_weather.py}
+      - {name: DST_STORM_THRESHOLD, file: scripts/fetch_space_weather.py}
+    after: [build_daily_features]
+
+  - id: compute_indices
+    lane: daily
+    kind: stat
+    title: H/Z/F 局部異常指標
+    scripts: [compute_indices.py]
+    summary: >-
+      取本地夜間（UTC 17–19 時）的每站平均值，逐站做滾動 MAD z-score（B1），再取近站群與遠站群的中位數，
+      以 Theil–Sen 回歸扣除全網共模訊號（B2），殘差超過 2.5×MAD 的乾淨日標為候選異常日。
+    inputs: [minute_series_<站碼>.parquet, storm_days.csv]
+    outputs: [local_anomaly_index.csv, candidate_windows.json]
+    methods: [B1, B2]
+    after: [build_daily_features, fetch_space_weather]
+
+  - id: ulf_analysis
+    lane: daily
+    kind: stat
+    title: ULF Pc3/Pc4 極化分析
+    scripts: [ulf_analysis.py]
+    summary: >-
+      僅適用有足夠 X/Y/Z 向量站的群組：直接讀 1Hz 原始資料，去趨勢（A2）→ Butterworth 帶通（C1）→ Hilbert 包絡與夜間 Z/H 比（C2），
+      最後取近站群減遠站群的中位數差，得到候選前兆序列；另對錨點事件前後 ±12 天畫頻譜圖（C3）。有缺值的日子直接略過。
+    inputs: [原始 1Hz 日檔（X/Y/Z）, 時區確認結果]
+    outputs: [ulf_daily.csv, ulf_near_far_index.csv, ulf_spectrogram_*.json]
+    methods: [A2, C1, C2, C3]
+    scope: 僅向量站群組（ULF_GROUPS：G4–G13、G19、G20、G23）
+    after: [raw, timezone_check]
+
+  - id: verify_pipeline
+    lane: daily
+    kind: gate
+    title: 驗證閘門
+    scripts: [verify_pipeline.py]
+    summary: >-
+      一組硬性檢查：原始檔與解析結果抽樣比對、已知停電日的真值、時區結論、磁暴日排除是否生效、候選日不落在停電視窗、
+      安靜日平滑度、缺值旁無尖峰、基線視窗排除磁暴。任何一項失敗就中止，不再產生後續報告。
+    inputs: [daily_features.csv, local_anomaly_index.csv, 時區結論, 磁暴日旗標]
+    outputs: [通過 / 失敗（決定下游是否可信）]
+    after: [compute_indices, ulf_analysis, timezone_check]
+
+  - id: g10_report
+    lane: daily
+    kind: report
+    title: 單群報告（--full-report，G10）
+    scripts: [prepare_report_data.py, build_artifact.py]
+    summary: >-
+      只有加 --full-report 時執行：整理 G10 的敘事性資料並產生 HTML 報告。驗證未通過時不會產生。
+    inputs: [驗證通過的 G10 中間檔]
+    outputs: [output/geomag_precursor_report.html]
+    after: [verify_pipeline]
+
+  # ---- 跨群驗證 -------------------------------------------------------------
+  - id: cross_group_analysis
+    lane: cross
+    kind: stat
+    title: 跨群再現性（二項式檢定）
+    scripts: [cross_group_analysis.py]
+    summary: >-
+      對每群的錨點事件，檢查 7/14/30 天震前視窗內是否出現任一方法的候選日，並以該群自身的滑動窗基準率當對照，
+      再跨群做單尾二項式檢定。明確定位為「再現性比率分析」，不是嚴格的統計驗證。
+    inputs: [candidate_windows.json, local_anomaly_index.csv, ulf_near_far_index.csv]
+    outputs: [data/interim/cross_group_summary.json / .md]
+    methods: [D5]
+    after: [verify_pipeline]
+
+  - id: fetch_earthquake_catalog
+    lane: cross
+    kind: data
+    title: 擴充地震目錄（USGS／CWA GDMS）
+    scripts: [fetch_earthquake_catalog.py]
+    summary: >-
+      取得網路周邊 M≥6.0（強震集）／M≥5.5（主）／M≥5.0（全集）三層地震，去群聚（3 天／100 公里），並標出與已登錄事件重複者，
+      把「一次地震變成很多次」以擴大堆疊與回測的事件數。抓取窗口完全落在 2024-09~2026-07 的群組（G11/G12/G13/G20）改用
+      使用者提供的 CWA GDMS 規模報告匯出，其餘仍用 USGS FDSN。
+    inputs: [各群 ulf_near_far_index.csv 的日期範圍, GDMScatalog.txt（CWA GDMS 匯出，2024-09~2026-07 涵蓋的群組）]
+    outputs: [data/external/extended_catalog_m6.0.csv, extended_catalog_m5.5.csv, extended_catalog_m5.0.csv]
+    methods: [E3]
+    after: [verify_pipeline]
+
+  - id: surrogate_test
+    lane: cross
+    kind: stat
+    title: 替代資料顯著性檢定
+    scripts: [surrogate_test.py]
+    summary: >-
+      對每個（群組, 頻帶）：先做 Shapiro–Wilk 說明非常態（D1），以整段 MAD z-score 找最負的一天（B1），
+      再各產生 2000 組區塊拔靴（D3）與相位隨機化（D2）替代序列，取每組的最小 z，形成虛無分布並算 p-value（D4）。
+      另做震前 30 天窗口版（留一窗＋安慰劑校準，排除磁暴日），跨組彙總寫到 window_summary。
+    inputs: [ulf_near_far_index.csv, storm_days.csv]
+    outputs: [data/interim/surrogate_test/<群>_<頻帶>.json, window_summary.json, window_summary.md]
+    methods: [D1, B1, D3, D2, D4]
+    scope: ULF_GROUPS
+    after: [verify_pipeline]
+
+  - id: method_comparison
+    lane: cross
+    kind: stat
+    title: 跨方法比較（夜間殘差 vs 日變幅比值）
+    scripts: [method_comparison.py]
+    summary: >-
+      對每組以同一套程序檢定兩個指標：夜間平均值殘差（B2）與全天日變幅比值（B3）。震前 30 天最大 |z| 對照留一窗虛無分布（D3、D2），
+      並以假主震日做安慰劑校準；跨組比較 p<0.05 組數（二項檢定對安慰劑比例）與成對 Wilcoxon。
+    inputs: [local_anomaly_index.csv, minute_series_<站>.parquet, storm_days.csv, daily_features.csv]
+    outputs: [data/interim/method_comparison/per_group.csv, summary.json, summary.md]
+    methods: [B2, B3, D3, D2]
+    after: [compute_indices, fetch_space_weather]
+
+  - id: superposed_epoch_analysis
+    lane: cross
+    kind: stat
+    title: 疊加時間分析（日尺度）
+    scripts: [superposed_epoch_analysis.py]
+    summary: >-
+      每個事件取前 30 天到後 10 天的 z-score 序列，對齊到事件日堆疊；以事件 bootstrap 求 90% 信賴區間，
+      並用隨機、與地震無關的參考日重複整個流程 1000 次得到 null band。
+    inputs: [ulf_near_far_index.csv, 擴充地震目錄]
+    outputs: [data/interim/superposed_epoch/<頻帶>_stack_<標籤>.json]
+    methods: [B1, E1, E3]
+    scope: ULF_GROUPS
+    after: [verify_pipeline, fetch_earthquake_catalog]
+
+  - id: backtest_rule
+    lane: cross
+    kind: stat
+    title: 規則回測
+    scripts: [backtest_rule.py]
+    summary: >-
+      把 z ≤ −4.1 當警報規則，對擴充目錄計算 7/14/30 天視窗的 precision、recall、誤報率，並附上各群滑動窗基準率。
+    inputs: [ulf_near_far_index.csv, 擴充地震目錄]
+    outputs: [data/interim/backtest/z_rule_backtest_<標籤>.json]
+    methods: [B1, E2, E3]
+    scope: ULF_GROUPS
+    after: [verify_pipeline, fetch_earthquake_catalog]
+
+  - id: validation_report
+    lane: cross
+    kind: report
+    title: 跨群驗證報告
+    scripts: [prepare_validation_report_data.py, build_validation_report.py]
+    summary: >-
+      彙整替代資料、疊加分析與回測結果，產生整合 HTML 報告。
+    inputs: [surrogate_test / superposed_epoch / backtest 的 JSON]
+    outputs: [output/geomag_precursor_validation_report.html]
+    after: [surrogate_test, superposed_epoch_analysis, backtest_rule]
+
+  # ---- 震時分析 -------------------------------------------------------------
+  - id: coseismic_step_analysis
+    lane: coseismic
+    kind: stat
+    title: 震時階躍/尖峰偵測
+    scripts: [coseismic_step_analysis.py]
+    summary: >-
+      對全部 49 個事件（不只錨點），在震央最近的測站上，把原始 1Hz 去趨勢（A2）後，於發震秒 ±180 秒掃描階躍（10/30/90 秒）
+      與尖峰統計量取極值，並和排除所有真實地震後的 2000 個隨機參考時刻比較（D7）。另附注入合成脈衝的偵測力（power curve）正向對照。
+    inputs: [原始 1Hz 日檔, events.py 事件登錄]
+    outputs: [data/interim/coseismic_step_analysis/]
+    methods: [A2, D7]
+    after: [raw]
+
+  - id: coseismic_stacking_analysis
+    lane: coseismic
+    kind: stat
+    title: 震時跨事件堆疊（秒尺度）
+    scripts: [coseismic_stacking_analysis.py]
+    summary: >-
+      把每個事件的階躍/尖峰統計量以離事件基線的 median/MAD 標準化，對齊到發震秒（±300 秒）跨事件堆疊，
+      並以 bootstrap 信賴區間與 null band 判斷；顯著性用虛無序列自身的峰值分布，避免 look-elsewhere。
+    inputs: [coseismic_step_analysis 的統計量與事件測站選擇]
+    outputs: [data/interim/coseismic_stacking_analysis/]
+    methods: [E1]
+    after: [coseismic_step_analysis]
+
+  # ---- 地震儀對照 -----------------------------------------------------------
+  - id: seismic_data
+    lane: seismo
+    kind: data
+    title: 地震儀/加速度計波形（手動抓取）
+    scripts: []
+    summary: >-
+      每個事件一個 seismometer/GXX_MMDD/ 資料夾，含 SAC PoleZero 儀器響應檔與 miniSEED 波形（100Hz，發震前 60 秒到後 600 秒）。
+      這不是地磁資料。目前 30/49 事件有資料，其中 6 件（G14、G21）因資料源 2012 年前不可得而永久缺漏。
+    inputs: [人工從資料源下載]
+    outputs: [seismometer/ 資料夾（不入版控）]
+    after: []
+
+  - id: seismometer_comparison
+    lane: seismo
+    kind: stat
+    title: 地磁 vs. 震動時序對照
+    scripts: [seismometer_comparison.py]
+    summary: >-
+      用 STA/LTA（F1）或（短觸發紀錄時）包絡閾值（F2）標出震動起訖，再與地磁 step30 z-profile 的峰值時刻比較，
+      並判斷異常在震動結束後是否持續。結論分為 aligned_with_shaking（支持儀器雜訊）、leads_shaking、persists_after_shaking_ends（支持真實機制）。
+    inputs: [地震儀波形與 PZ 檔, 原始 1Hz 地磁日檔]
+    outputs: [comparison_summary.csv, coverage_summary.json, 個案研究 JSON]
+    methods: [F1, F2]
+    scope: 30/49 事件有地震儀資料
+    after: [coseismic_step_analysis, seismic_data]
+
+  - id: coseismic_joint_analysis
+    lane: seismo
+    kind: stat
+    title: 聯合分析（置換檢定）
+    scripts: [coseismic_joint_analysis.py]
+    summary: >-
+      把兩條證據線合併：僅限兩邊都有資料的事件，依 alignment_verdict 分成 noise_arm 與 signal_arm，
+      各自做秒尺度堆疊（E1），比較兩組峰值與尾段的差異，並以標籤置換檢定（D6）判斷差異是否大於隨機分組。
+    inputs: [coseismic_stacking_analysis 的事件序列, comparison_summary.csv]
+    outputs: [data/interim/coseismic_joint_analysis/joint_summary.csv]
+    methods: [E1, D6]
+    after: [coseismic_stacking_analysis, seismometer_comparison]

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>地磁前兆分析流程圖</title>
+<style>/*__KATEX_CSS__*/</style>
+<style>
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --surface2: #eef1f5; --text: #1a1f29; --muted: #596273;
+  --line: #d5dbe4; --accent: #2b62d9; --accent-soft: rgba(43,98,217,.12);
+  --edge: #9aa5b6; --band-a: rgba(90,110,140,.06); --band-b: rgba(90,110,140,.11);
+  --k-data: #0e9483; --k-stat: #3563d6; --k-gate: #cf7a1f; --k-report: #8352cf;
+  --pro: #1f8a4c; --con: #c2412d; --shadow: 0 2px 8px rgba(20,30,50,.12);
+  --sans: "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono: ui-monospace,"JetBrains Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Plastic theme (plastic.wstone.uk) */
+    --bg: #181a1f; --surface: #21252b; --surface2: #282c34; --text: #c6ccd7; --muted: #a9b2c3;
+    --line: #0d1117; --accent: #61afef; --accent-soft: rgba(97,175,239,.16);
+    --edge: #5f6672; --band-a: rgba(169,178,195,.04); --band-b: rgba(169,178,195,.08);
+    --k-data: #56b6c2; --k-stat: #61afef; --k-gate: #e5c07b; --k-report: #b57edc;
+    --pro: #98c379; --con: #e06c75; --shadow: 0 2px 10px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"] {
+  /* Plastic theme (plastic.wstone.uk) */
+  --bg: #181a1f; --surface: #21252b; --surface2: #282c34; --text: #c6ccd7; --muted: #a9b2c3;
+  --line: #0d1117; --accent: #61afef; --accent-soft: rgba(97,175,239,.16);
+  --edge: #5f6672; --band-a: rgba(169,178,195,.04); --band-b: rgba(169,178,195,.08);
+  --k-data: #56b6c2; --k-stat: #61afef; --k-gate: #e5c07b; --k-report: #b57edc;
+  --pro: #98c379; --con: #e06c75; --shadow: 0 2px 10px rgba(0,0,0,.55);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.6 var(--sans); display: flex; flex-direction: column; overflow: hidden; }
+button { font: inherit; color: inherit; }
+
+/* ---------- toolbar ---------- */
+header.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.bar h1 { font-size: 16px; margin: 0; font-weight: 700; }
+header.bar h1 small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.grow { flex: 1 1 auto; }
+.filters { display: contents; }
+#filtBtn { display: none; }
+.search { position: relative; }
+.search input { width: 190px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface2); color: var(--text); font: inherit; }
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chips .lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: pointer; font-size: 12.5px; }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
+.chip:hover { border-color: var(--accent); }
+.btn { padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, .chip:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- main ---------- */
+main { flex: 1 1 auto; display: flex; min-height: 0; position: relative; }
+#viewport { flex: 1 1 auto; position: relative; overflow: hidden; cursor: grab; touch-action: none; }
+#viewport.panning { cursor: grabbing; }
+#stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.lane { position: absolute; left: 0; right: 0; border-radius: 10px; }
+.lane:nth-child(odd) { background: var(--band-a); }
+.lane:nth-child(even) { background: var(--band-b); }
+.lane .ltitle { position: absolute; left: 14px; top: 8px; font-weight: 700; font-size: 13px; }
+.lane .ldesc { position: absolute; left: 14px; top: 26px; font-size: 11.5px; color: var(--muted); max-width: 620px; }
+svg#edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+svg#edges path { fill: none; stroke: var(--edge); stroke-width: 1.6; marker-end: url(#arr); transition: opacity .15s, stroke .15s; }
+svg#edges path.hl { stroke: var(--accent); stroke-width: 2.6; marker-end: url(#arr-hl); }
+svg#edges path.dim { opacity: .1; }
+#arr path, #arr-hl path { stroke: none; }
+#arr path { fill: var(--edge); } #arr-hl path { fill: var(--accent); }
+
+.node { position: absolute; width: 232px; height: 100px; padding: 8px 10px 8px 12px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--kc, var(--muted)); border-radius: 9px; box-shadow: var(--shadow); cursor: pointer; display: flex; flex-direction: column; gap: 3px; transition: opacity .15s, box-shadow .15s, transform .1s; }
+.node:hover { transform: translateY(-1px); }
+.node.sel { outline: 2px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); }
+.node.dim { opacity: .25; } .node.off { opacity: .12; }
+.node .nt { font-weight: 700; font-size: 13.5px; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.node .ns { font: 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node .nb { margin-top: auto; display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; }
+.badge { font: 700 11px var(--mono); padding: 1px 7px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; cursor: pointer; }
+.badge:hover { border-color: var(--accent); }
+.badge.on { background: var(--accent); color: var(--surface); }
+.node .nk { margin-left: auto; align-self: flex-end; font-size: 10.5px; color: var(--kc); font-weight: 600; white-space: nowrap; }
+
+.zoom { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; }
+.hint { position: absolute; left: 12px; top: 8px; font-size: 11.5px; color: var(--muted); pointer-events: none; background: var(--bg); padding: 2px 8px; border-radius: 6px; opacity: .9; }
+
+/* ---------- side panel ---------- */
+aside#panel { flex: 0 0 440px; max-width: 46vw; background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto; padding: 16px 18px 40px; }
+aside#panel h2 { font-size: 17px; margin: 0 0 4px; line-height: 1.35; }
+aside#panel h3 { font-size: 14.5px; margin: 0; line-height: 1.35; }
+aside#panel h4 { font-size: 12.5px; margin: 10px 0 4px; color: var(--muted); text-transform: none; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 12px; color: var(--muted); margin: 4px 0 10px; }
+.tag { padding: 1px 9px; border-radius: 999px; border: 1px solid var(--kc, var(--line)); color: var(--kc, var(--muted)); font-weight: 600; font-size: 11.5px; }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+.pill { font: 12px var(--mono); padding: 1px 8px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--line); }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-align: left; }
+.linkbtn:hover { text-decoration: underline; }
+ul.plain { margin: 2px 0; padding-left: 18px; }
+ul.plain li { margin: 2px 0; }
+.io { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.method { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface2); }
+.method > header { display: flex; align-items: baseline; gap: 8px; }
+.mid { font: 700 12px var(--mono); padding: 1px 8px; border-radius: 6px; background: var(--accent); color: var(--surface); flex: 0 0 auto; }
+.mgroup { font-size: 11.5px; color: var(--muted); margin: 2px 0 6px; }
+.formulas { margin: 8px 0; padding: 4px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.formulas .katex { font-size: 1.02em; }
+.formulas .katex-display { margin: .5em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.where { font-size: 12.5px; color: var(--muted); }
+.hyp { margin: 10px 0 4px; display: grid; gap: 6px; }
+.hyp > div { padding: 6px 10px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 6px; }
+.hyp > div.h1 { border-left-color: var(--accent); }
+.hyp b { display: block; font-size: 12px; color: var(--muted); }
+.hyp > div.h1 b { color: var(--accent); }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pc h4 { margin-top: 8px; }
+.pc .pros h4 { color: var(--pro); } .pc .cons h4 { color: var(--con); }
+table.consts { border-collapse: collapse; font-size: 12px; margin: 4px 0; width: 100%; }
+table.consts td { padding: 2px 8px 2px 0; vertical-align: top; }
+table.consts td:nth-child(2) { font-family: var(--mono); font-weight: 700; }
+.refs { display: flex; flex-direction: column; gap: 2px; }
+.usedin { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; font-size: 12px; }
+.tex-err, .katex-error { color: #d14; }
+.empty p { margin: 6px 0; }
+.idx-group { margin: 12px 0 0; font-size: 12px; color: var(--muted); font-weight: 700; }
+.idx-item { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; width: 100%; border: 0; background: none; text-align: left; cursor: pointer; }
+.idx-item:hover .nm { color: var(--accent); }
+.foot { margin-top: 24px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.closebtn { float: right; }
+
+@media (max-width: 860px) {
+  header.bar { padding: 8px 10px; }
+  .search input { width: 150px; }
+  #filtBtn { display: inline-block; }
+  .filters { display: none; width: 100%; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .filters.open { display: flex; }
+  aside#panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-width: none; height: 58vh; flex: none; border-left: 0; border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -6px 20px rgba(0,0,0,.25); transform: translateY(calc(100% - 44px)); transition: transform .2s; z-index: 5; }
+  aside#panel.open { transform: none; }
+  .io, .pc { grid-template-columns: 1fr; }
+  .hint { display: none; }
+}
+@media print { header.bar, .zoom, .hint { display: none; } body { overflow: visible; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1 id="ttl">流程圖<small id="sub"></small></h1>
+  <div class="search"><input id="q" type="search" placeholder="搜尋步驟、腳本、方法（按 / 聚焦）" aria-label="搜尋"></div>
+  <button class="btn" id="filtBtn" aria-expanded="false">篩選 ▾</button>
+  <div class="filters" id="filters">
+    <div class="chips" id="laneChips"><span class="lbl">泳道</span></div>
+    <div class="chips" id="kindChips"><span class="lbl">類型</span></div>
+  </div>
+  <span class="grow"></span>
+  <button class="btn" id="themeBtn" title="切換亮／暗色">◐ 主題</button>
+</header>
+<main>
+  <div id="viewport" aria-label="流程圖">
+    <div id="stage"></div>
+    <div class="hint">滾輪縮放 · 拖曳平移 · 點擊節點看細節 · 方向鍵在節點間移動</div>
+    <div class="zoom">
+      <button class="btn" id="zin" aria-label="放大">＋</button>
+      <button class="btn" id="zout" aria-label="縮小">－</button>
+      <button class="btn" id="zfit">適合視窗</button>
+    </div>
+  </div>
+  <aside id="panel" aria-live="polite"></aside>
+</main>
+
+<script>/*__KATEX_JS__*/</script>
+<script>
+const DATA = /*__DATA__*/null;
+</script>
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function tex(src, display) {
+  try { return katex.renderToString(src, {displayMode: display, throwOnError: false, strict: 'ignore'}); }
+  catch (e) { return `<code class="tex-err">${esc(src)}</code>`; }
+}
+// 文字欄位：跳脫 HTML，並把 $...$ 轉成行內數學式
+function rich(text) {
+  return String(text ?? '').split(/(\$[^$]+\$)/g)
+    .map(p => (p.length > 2 && p[0] === '$' && p.endsWith('$')) ? tex(p.slice(1, -1), false) : esc(p)).join('');
+}
+const list = (arr) => arr && arr.length ? `<ul class="plain">${arr.map(x => `<li>${rich(x)}</li>`).join('')}</ul>` : '';
+
+/* ---------------- model ---------------- */
+const steps = DATA.steps, methods = DATA.methods;
+const byId = Object.fromEntries(steps.map(s => [s.id, s]));
+const preds = Object.fromEntries(steps.map(s => [s.id, (s.after || []).slice()]));
+const succs = Object.fromEntries(steps.map(s => [s.id, []]));
+steps.forEach(s => (s.after || []).forEach(p => succs[p].push(s.id)));
+const usedBy = {};
+steps.forEach(s => (s.methods || []).forEach(m => (usedBy[m] = usedBy[m] || []).push(s.id)));
+const laneIndex = Object.fromEntries(DATA.lanes.map((l, i) => [l.id, i]));
+
+const depth = {};
+(function calc() {
+  const visit = id => depth[id] ?? (depth[id] = preds[id].length ? 1 + Math.max(...preds[id].map(visit)) : 0);
+  steps.forEach(s => visit(s.id));
+})();
+const closure = (id, adj) => { const out = new Set(), st = [id];
+  while (st.length) for (const n of adj[st.pop()]) if (!out.has(n)) { out.add(n); st.push(n); } return out; };
+
+/* ---------------- layout ---------------- */
+const NW = 232, NH = 100, COLW = 262, ROWH = 124, LEFT = 30, LTOP = 54, LBOT = 14, LGAP = 12;
+const pos = {};
+const laneRows = DATA.lanes.map(l => {
+  const cells = {};
+  steps.filter(s => s.lane === l.id).forEach(s => cells[depth[s.id]] = (cells[depth[s.id]] || 0) + 1);
+  return Math.max(1, ...Object.values(cells));
+});
+const laneY = []; let acc = 8;
+DATA.lanes.forEach((l, i) => { laneY.push(acc); acc += LTOP + laneRows[i] * ROWH + LBOT + LGAP; });
+const maxDepth = Math.max(...Object.values(depth));
+const stageW = LEFT + maxDepth * COLW + NW + 40, stageH = acc;
+(function place() {
+  const order = [...steps].sort((a, b) => depth[a.id] - depth[b.id] || steps.indexOf(a) - steps.indexOf(b));
+  const cells = {};
+  order.forEach(s => (cells[s.lane + '|' + depth[s.id]] = cells[s.lane + '|' + depth[s.id]] || []).push(s));
+  Object.values(cells).forEach(cell => {
+    const key = s => preds[s.id].length ? preds[s.id].reduce((a, p) => a + (pos[p]?.y ?? 0), 0) / preds[s.id].length : Infinity;
+    cell.map((s, i) => ({s, i, k: key(s)})).sort((a, b) => (a.k - b.k) || (a.i - b.i) || 0)
+      .forEach((o, row) => { pos[o.s.id] = {x: LEFT + depth[o.s.id] * COLW, y: laneY[laneIndex[o.s.lane]] + LTOP + row * ROWH}; });
+  });
+})();
+
+/* ---------------- render graph ---------------- */
+const stage = $('#stage'); stage.style.width = stageW + 'px'; stage.style.height = stageH + 'px';
+DATA.lanes.forEach((l, i) => {
+  const d = document.createElement('div'); d.className = 'lane';
+  d.style.top = laneY[i] + 'px'; d.style.height = (LTOP + laneRows[i] * ROWH + LBOT) + 'px';
+  d.innerHTML = `<div class="ltitle">${esc(l.title)}</div><div class="ldesc">${esc(l.desc || '')}</div>`;
+  stage.appendChild(d);
+});
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.createElementNS(NS, 'svg'); svg.id = 'edges'; svg.setAttribute('width', stageW); svg.setAttribute('height', stageH);
+svg.innerHTML = `<defs>${['arr', 'arr-hl'].map(id => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z"/></marker>`).join('')}</defs>`;
+stage.appendChild(svg);
+const edgeEls = [];
+steps.forEach(s => (s.after || []).forEach(p => {
+  const a = pos[p], b = pos[s.id];
+  const x1 = a.x + NW, y1 = a.y + NH / 2, x2 = b.x, y2 = b.y + NH / 2, dx = Math.max(50, (x2 - x1) * .5);
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2 - 2} ${y2}`);
+  svg.appendChild(path); edgeEls.push({from: p, to: s.id, el: path});
+}));
+const nodeEls = {};
+steps.forEach(s => {
+  const n = document.createElement('div'); n.className = 'node'; n.tabIndex = 0; n.setAttribute('role', 'button');
+  n.dataset.id = s.id; n.style.left = pos[s.id].x + 'px'; n.style.top = pos[s.id].y + 'px';
+  n.style.setProperty('--kc', `var(--k-${s.kind})`);
+  n.setAttribute('aria-label', s.title);
+  n.innerHTML = `<div class="nt">${esc(s.title)}</div>` +
+    `<div class="ns">${esc((s.scripts || []).join(' + ') || '（非腳本步驟）')}</div>` +
+    `<div class="nb">${(s.methods || []).map(m => `<span class="badge" data-method="${m}" title="${esc(methods[m]?.name || m)}">${m}</span>`).join('')}<span class="nk">${esc(DATA.kinds[s.kind] || s.kind)}</span></div>`;
+  stage.appendChild(n); nodeEls[s.id] = n;
+});
+
+/* ---------------- state / highlight ---------------- */
+const st = { sel: null, hover: null, lanes: new Set(DATA.lanes.map(l => l.id)), kinds: new Set(Object.keys(DATA.kinds)), q: '' };
+function matches(s, q) {
+  if (!q) return true;
+  const hay = [s.id, s.title, (s.scripts || []).join(' '), s.summary, (s.methods || []).join(' '),
+    ...(s.methods || []).map(m => methods[m]?.name || '')].join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+function refresh() {
+  let focus = null;
+  if (st.hover) focus = st.hover; else if (st.sel?.type === 'step') focus = st.sel.id;
+  let keep = null;
+  if (focus) keep = new Set([focus, ...closure(focus, preds), ...closure(focus, succs)]);
+  else if (st.sel?.type === 'method') keep = new Set(usedBy[st.sel.id] || []);
+  steps.forEach(s => {
+    const n = nodeEls[s.id];
+    const on = st.lanes.has(s.lane) && st.kinds.has(s.kind) && matches(s, st.q);
+    n.classList.toggle('off', !on);
+    n.classList.toggle('dim', on && !!keep && !keep.has(s.id));
+    n.classList.toggle('sel', st.sel?.type === 'step' && st.sel.id === s.id);
+    n.querySelectorAll('.badge').forEach(b => b.classList.toggle('on', st.sel?.type === 'method' && st.sel.id === b.dataset.method));
+  });
+  edgeEls.forEach(e => {
+    const inKeep = keep && focus ? (keep.has(e.from) && keep.has(e.to)) : false;
+    e.el.classList.toggle('hl', inKeep);
+    e.el.classList.toggle('dim', !!keep && !inKeep);
+  });
+}
+
+/* ---------------- panel ---------------- */
+const panel = $('#panel');
+const stepChip = id => `<button class="pill linkbtn" data-step="${id}">${esc(byId[id].title)}</button>`;
+function methodCard(id) {
+  const m = methods[id];
+  const consts = (m.consts || []).length ? `<h4>程式碼中的實際參數（build 時自動讀取）</h4><table class="consts">${m.consts.map(c =>
+    `<tr><td>${esc(c.name)}</td><td>${esc(c.value ?? '（找不到）')}</td><td class="mono">${esc(c.file)}</td></tr>`).join('')}</table>` : '';
+  const code = (m.code || []).length ? `<h4>程式碼位置</h4><div class="refs">${m.code.map(c =>
+    `<div><code>${esc(c.file)}:${esc(c.lines)}</code> <span class="mono" style="color:var(--muted)">${esc(c.symbol || '')}</span></div>`).join('')}</div>` : '';
+  const used = (usedBy[id] || []).length ? `<div class="usedin"><span>用於步驟：</span>${usedBy[id].map(stepChip).join('')}</div>` : '';
+  return `<section class="method" id="m-${id}">
+    <header><span class="mid">${id}</span><h3>${esc(m.name)}</h3></header>
+    <div class="mgroup">${esc(m.group || '')}</div>
+    <div>${rich(m.purpose)}</div>
+    ${(m.formula || []).length ? `<div class="formulas">${m.formula.map(f => tex(f, true)).join('')}</div>` : ''}
+    ${m.where ? `<div class="where">${rich(m.where)}</div>` : ''}
+    ${m.hypotheses ? `<div class="hyp"><div class="h0"><b>虛無假說 H₀</b>${rich(m.hypotheses.h0)}</div><div class="h1"><b>對立假說 H₁</b>${rich(m.hypotheses.h1)}</div></div>` : ''}
+    ${(m.notes || []).length ? `<h4>實作細節</h4>${list(m.notes)}` : ''}
+    ${consts}
+    <div class="pc"><div class="pros"><h4>優點</h4>${list(m.pros)}</div><div class="cons"><h4>缺點 / 限制</h4>${list(m.cons)}</div></div>
+    ${code}${used}
+  </section>`;
+}
+function stepPanel(s) {
+  const lane = DATA.lanes[laneIndex[s.lane]];
+  const stepConsts = (s.consts || []).length ? `<h4>程式碼中的實際參數</h4><table class="consts">${s.consts.map(c =>
+    `<tr><td>${esc(c.name)}</td><td>${esc(c.value ?? '（找不到）')}</td><td class="mono">${esc(c.file)}</td></tr>`).join('')}</table>` : '';
+  const nav = (ids, label) => ids.length ? `<div class="usedin"><span>${label}</span>${ids.map(stepChip).join('')}</div>` : '';
+  return `<button class="btn closebtn" data-close aria-label="關閉">✕</button>
+    <h2>${esc(s.title)}</h2>
+    <div class="meta" style="--kc: var(--k-${s.kind})"><span class="tag">${esc(DATA.kinds[s.kind] || s.kind)}</span><span>${esc(lane.title)}</span>
+      ${(s.scripts || []).map(x => `<code class="pill">scripts/${esc(x)}</code>`).join('')}</div>
+    <div>${rich(s.summary)}</div>
+    ${s.scope ? `<p class="where"><b>適用範圍：</b>${rich(s.scope)}</p>` : ''}
+    <div class="io"><div><h4>輸入</h4>${list(s.inputs)}</div><div><h4>輸出</h4>${list(s.outputs)}</div></div>
+    ${(s.notes || []).length ? `<h4>備註</h4>${list(s.notes)}` : ''}
+    ${stepConsts}
+    ${nav(preds[s.id], '上游：')}${nav(succs[s.id], '下游：')}
+    ${(s.methods || []).length ? `<h4 style="margin-top:16px">此步驟使用的統計方法（${s.methods.length}）</h4>${s.methods.map(methodCard).join('')}` : '<p class="where">此步驟沒有統計方法，屬於資料處理、檢查或報告產出。</p>'}
+    <div class="foot"><button class="linkbtn" data-copy>複製此步驟的連結</button></div>`;
+}
+function methodPanel(id) {
+  return `<button class="btn closebtn" data-close aria-label="關閉">✕</button>
+    <div class="meta"><span>統計方法</span></div>${methodCard(id)}
+    <div class="foot"><button class="linkbtn" data-copy>複製此方法的連結</button></div>`;
+}
+function indexPanel() {
+  const groups = {};
+  Object.entries(methods).forEach(([id, m]) => (groups[m.group] = groups[m.group] || []).push(id));
+  return `<div class="empty"><h2>${esc(DATA.meta.title)}</h2>
+    <p>${esc(DATA.meta.subtitle || '')}</p>
+    <p>點選左側任一步驟，這裡會顯示它的簡介、輸入輸出，以及所用統計方法的<b>數學式、優缺點與程式碼位置</b>。點節點上的方法徽章（如 <span class="badge">B2</span>）或下方索引，可在圖上標出使用該方法的所有步驟。</p>
+    <ul class="plain"><li>滑過節點：高亮它的上游與下游</li><li>鍵盤：←→ 沿資料流移動，↑↓ 換同欄節點，Esc 取消，/ 搜尋</li><li>可用網址 #B2 或 #step-compute_indices 直接分享</li></ul>
+    <div class="idx-group" style="margin-top:16px">統計方法索引（${Object.keys(methods).length}）</div>
+    ${Object.entries(groups).map(([g, ids]) => `<div class="idx-group">${esc(g)}</div>` + ids.map(id =>
+      `<button class="idx-item" data-method="${id}"><span class="mid">${id}</span><span class="nm">${esc(methods[id].name)}</span></button>`).join('')).join('')}
+    <div class="foot">內容來源：<code>docs/flowchart/pipeline_flow.yaml</code>（版本 ${esc(DATA.meta.hash || '')}）；統計方法的文字版總覽見 <code>${esc(DATA.meta.source_doc || '')}</code>。</div></div>`;
+}
+function renderPanel() {
+  if (!st.sel) panel.innerHTML = indexPanel();
+  else if (st.sel.type === 'step') panel.innerHTML = stepPanel(byId[st.sel.id]);
+  else panel.innerHTML = methodPanel(st.sel.id);
+  panel.scrollTop = 0;
+  panel.classList.toggle('open', !!st.sel);
+}
+
+/* ---------------- selection / routing ---------------- */
+function setSel(sel, opts = {}) {
+  st.sel = sel; renderPanel(); refresh();
+  const h = !sel ? '' : sel.type === 'step' ? '#step-' + sel.id : '#' + sel.id;
+  try { history.replaceState(null, '', h || location.pathname + location.search); } catch (_) {}
+  if (sel?.type === 'step' && !opts.noCenter) reveal(sel.id);
+  if (sel?.type === 'method' && !opts.noCenter && usedBy[sel.id]?.length) fitNodes(usedBy[sel.id]);
+}
+const selectStep = id => byId[id] && setSel({type: 'step', id});
+const selectMethod = id => methods[id] && setSel({type: 'method', id});
+function fromHash() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('step-') && byId[h.slice(5)]) setSel({type: 'step', id: h.slice(5)});
+  else if (methods[h]) setSel({type: 'method', id: h});
+  else setSel(null);
+}
+window.addEventListener('hashchange', fromHash);
+
+/* ---------------- pan / zoom ---------------- */
+const vp = $('#viewport'); const view = {k: 1, x: 0, y: 0};
+const apply = () => { stage.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; };
+function zoomAt(f, cx, cy) {
+  const k = Math.min(1.6, Math.max(.1, view.k * f)), r = k / view.k;
+  view.x = cx - (cx - view.x) * r; view.y = cy - (cy - view.y) * r; view.k = k; apply();
+}
+function fitBox(x, y, w, h, maxK = 1) {
+  const r = vp.getBoundingClientRect(), pad = 30;
+  const k = Math.min(maxK, (r.width - pad * 2) / w, (r.height - pad * 2) / h);
+  view.k = Math.max(.08, k); view.x = (r.width - w * view.k) / 2 - x * view.k; view.y = (r.height - h * view.k) / 2 - y * view.k; apply();
+}
+const fitAll = () => fitBox(0, 0, stageW, stageH, 1);
+function fitNodes(ids) {
+  const xs = ids.map(i => pos[i]); const x1 = Math.min(...xs.map(p => p.x)), x2 = Math.max(...xs.map(p => p.x + NW));
+  const y1 = Math.min(...xs.map(p => p.y)), y2 = Math.max(...xs.map(p => p.y + NH));
+  fitBox(x1 - 60, y1 - 70, x2 - x1 + 120, y2 - y1 + 140, 1);
+}
+function reveal(id) {
+  const p = pos[id], r = vp.getBoundingClientRect();
+  const sx = p.x * view.k + view.x, sy = p.y * view.k + view.y, sw = NW * view.k, sh = NH * view.k;
+  if (sx < 20 || sy < 20 || sx + sw > r.width - 20 || sy + sh > r.height - 20)
+    { view.x = r.width / 2 - (p.x + NW / 2) * view.k; view.y = r.height / 2 - (p.y + NH / 2) * view.k; apply(); }
+}
+vp.addEventListener('wheel', e => { e.preventDefault(); const r = vp.getBoundingClientRect();
+  zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)), e.clientX - r.left, e.clientY - r.top); }, {passive: false});
+let drag = null, moved = false;
+vp.addEventListener('pointerdown', e => { if (e.button !== 0) return; drag = {x: e.clientX, y: e.clientY, vx: view.x, vy: view.y}; moved = false; });
+vp.addEventListener('pointermove', e => {
+  if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!moved && Math.hypot(dx, dy) < 5) return;
+  if (!moved) { moved = true; vp.classList.add('panning'); try { vp.setPointerCapture(e.pointerId); } catch (_) {} }
+  view.x = drag.vx + dx; view.y = drag.vy + dy; apply();
+});
+const endDrag = () => { drag = null; vp.classList.remove('panning'); };
+vp.addEventListener('pointerup', endDrag); vp.addEventListener('pointercancel', endDrag);
+vp.addEventListener('click', e => {
+  if (moved) { moved = false; return; }
+  const b = e.target.closest('.badge'); if (b) return selectMethod(b.dataset.method);
+  const n = e.target.closest('.node'); if (n) return selectStep(n.dataset.id);
+  setSel(null);
+});
+vp.addEventListener('mouseover', e => { const n = e.target.closest('.node'); const id = n ? n.dataset.id : null; if (id !== st.hover) { st.hover = id; refresh(); } });
+vp.addEventListener('mouseleave', () => { st.hover = null; refresh(); });
+$('#zin').onclick = () => { const r = vp.getBoundingClientRect(); zoomAt(1.25, r.width / 2, r.height / 2); };
+$('#zout').onclick = () => { const r = vp.getBoundingClientRect(); zoomAt(.8, r.width / 2, r.height / 2); };
+$('#zfit').onclick = fitAll;
+window.addEventListener('resize', () => { if (!st.sel) fitAll(); });
+
+panel.addEventListener('click', e => {
+  if (!panel.classList.contains('open') && matchMedia('(max-width: 860px)').matches) { panel.classList.add('open'); return; }
+  const t = e.target.closest('[data-step],[data-method],[data-close],[data-copy]'); if (!t) return;
+  if (t.dataset.step) selectStep(t.dataset.step);
+  else if (t.dataset.method) selectMethod(t.dataset.method);
+  else if ('close' in t.dataset) setSel(null);
+  else if ('copy' in t.dataset) { try { navigator.clipboard.writeText(location.href); t.textContent = '已複製 ✓'; } catch (_) {} }
+});
+
+/* ---------------- toolbar ---------------- */
+function chip(host, label, on, color, toggle) {
+  const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', 'true');
+  b.innerHTML = `<span class="dot" style="background:${color}"></span>${esc(label)}`;
+  b.onclick = () => { const p = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', p); toggle(p); refresh(); };
+  host.appendChild(b);
+}
+DATA.lanes.forEach(l => chip($('#laneChips'), l.title, true, 'var(--muted)', p => p ? st.lanes.add(l.id) : st.lanes.delete(l.id)));
+Object.entries(DATA.kinds).forEach(([k, label]) => chip($('#kindChips'), label, true, `var(--k-${k})`, p => p ? st.kinds.add(k) : st.kinds.delete(k)));
+$('#ttl').firstChild.textContent = DATA.meta.title; $('#sub').textContent = DATA.meta.subtitle || '';
+document.title = DATA.meta.title;
+const q = $('#q');
+q.addEventListener('input', () => { st.q = q.value.trim(); refresh(); });
+q.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const hit = steps.find(s => st.lanes.has(s.lane) && st.kinds.has(s.kind) && matches(s, st.q)); if (hit && st.q) selectStep(hit.id); }
+  if (e.key === 'Escape') { q.value = ''; st.q = ''; q.blur(); refresh(); }
+});
+$('#filtBtn').onclick = () => { const o = $('#filters').classList.toggle('open'); $('#filtBtn').setAttribute('aria-expanded', o); $('#filtBtn').textContent = o ? '篩選 ▴' : '篩選 ▾'; setTimeout(() => { if (!st.sel) fitAll(); }, 0); };
+$('#themeBtn').onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('flow-theme', next); } catch (_) {}
+};
+try { const t = localStorage.getItem('flow-theme'); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
+
+/* ---------------- keyboard ---------------- */
+document.addEventListener('keydown', e => {
+  if (e.target === q) return;
+  if (e.key === '/') { e.preventDefault(); q.focus(); return; }
+  if (e.key === 'Escape') { setSel(null); return; }
+  const cur = st.sel?.type === 'step' ? st.sel.id : (document.activeElement?.dataset?.id || null);
+  if (!cur || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  let next = null;
+  if (e.key === 'ArrowRight') next = succs[cur][0];
+  else if (e.key === 'ArrowLeft') next = preds[cur][0];
+  else {
+    const col = steps.filter(s => depth[s.id] === depth[cur]).sort((a, b) => pos[a.id].y - pos[b.id].y);
+    const i = col.findIndex(s => s.id === cur); next = col[i + (e.key === 'ArrowDown' ? 1 : -1)]?.id;
+  }
+  if (next) { selectStep(next); nodeEls[next].focus({preventScroll: true}); }
+});
+nodeEls && Object.values(nodeEls).forEach(n => n.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectStep(n.dataset.id); } }));
+
+/* ---------------- init ---------------- */
+renderPanel(); refresh(); fitAll();
+if (location.hash) fromHash();
+window.__flow = {steps: steps.length, methods: Object.keys(methods).length, pos};
+})();
+</script>
+</body>
+</html>
