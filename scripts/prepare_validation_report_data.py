@@ -36,6 +36,18 @@ def main():
             if data is not None:
                 surrogate[f"{g}_{band}"] = data
 
+    # Primary pre-event result since 2026-09-25: the rank test in surrogate_test/window_summary.json.
+    # The whole-series surrogate p-values above are kept only so the report can show why they
+    # can't be used (see the template's section 1).
+    window_test = None
+    ws = load_json(interim / "surrogate_test" / "window_summary.json")
+    if ws is not None:
+        window_test = {"window_days": ws["window_days"], "primary": ws["primary"], "rank_test": ws["rank_test"],
+                       "per_group": {k: {"rank_p": v.get("pre_event_window", {}).get("rank_p"),
+                                         "n_blocks": len(v.get("pre_event_window", {}).get("null_ps") or []),
+                                         "obs_window_min_z": v.get("pre_event_window", {}).get("obs_window_min_z")}
+                                     for k, v in surrogate.items()}}
+
     sea = {}
     backtest = {}
     catalog_counts = {}
@@ -68,6 +80,7 @@ def main():
             "windows_days": [7, 14, 30],
         },
         "surrogate": surrogate,
+        "window_test": window_test,
         "sea": sea,
         "backtest": backtest,
     }

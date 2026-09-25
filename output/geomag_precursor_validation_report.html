@@ -93,12 +93,12 @@
 <div class="gm-page">
 
   <h1 class="gm-title">教授建議方法驗證：surrogate 檢定・多事件疊加・z 規則回測</h1>
-  <p class="gm-subtitle">對 G1–G20 中 10 個具向量磁力資料組別的 Pc3/Pc4 近遠站極化差分序列（<code>pc3_diff_zh</code> / <code>pc4_diff_zh</code>）進行的方法論檢驗</p>
+  <p class="gm-subtitle">對具向量磁力資料組別的 Pc3/Pc4 近遠站極化差分序列（<code>pc3_diff_zh</code> / <code>pc4_diff_zh</code>）進行的方法論檢驗</p>
 
   <div class="gm-callout">
     <b>這份報告在回答什麼問題：</b>
     先前報告指出 G10（2024/4/3 花蓮 M7.2）震前 4 天（2024-03-30）的 Pc3 近遠站極化差分，是整個 113 天窗口中最極端的一天（z ≈ -4.1 個 MAD 單位），但也自陳「z=4 很罕見」的常態直覺並不嚴謹適用、且未做多重比較校正。
-    這份報告針對這個缺口做三件事：<b>(1)</b> 不假設常態分布，改用 block bootstrap／相位隨機化把序列洗牌成「統計長相一樣但跟地震無關」的代理序列，看多常會自己冒出這麼極端的下沉；
+    這份報告針對這個缺口做三件事：<b>(1)</b> 不假設常態分布，改用 block bootstrap／相位隨機化把序列洗牌成「統計長相一樣但跟地震無關」的代理序列，看多常會自己冒出這麼極端的下沉（<b>2026-09-25 更正：</b>這兩種整條序列的做法後來證實都不能下結論，現行主要結果改為第 1 節開頭的震前窗口排名檢定）；
     <b>(2)</b> 把「一次地震」擴充成這幾年測網附近所有 M≥5.5 的獨立地震（去叢集後 23 起，另附 M≥6.0／強震子集與 M≥5.0／全集當敏感度對照，見下方三層切換），把各組序列依發震時刻對齊疊加，看 3/30 那種下沉疊完會不會浮現；
     <b>(3)</b> 把 z ≤ -4.1 這條規則當成一條真正的警報規則，回測它在整個資料集上的命中與誤報表現。
     仍然缺乏獨立的「安靜期」對照資料，去叢集規則是簡化版，見文末「方法限制」。
@@ -111,6 +111,21 @@
 
   <div class="gm-section" id="sec-surrogate">
     <h2 class="gm-h2">1. Surrogate 檢定：這種下沉在「跟地震無關」的資料裡多常見？</h2>
+    <div class="gm-callout">
+      <b>2026-09-25 更正：本節下方的整條序列檢定不能當證據。</b>
+      block bootstrap 的代理序列由觀測序列自己的區塊重組，被檢定的極值會被抽進自己的虛無分布，所以 p 值有結構性下限：在本專案 100–300 天的序列長度下，就算注入 100 倍標準差的尖峰，p 值仍在 0.2–0.4。它的「不顯著」不代表下沉常見。
+      相位隨機化則會把重尾抹平，偏向寬鬆。兩者的結論相反，但<b>都不可信</b>。
+      現行的主要檢定是下方的<b>震前窗口排名檢定</b>：把序列切成對齊真窗口、互不重疊的 30 天區塊，看震前窗口的最低值在所有區塊中排第幾，p = 名次 ÷ 區塊數；跨組以 Fisher 法合併，虛無分布由「每組隨機挑一個區塊當真窗口」模擬。
+      中間曾用過的「留一窗 block bootstrap＋安慰劑校準」版本（Pc3 6/12 組、p=0.006）也已撤回：它只能重組背景期已有的數值，窗口最小值只要低於背景最小值，p 就固定在下限 0.0005。
+      細節見 <code>data/interim/surrogate_test/window_summary.md</code> 與 <code>docs/statistical_methods.md</code>。
+    </div>
+    <div class="gm-card">
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">現行主要結果：震前 30 天窗口排名檢定</div>
+      <div class="gm-table-wrap"><table class="gm-table" id="rank-summary-table"></table></div>
+      <div class="gm-table-wrap" style="margin-top:12px;"><table class="gm-table" id="rank-group-table"></table></div>
+      <p class="gm-footnote" id="rank-caption"></p>
+    </div>
+    <div class="gm-h2" style="font-size:15px;margin:18px 0 6px;">以下為舊版整條序列檢定（保留作為方法演進紀錄，不能當證據）</div>
     <p class="gm-h2-note">常態性檢定（Shapiro-Wilk）先確認不能假設常態；接著用 block bootstrap（保留短期自相關、打亂時間位置）與 FFT 相位隨機化（保留頻譜結構、隨機化相位）各產生 2000 組代理序列，重算同一套 median/MAD z-score 公式的 min(z)，得到虛無分布</p>
     <div class="gm-card">
       <div class="gm-legend" id="legend-surrogate"></div>
@@ -122,9 +137,9 @@
     </div>
     <p class="gm-limits" id="surrogate-narrative"></p>
     <div class="gm-card">
-      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">全部 10 組 × 2 頻段明細</div>
+      <div class="gm-h2" style="font-size:15px;margin-bottom:10px;">各組 × 2 頻段明細（舊版整條序列檢定）</div>
       <div class="gm-table-wrap"><table class="gm-table" id="surrogate-table"></table></div>
-      <p class="gm-footnote">p(≤觀測極值)：代理序列的 min(z) 比該組實際觀測到的還極端的比例。p(≤-4.1)：代理序列中出現任一天 z≤-4.1 的比例（直接回答「這個規則在無關資料裡多常自己冒出來」）。反白列＝block bootstrap 與相位隨機化兩種方法的 p(≤-4.1) 皆低於 0.05。</p>
+      <p class="gm-footnote">p(≤觀測極值)：代理序列的 min(z) 比該組實際觀測到的還極端的比例。p(≤-4.1)：代理序列中出現任一天 z≤-4.1 的比例（直接回答「這個規則在無關資料裡多常自己冒出來」）。反白列＝block bootstrap 與相位隨機化兩種方法的 p(≤-4.1) 皆低於 0.05。block bootstrap 欄有結構性下限、相位隨機化欄偏寬鬆，兩欄都不能用來判斷顯著與否（見本節開頭的更正）。</p>
     </div>
   </div>
 
@@ -179,7 +194,7 @@
       <li><b>仍缺獨立的「安靜期」對照資料</b>：null band／surrogate 都是從既有 13 組的資料窗口內部構造出來的（隨機假發震日、洗牌既有序列），不是額外抓取的、確定跟任何地震無關的長期背景資料——這是專案文件裡一直標記為「完全缺少」的部分，本次修改沒有解決它，只是在現有資料內盡量逼近。</li>
       <li><b>去叢集規則是簡化版</b>：同一序列的餘震只用「3 天內、100km 內、規模較小」剔除，不是正式的 ETAS 或 Reasenberg 去叢集演算法；且即使去叢集後，仍有事件的疊加視窗（-30~+10 天）彼此重疊（例如同組內兩起獨立地震相隔僅 20 天），疊加樣本嚴格來說不是完全獨立的。</li>
       <li><b>Near/far 站別分類每組只算一次</b>（依錨定事件距離），套用到同組內其他事件時沿用同一分類，沒有針對每個候選地震的實際震央重新計算——同組內震央通常相近，此簡化影響應該不大，但未驗證。</li>
-      <li><b>Block bootstrap 與相位隨機化在多數組別給出矛盾的結論</b>（block bootstrap 通常不顯著、相位隨機化通常顯著）：這不是程式錯誤，而是兩種方法在檢定不同的虛無假設——block bootstrap 完整保留原始序列的重尾邊際分布，只打亂區塊的時間位置，所以「整條序列裡有一天特別極端」這件事本身在原始邊際分布下並不罕見；相位隨機化保留頻譜（自相關）結構但重新合成振幅，其代理序列的邊際分布會趨近常態、尾部比原始重尾資料更薄，因此更容易把觀測值判為「顯著」。更嚴謹的作法（如 IAAFT，迭代調整振幅同時逼近原始邊際分布與頻譜）留待後續。</li>
+      <li><b>整條序列的 block bootstrap 與相位隨機化都不能下結論</b>（2026-09-25 更正）：兩者在多數組別給出相反的結論（block bootstrap 通常不顯著、相位隨機化通常顯著），但原因不是「重尾分布下極端值本來就常見」。block bootstrap 的代理序列由觀測序列自己的區塊重組，被檢定的極值會混進自己的虛無分布，p 值有結構性下限（注入 100σ 尖峰仍約 0.2–0.4），所以它的不顯著沒有資訊；相位隨機化的代理序列邊際分布趨近常態、尾部變薄，偏向寬鬆。已改用震前窗口的不重疊區塊排名檢定（第 1 節開頭）。它的代價是短序列只切得出 3–11 塊，單組 p 最小只能到約 0.1–0.3，證據只能來自跨組合併。</li>
       <li><b>M≥5.5 的 23 起事件雖達到專案文件提到的「20-30 起」統計門檻</b>，但這只是達到樣本數量下限，不等於每起事件都有足夠資料品質／獨立性；G11 起 ttn 站缺測、部分組別震央座標信心較低（見 events.py 的 <code>coord_confidence</code>）等既有資料限制仍然適用。</li>
       <li><b>M≥6.0 那一欄樣本數通常很小（常見個位數）</b>：樣本數過小時，binomial 檢定／empirical p 值有下限（即使全部命中，p 值也無法無限逼近 0），此時「不顯著」不代表訊號不存在，只代表這個規模門檻下的檢定力本身受限——這正是三層對照而非單一門檻的原因：M≥6.0 犧牲樣本數換取較強的單一事件訊噪比，M≥5.0 犧牲訊噪比換取樣本數，兩者互為印證而非互斥。</li>
       <li>本報告的地震目錄：G11/G12/G13/G20（2024-09~2026-07 的窗口）採用使用者提供的 CWA GDMS 規模報告匯出（<code>GDMScatalog.txt</code>）；其餘組別仍用 USGS FDSN 公開目錄 API（即時查詢）。各筆事件的實際來源見「疊加使用的事件清單」/回測表格的「來源」欄。</li>
@@ -245,6 +260,32 @@ const DATA = /*__REPORT_DATA__*/{
     "G5_pc3": {
       "group": "G5",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 72,
+        "n_window_days": 21,
+        "n_background_days": 51,
+        "block_length_days": 3,
+        "obs_window_min_z": -9.9689,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.001,
+        "placebo_n": 5,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 3,
+        "rank_p": 0.25,
+        "rank_n_fake_windows": 3,
+        "rank_min_attainable_p": 0.25,
+        "null_ps": [
+          0.75,
+          1.0,
+          0.5,
+          0.25
+        ],
+        "anchor": "2021-04-18",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 116,
       "shapiro": {
         "W": 0.87521,
@@ -360,7 +401,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -2.8604,
           "p99": -2.2206
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -468,6 +510,32 @@ const DATA = /*__REPORT_DATA__*/{
     "G5_pc4": {
       "group": "G5",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 72,
+        "n_window_days": 21,
+        "n_background_days": 51,
+        "block_length_days": 3,
+        "obs_window_min_z": -32.3447,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 5,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.25,
+        "rank_n_fake_windows": 3,
+        "rank_min_attainable_p": 0.25,
+        "null_ps": [
+          1.0,
+          0.75,
+          0.5,
+          0.25
+        ],
+        "anchor": "2021-04-18",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 116,
       "shapiro": {
         "W": 0.73839,
@@ -583,7 +651,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -7.8062,
           "p99": -5.7074
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -691,6 +760,38 @@ const DATA = /*__REPORT_DATA__*/{
     "G6_pc3": {
       "group": "G6",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 170,
+        "n_window_days": 10,
+        "n_background_days": 160,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.1246,
+        "p_window_block_bootstrap": 0.83058,
+        "p_window_phase_randomization": 0.98551,
+        "placebo_n": 32,
+        "placebo_n_lt05_block_bootstrap": 5,
+        "placebo_n_lt05_phase_randomization": 15,
+        "rank_p": 0.8,
+        "rank_n_fake_windows": 9,
+        "rank_min_attainable_p": 0.1,
+        "null_ps": [
+          0.9,
+          0.6,
+          0.5,
+          0.1,
+          0.3,
+          1.0,
+          0.4,
+          0.2,
+          0.7,
+          0.8
+        ],
+        "anchor": "2021-10-24",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 309,
       "shapiro": {
         "W": 0.647,
@@ -806,7 +907,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -12.4974,
           "p99": -10.4063
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -914,6 +1016,38 @@ const DATA = /*__REPORT_DATA__*/{
     "G6_pc4": {
       "group": "G6",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 170,
+        "n_window_days": 10,
+        "n_background_days": 160,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.7715,
+        "p_window_block_bootstrap": 0.56222,
+        "p_window_phase_randomization": 0.65167,
+        "placebo_n": 32,
+        "placebo_n_lt05_block_bootstrap": 5,
+        "placebo_n_lt05_phase_randomization": 9,
+        "rank_p": 0.9,
+        "rank_n_fake_windows": 9,
+        "rank_min_attainable_p": 0.1,
+        "null_ps": [
+          0.8,
+          0.2,
+          0.3,
+          0.1,
+          0.6,
+          1.0,
+          0.4,
+          0.5,
+          0.7,
+          0.9
+        ],
+        "anchor": "2021-10-24",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 309,
       "shapiro": {
         "W": 0.85028,
@@ -1029,7 +1163,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -4.5377,
           "p99": -3.7332
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -1137,6 +1272,39 @@ const DATA = /*__REPORT_DATA__*/{
     "G7_pc3": {
       "group": "G7",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 171,
+        "n_window_days": 22,
+        "n_background_days": 149,
+        "block_length_days": 3,
+        "obs_window_min_z": -8.8758,
+        "p_window_block_bootstrap": 0.13093,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 32,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 15,
+        "rank_p": 0.18182,
+        "rank_n_fake_windows": 10,
+        "rank_min_attainable_p": 0.09091,
+        "null_ps": [
+          0.54545,
+          0.09091,
+          0.90909,
+          0.27273,
+          0.81818,
+          1.0,
+          0.72727,
+          0.45455,
+          0.63636,
+          0.36364,
+          0.18182
+        ],
+        "anchor": "2022-01-03",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 310,
       "shapiro": {
         "W": 0.75281,
@@ -1252,7 +1420,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -7.8807,
           "p99": -6.9883
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -1360,6 +1529,39 @@ const DATA = /*__REPORT_DATA__*/{
     "G7_pc4": {
       "group": "G7",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 171,
+        "n_window_days": 22,
+        "n_background_days": 149,
+        "block_length_days": 3,
+        "obs_window_min_z": -6.5565,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 32,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 8,
+        "rank_p": 0.09091,
+        "rank_n_fake_windows": 10,
+        "rank_min_attainable_p": 0.09091,
+        "null_ps": [
+          0.90909,
+          0.18182,
+          0.63636,
+          0.27273,
+          0.45455,
+          1.0,
+          0.54545,
+          0.72727,
+          0.81818,
+          0.36364,
+          0.09091
+        ],
+        "anchor": "2022-01-03",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 310,
       "shapiro": {
         "W": 0.91205,
@@ -1475,7 +1677,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -4.3554,
           "p99": -2.6662
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -1583,6 +1786,38 @@ const DATA = /*__REPORT_DATA__*/{
     "G8_pc3": {
       "group": "G8",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 171,
+        "n_window_days": 15,
+        "n_background_days": 156,
+        "block_length_days": 3,
+        "obs_window_min_z": -6.142,
+        "p_window_block_bootstrap": 0.63218,
+        "p_window_phase_randomization": 0.15092,
+        "placebo_n": 31,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 17,
+        "rank_p": 0.7,
+        "rank_n_fake_windows": 9,
+        "rank_min_attainable_p": 0.1,
+        "null_ps": [
+          0.9,
+          0.5,
+          0.2,
+          0.1,
+          0.8,
+          1.0,
+          0.3,
+          0.6,
+          0.4,
+          0.7
+        ],
+        "anchor": "2022-03-23",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 310,
       "shapiro": {
         "W": 0.74524,
@@ -1698,7 +1933,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -9.8221,
           "p99": -8.8748
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -1806,6 +2042,38 @@ const DATA = /*__REPORT_DATA__*/{
     "G8_pc4": {
       "group": "G8",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 171,
+        "n_window_days": 15,
+        "n_background_days": 156,
+        "block_length_days": 3,
+        "obs_window_min_z": -3.5118,
+        "p_window_block_bootstrap": 0.53673,
+        "p_window_phase_randomization": 0.67066,
+        "placebo_n": 31,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 13,
+        "rank_p": 0.6,
+        "rank_n_fake_windows": 9,
+        "rank_min_attainable_p": 0.1,
+        "null_ps": [
+          1.0,
+          0.7,
+          0.2,
+          0.1,
+          0.8,
+          0.9,
+          0.3,
+          0.4,
+          0.5,
+          0.6
+        ],
+        "anchor": "2022-03-23",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 310,
       "shapiro": {
         "W": 0.81636,
@@ -1921,7 +2189,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -8.6714,
           "p99": -4.9355
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -2029,6 +2298,32 @@ const DATA = /*__REPORT_DATA__*/{
     "G9_pc3": {
       "group": "G9",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 54,
+        "n_window_days": 11,
+        "n_background_days": 43,
+        "block_length_days": 3,
+        "obs_window_min_z": -2.0577,
+        "p_window_block_bootstrap": 0.41679,
+        "p_window_phase_randomization": 0.84058,
+        "placebo_n": 5,
+        "placebo_n_lt05_block_bootstrap": 2,
+        "placebo_n_lt05_phase_randomization": 3,
+        "rank_p": 0.5,
+        "rank_n_fake_windows": 3,
+        "rank_min_attainable_p": 0.25,
+        "null_ps": [
+          0.75,
+          0.25,
+          1.0,
+          0.5
+        ],
+        "anchor": "2022-09-18",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 115,
       "shapiro": {
         "W": 0.64693,
@@ -2144,7 +2439,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -8.0269,
           "p99": -7.2477
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -2252,6 +2548,32 @@ const DATA = /*__REPORT_DATA__*/{
     "G9_pc4": {
       "group": "G9",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 54,
+        "n_window_days": 11,
+        "n_background_days": 43,
+        "block_length_days": 3,
+        "obs_window_min_z": -0.1529,
+        "p_window_block_bootstrap": 0.998,
+        "p_window_phase_randomization": 1.0,
+        "placebo_n": 5,
+        "placebo_n_lt05_block_bootstrap": 2,
+        "placebo_n_lt05_phase_randomization": 2,
+        "rank_p": 1.0,
+        "rank_n_fake_windows": 3,
+        "rank_min_attainable_p": 0.25,
+        "null_ps": [
+          0.5,
+          0.25,
+          0.75,
+          1.0
+        ],
+        "anchor": "2022-09-18",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 115,
       "shapiro": {
         "W": 0.62385,
@@ -2367,7 +2689,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -9.8359,
           "p99": -7.4903
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -2475,6 +2798,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G10_pc3": {
       "group": "G10",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 98,
+        "n_window_days": 13,
+        "n_background_days": 85,
+        "block_length_days": 3,
+        "obs_window_min_z": -5.4324,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 7,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 1,
+        "rank_p": 0.2,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          0.6,
+          0.8,
+          0.4,
+          1.0,
+          0.2
+        ],
+        "anchor": "2024-04-03",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 150,
       "shapiro": {
         "W": 0.95485,
@@ -2590,7 +2940,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -2.9695,
           "p99": -2.4074
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -2698,6 +3049,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G10_pc4": {
       "group": "G10",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 98,
+        "n_window_days": 13,
+        "n_background_days": 85,
+        "block_length_days": 3,
+        "obs_window_min_z": -5.612,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.01,
+        "placebo_n": 7,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.2,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          0.6,
+          0.8,
+          0.4,
+          1.0,
+          0.2
+        ],
+        "anchor": "2024-04-03",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 150,
       "shapiro": {
         "W": 0.75336,
@@ -2813,7 +3191,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -3.3413,
           "p99": -1.7879
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -2921,6 +3300,34 @@ const DATA = /*__REPORT_DATA__*/{
     "G11_pc3": {
       "group": "G11",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 57,
+        "n_window_days": 8,
+        "n_background_days": 49,
+        "block_length_days": 7,
+        "obs_window_min_z": -1.2023,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.48126,
+        "placebo_n": 12,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.16667,
+        "rank_n_fake_windows": 5,
+        "rank_min_attainable_p": 0.16667,
+        "null_ps": [
+          1.0,
+          0.83333,
+          0.66667,
+          0.5,
+          0.33333,
+          0.16667
+        ],
+        "anchor": "2025-01-21",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 186,
       "shapiro": {
         "W": 0.64557,
@@ -3036,7 +3443,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -0.7269,
           "p99": -0.6937
         },
-        "block_length_days": 22
+        "block_length_days": 22,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -3144,6 +3552,34 @@ const DATA = /*__REPORT_DATA__*/{
     "G11_pc4": {
       "group": "G11",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 57,
+        "n_window_days": 8,
+        "n_background_days": 49,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.0636,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.75062,
+        "placebo_n": 12,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.16667,
+        "rank_n_fake_windows": 5,
+        "rank_min_attainable_p": 0.16667,
+        "null_ps": [
+          1.0,
+          0.83333,
+          0.5,
+          0.66667,
+          0.33333,
+          0.16667
+        ],
+        "anchor": "2025-01-21",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 186,
       "shapiro": {
         "W": 0.49527,
@@ -3259,7 +3695,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -0.936,
           "p99": -0.7256
         },
-        "block_length_days": 8
+        "block_length_days": 8,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -3367,6 +3804,24 @@ const DATA = /*__REPORT_DATA__*/{
     "G12_pc3": {
       "group": "G12",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 43,
+        "n_window_days": 1,
+        "n_background_days": 42,
+        "obs_window_min_z": null,
+        "p_window_block_bootstrap": null,
+        "p_window_phase_randomization": null,
+        "placebo_n": 9,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 4,
+        "rank_p": null,
+        "rank_n_fake_windows": 0,
+        "anchor": "2025-06-11",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 116,
       "shapiro": {
         "W": 0.54257,
@@ -3482,7 +3937,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -7.9998,
           "p99": -5.4516
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -3590,6 +4046,24 @@ const DATA = /*__REPORT_DATA__*/{
     "G12_pc4": {
       "group": "G12",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 43,
+        "n_window_days": 1,
+        "n_background_days": 42,
+        "obs_window_min_z": null,
+        "p_window_block_bootstrap": null,
+        "p_window_phase_randomization": null,
+        "placebo_n": 9,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": null,
+        "rank_n_fake_windows": 0,
+        "anchor": "2025-06-11",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 116,
       "shapiro": {
         "W": 0.60002,
@@ -3705,7 +4179,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -7.9089,
           "p99": -4.4051
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -3813,6 +4288,31 @@ const DATA = /*__REPORT_DATA__*/{
     "G13_pc3": {
       "group": "G13",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 34,
+        "n_window_days": 7,
+        "n_background_days": 27,
+        "block_length_days": 3,
+        "obs_window_min_z": -5.3551,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 4,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.33333,
+        "rank_n_fake_windows": 2,
+        "rank_min_attainable_p": 0.33333,
+        "null_ps": [
+          1.0,
+          0.66667,
+          0.33333
+        ],
+        "anchor": "2026-05-01",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 115,
       "shapiro": {
         "W": 0.40588,
@@ -3928,7 +4428,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -9.0115,
           "p99": -6.6461
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -4036,6 +4537,31 @@ const DATA = /*__REPORT_DATA__*/{
     "G13_pc4": {
       "group": "G13",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 34,
+        "n_window_days": 7,
+        "n_background_days": 27,
+        "block_length_days": 3,
+        "obs_window_min_z": -2.3531,
+        "p_window_block_bootstrap": 0.42529,
+        "p_window_phase_randomization": 0.3988,
+        "placebo_n": 4,
+        "placebo_n_lt05_block_bootstrap": 1,
+        "placebo_n_lt05_phase_randomization": 1,
+        "rank_p": 0.66667,
+        "rank_n_fake_windows": 2,
+        "rank_min_attainable_p": 0.33333,
+        "null_ps": [
+          1.0,
+          0.33333,
+          0.66667
+        ],
+        "anchor": "2026-05-01",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 115,
       "shapiro": {
         "W": 0.48184,
@@ -4151,7 +4677,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -6.5757,
           "p99": -3.1651
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -4259,6 +4786,32 @@ const DATA = /*__REPORT_DATA__*/{
     "G19_pc3": {
       "group": "G19",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 61,
+        "n_window_days": 11,
+        "n_background_days": 50,
+        "block_length_days": 3,
+        "obs_window_min_z": -2.1972,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.03898,
+        "placebo_n": 4,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.25,
+        "rank_n_fake_windows": 3,
+        "rank_min_attainable_p": 0.25,
+        "null_ps": [
+          1.0,
+          0.5,
+          0.75,
+          0.25
+        ],
+        "anchor": "2024-08-16",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 115,
       "shapiro": {
         "W": 0.97391,
@@ -4374,7 +4927,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -2.2888,
           "p99": -2.0084
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -4482,6 +5036,32 @@ const DATA = /*__REPORT_DATA__*/{
     "G19_pc4": {
       "group": "G19",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 61,
+        "n_window_days": 11,
+        "n_background_days": 50,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.2631,
+        "p_window_block_bootstrap": 0.73013,
+        "p_window_phase_randomization": 0.98901,
+        "placebo_n": 4,
+        "placebo_n_lt05_block_bootstrap": 1,
+        "placebo_n_lt05_phase_randomization": 3,
+        "rank_p": 1.0,
+        "rank_n_fake_windows": 3,
+        "rank_min_attainable_p": 0.25,
+        "null_ps": [
+          0.25,
+          0.75,
+          0.5,
+          1.0
+        ],
+        "anchor": "2024-08-16",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 115,
       "shapiro": {
         "W": 0.85726,
@@ -4597,7 +5177,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -5.3916,
           "p99": -4.6929
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -4705,6 +5286,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G20_pc3": {
       "group": "G20",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 54,
+        "n_window_days": 19,
+        "n_background_days": 35,
+        "block_length_days": 3,
+        "obs_window_min_z": -12.9823,
+        "p_window_block_bootstrap": 0.69015,
+        "p_window_phase_randomization": 0.003,
+        "placebo_n": 6,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 4,
+        "rank_p": 0.6,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          1.0,
+          0.2,
+          0.8,
+          0.4,
+          0.6
+        ],
+        "anchor": "2025-12-27",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 119,
       "shapiro": {
         "W": 0.5967,
@@ -4820,7 +5428,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -12.7381,
           "p99": -11.225
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -4928,6 +5537,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G20_pc4": {
       "group": "G20",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 54,
+        "n_window_days": 19,
+        "n_background_days": 35,
+        "block_length_days": 3,
+        "obs_window_min_z": -15.4455,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 6,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 4,
+        "rank_p": 0.2,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          1.0,
+          0.4,
+          0.8,
+          0.6,
+          0.2
+        ],
+        "anchor": "2025-12-27",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 119,
       "shapiro": {
         "W": 0.58856,
@@ -5043,7 +5679,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -14.8697,
           "p99": -13.144
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -5151,6 +5788,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G23_pc3": {
       "group": "G23",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 108,
+        "n_window_days": 25,
+        "n_background_days": 83,
+        "block_length_days": 3,
+        "obs_window_min_z": -7.4844,
+        "p_window_block_bootstrap": 0.0005,
+        "p_window_phase_randomization": 0.0005,
+        "placebo_n": 8,
+        "placebo_n_lt05_block_bootstrap": 0,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.2,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          0.6,
+          0.8,
+          0.4,
+          1.0,
+          0.2
+        ],
+        "anchor": "2020-07-26",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 128,
       "shapiro": {
         "W": 0.90427,
@@ -5266,7 +5930,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -2.6123,
           "p99": -2.3573
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -5374,6 +6039,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G23_pc4": {
       "group": "G23",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 108,
+        "n_window_days": 25,
+        "n_background_days": 83,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.2478,
+        "p_window_block_bootstrap": 0.45077,
+        "p_window_phase_randomization": 0.95502,
+        "placebo_n": 8,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.6,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          0.8,
+          0.2,
+          1.0,
+          0.4,
+          0.6
+        ],
+        "anchor": "2020-07-26",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 128,
       "shapiro": {
         "W": 0.96531,
@@ -5489,7 +6181,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -1.2523,
           "p99": -1.1495
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -5597,6 +6290,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G24_pc3": {
       "group": "G24",
       "band": "pc3",
+      "pre_event_window": {
+        "n_days": 108,
+        "n_window_days": 30,
+        "n_background_days": 78,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.7004,
+        "p_window_block_bootstrap": 0.82059,
+        "p_window_phase_randomization": 0.96252,
+        "placebo_n": 7,
+        "placebo_n_lt05_block_bootstrap": 4,
+        "placebo_n_lt05_phase_randomization": 4,
+        "rank_p": 0.8,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          1.0,
+          0.6,
+          0.2,
+          0.4,
+          0.8
+        ],
+        "anchor": "2020-06-14",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 128,
       "shapiro": {
         "W": 0.90427,
@@ -5712,7 +6432,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -2.6123,
           "p99": -2.3573
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -5820,6 +6541,33 @@ const DATA = /*__REPORT_DATA__*/{
     "G24_pc4": {
       "group": "G24",
       "band": "pc4",
+      "pre_event_window": {
+        "n_days": 108,
+        "n_window_days": 30,
+        "n_background_days": 78,
+        "block_length_days": 3,
+        "obs_window_min_z": -1.4666,
+        "p_window_block_bootstrap": 0.71464,
+        "p_window_phase_randomization": 0.90505,
+        "placebo_n": 7,
+        "placebo_n_lt05_block_bootstrap": 1,
+        "placebo_n_lt05_phase_randomization": 0,
+        "rank_p": 0.6,
+        "rank_n_fake_windows": 4,
+        "rank_min_attainable_p": 0.2,
+        "null_ps": [
+          0.2,
+          1.0,
+          0.8,
+          0.4,
+          0.6
+        ],
+        "anchor": "2020-06-14",
+        "window_days": 30,
+        "storm_days_excluded": true,
+        "null": "leave-window-out (background days only)",
+        "tail": "lower (most negative z)"
+      },
       "n_days": 128,
       "shapiro": {
         "W": 0.96531,
@@ -5935,7 +6683,8 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -1.2523,
           "p99": -1.1495
         },
-        "block_length_days": 3
+        "block_length_days": 3,
+        "structural_floor_note": "whole-series block bootstrap resamples the observed series itself, so the tested extreme leaks into its own null: p has a structural floor (~0.2-0.4 here). Not evidence; see pre_event_window."
       },
       "phase_randomization": {
         "method": "phase_randomization",
@@ -6038,6 +6787,239 @@ const DATA = /*__REPORT_DATA__*/{
           "p95": -1.9349,
           "p99": -1.7385
         }
+      }
+    }
+  },
+  "window_test": {
+    "window_days": 30,
+    "primary": {
+      "band": "pc3",
+      "test": "rank test, Fisher across all groups"
+    },
+    "rank_test": {
+      "pc3": {
+        "all_groups": {
+          "n_groups": 12,
+          "fisher_x": 25.187,
+          "p": 0.01555,
+          "n_rank_p_lt_05": 0,
+          "n_rank_p_lt_10": 0,
+          "groups": [
+            "G5",
+            "G6",
+            "G7",
+            "G8",
+            "G9",
+            "G10",
+            "G11",
+            "G13",
+            "G19",
+            "G20",
+            "G23",
+            "G24"
+          ]
+        },
+        "one_per_family": {
+          "n_groups": 9,
+          "fisher_x": 20.885,
+          "p": 0.0045,
+          "n_rank_p_lt_05": 0,
+          "n_rank_p_lt_10": 0,
+          "groups": [
+            "G5",
+            "G8",
+            "G9",
+            "G10",
+            "G11",
+            "G13",
+            "G19",
+            "G20",
+            "G23"
+          ]
+        }
+      },
+      "pc4": {
+        "all_groups": {
+          "n_groups": 12,
+          "fisher_x": 21.676,
+          "p": 0.0893,
+          "n_rank_p_lt_05": 0,
+          "n_rank_p_lt_10": 1,
+          "groups": [
+            "G5",
+            "G6",
+            "G7",
+            "G8",
+            "G9",
+            "G10",
+            "G11",
+            "G13",
+            "G19",
+            "G20",
+            "G23",
+            "G24"
+          ]
+        },
+        "one_per_family": {
+          "n_groups": 9,
+          "fisher_x": 15.648,
+          "p": 0.11754,
+          "n_rank_p_lt_05": 0,
+          "n_rank_p_lt_10": 0,
+          "groups": [
+            "G5",
+            "G8",
+            "G9",
+            "G10",
+            "G11",
+            "G13",
+            "G19",
+            "G20",
+            "G23"
+          ]
+        }
+      }
+    },
+    "per_group": {
+      "G4_pc3": {
+        "rank_p": null,
+        "n_blocks": 0,
+        "obs_window_min_z": null
+      },
+      "G4_pc4": {
+        "rank_p": null,
+        "n_blocks": 0,
+        "obs_window_min_z": null
+      },
+      "G5_pc3": {
+        "rank_p": 0.25,
+        "n_blocks": 4,
+        "obs_window_min_z": -9.9689
+      },
+      "G5_pc4": {
+        "rank_p": 0.25,
+        "n_blocks": 4,
+        "obs_window_min_z": -32.3447
+      },
+      "G6_pc3": {
+        "rank_p": 0.8,
+        "n_blocks": 10,
+        "obs_window_min_z": -1.1246
+      },
+      "G6_pc4": {
+        "rank_p": 0.9,
+        "n_blocks": 10,
+        "obs_window_min_z": -1.7715
+      },
+      "G7_pc3": {
+        "rank_p": 0.18182,
+        "n_blocks": 11,
+        "obs_window_min_z": -8.8758
+      },
+      "G7_pc4": {
+        "rank_p": 0.09091,
+        "n_blocks": 11,
+        "obs_window_min_z": -6.5565
+      },
+      "G8_pc3": {
+        "rank_p": 0.7,
+        "n_blocks": 10,
+        "obs_window_min_z": -6.142
+      },
+      "G8_pc4": {
+        "rank_p": 0.6,
+        "n_blocks": 10,
+        "obs_window_min_z": -3.5118
+      },
+      "G9_pc3": {
+        "rank_p": 0.5,
+        "n_blocks": 4,
+        "obs_window_min_z": -2.0577
+      },
+      "G9_pc4": {
+        "rank_p": 1.0,
+        "n_blocks": 4,
+        "obs_window_min_z": -0.1529
+      },
+      "G10_pc3": {
+        "rank_p": 0.2,
+        "n_blocks": 5,
+        "obs_window_min_z": -5.4324
+      },
+      "G10_pc4": {
+        "rank_p": 0.2,
+        "n_blocks": 5,
+        "obs_window_min_z": -5.612
+      },
+      "G11_pc3": {
+        "rank_p": 0.16667,
+        "n_blocks": 6,
+        "obs_window_min_z": -1.2023
+      },
+      "G11_pc4": {
+        "rank_p": 0.16667,
+        "n_blocks": 6,
+        "obs_window_min_z": -1.0636
+      },
+      "G12_pc3": {
+        "rank_p": null,
+        "n_blocks": 0,
+        "obs_window_min_z": null
+      },
+      "G12_pc4": {
+        "rank_p": null,
+        "n_blocks": 0,
+        "obs_window_min_z": null
+      },
+      "G13_pc3": {
+        "rank_p": 0.33333,
+        "n_blocks": 3,
+        "obs_window_min_z": -5.3551
+      },
+      "G13_pc4": {
+        "rank_p": 0.66667,
+        "n_blocks": 3,
+        "obs_window_min_z": -2.3531
+      },
+      "G19_pc3": {
+        "rank_p": 0.25,
+        "n_blocks": 4,
+        "obs_window_min_z": -2.1972
+      },
+      "G19_pc4": {
+        "rank_p": 1.0,
+        "n_blocks": 4,
+        "obs_window_min_z": -1.2631
+      },
+      "G20_pc3": {
+        "rank_p": 0.6,
+        "n_blocks": 5,
+        "obs_window_min_z": -12.9823
+      },
+      "G20_pc4": {
+        "rank_p": 0.2,
+        "n_blocks": 5,
+        "obs_window_min_z": -15.4455
+      },
+      "G23_pc3": {
+        "rank_p": 0.2,
+        "n_blocks": 5,
+        "obs_window_min_z": -7.4844
+      },
+      "G23_pc4": {
+        "rank_p": 0.6,
+        "n_blocks": 5,
+        "obs_window_min_z": -1.2478
+      },
+      "G24_pc3": {
+        "rank_p": 0.8,
+        "n_blocks": 5,
+        "obs_window_min_z": -1.7004
+      },
+      "G24_pc4": {
+        "rank_p": 0.6,
+        "n_blocks": 5,
+        "obs_window_min_z": -1.4666
       }
     }
   },
@@ -15268,6 +16250,17 @@ const DATA = /*__REPORT_DATA__*/{
     }
   }
 };
+// Opened as the raw template (no data embedded): say so instead of leaving every chart blank.
+if (!DATA) {
+  const note = document.createElement('div');
+  note.className = 'gm-callout';
+  note.innerHTML = '<b>這是模板，沒有資料，所以圖表和表格都是空的。</b>'
+    + '請開 <code>output/geomag_precursor_validation_report.html</code>，'
+    + '或執行 <code>scripts/prepare_validation_report_data.py</code> → <code>scripts/build_validation_report.py</code> 重新產生。';
+  const title = document.querySelector('.gm-title');
+  title.parentNode.insertBefore(note, title.nextSibling);
+  throw new Error('report_template_validation.html opened without embedded data');
+}
 (function(){
   const root = document.querySelector('.gm-root');
   const cvarRef = (name) => 'var(' + name + ')';
@@ -15279,17 +16272,16 @@ const DATA = /*__REPORT_DATA__*/{
     const groups = DATA.meta.ulf_groups;
     const surKeys = Object.keys(DATA.surrogate).filter(k => !DATA.surrogate[k].error);
     const shapiroRejects = surKeys.filter(k => DATA.surrogate[k].shapiro.rejects_normality_p05).length;
-    const blockPs = surKeys.map(k => DATA.surrogate[k].block_bootstrap.p_value_vs_fixed_threshold);
-    const phasePs = surKeys.map(k => DATA.surrogate[k].phase_randomization.p_value_vs_fixed_threshold);
+    const rank = DATA.window_test ? DATA.window_test.rank_test : null;
     const bt55 = DATA.backtest['m5.5'];
     const recall14_pc3 = bt55 ? bt55.pc3.windows['14'].recall_events_with_hit : null;
     const far14_pc3 = bt55 ? bt55.pc3.windows['14'].false_alarm_rate_per_non_precursor_day : null;
 
     const tiles = [
-      ['分析組別數', groups.length, 'G4/G5/G6_G7_G8/G9/G10/G11/G12/G13/G19/G20'],
+      ['分析組別數', groups.length, groups.join('/')],
       ['常態性遭拒絕的序列', shapiroRejects + ' / ' + surKeys.length, 'Shapiro-Wilk p<0.05'],
-      ['block bootstrap p(≤-4.1) 中位數', fmtNum([...blockPs].sort((a,b)=>a-b)[Math.floor(blockPs.length/2)], 3), '跨 20 組×頻段'],
-      ['相位隨機化 p(≤-4.1) 中位數', fmtNum([...phasePs].sort((a,b)=>a-b)[Math.floor(phasePs.length/2)], 3), '跨 20 組×頻段'],
+      ['Pc3 震前排名檢定（主要）', rank ? 'p = ' + fmtNum(rank.pc3.all_groups.p) : '—', rank ? rank.pc3.all_groups.n_groups + ' 組 Fisher 合併；單組 p<0.05：' + rank.pc3.all_groups.n_rank_p_lt_05 + ' 組' : ''],
+      ['Pc4 震前排名檢定', rank ? 'p = ' + fmtNum(rank.pc4.all_groups.p) : '—', rank ? rank.pc4.all_groups.n_groups + ' 組 Fisher 合併（探索性）' : ''],
       ['M≥6.0 疊加事件數', DATA.meta.catalog_counts['m6.0'].n_declustered, '去叢集後獨立地震（強震集）'],
       ['M≥5.5 疊加事件數', DATA.meta.catalog_counts['m5.5'].n_declustered, '去叢集後獨立地震（主要）'],
       ['M≥5.0 疊加事件數', DATA.meta.catalog_counts['m5.0'].n_declustered, '去叢集後獨立地震（全集）'],
@@ -15369,14 +16361,39 @@ const DATA = /*__REPORT_DATA__*/{
 
     document.getElementById('surrogate-narrative').innerHTML = `
       <p><b>block bootstrap：</b>p(代理序列 min(z) ≤ 觀測值) = ${fmtNum(d.block_bootstrap.p_value_vs_observed_extreme)}，
-      p(代理序列中出現任一天 z≤-4.1) = ${fmtNum(d.block_bootstrap.p_value_vs_fixed_threshold)}——兩者都不小，
-      代表就算把序列打亂成各個區塊隨機排列（但每個區塊裡的極端值原封不動保留），min(z) 這麼負在完全跟地震無關的重排版本裡也很常見。
-      這是因為 block bootstrap 保留了原始序列的重尾邊際分布，只打亂區塊的時間位置——「整條序列裡總有一天特別極端」這件事本身，在重尾分布下並不罕見，這正是報告文字自己提醒的「不能套用常態直覺」在起作用。</p>
+      p(代理序列中出現任一天 z≤-4.1) = ${fmtNum(d.block_bootstrap.p_value_vs_fixed_threshold)}。
+      這兩個 p 值不小，但<b>不代表這種下沉在無關資料裡常見</b>：代理序列是由這條觀測序列自己的區塊重組的，觀測到的那個極值本身也會被抽進虛無分布，等於拿極值跟自己比。
+      注入訊號的自我測試顯示，在這個序列長度下就算注入 100 倍標準差的尖峰，p 值仍在 0.2–0.4，所以這個檢定結構上不可能顯著，它的結果沒有資訊。
+      （本報告早期版本把它解讀成「重尾分布下極端值本來就常見」，這個解讀是錯的，2026-09-25 更正。）</p>
       <p><b>相位隨機化：</b>p(≤觀測值) = ${fmtNum(d.phase_randomization.p_value_vs_observed_extreme)}，
       p(≤-4.1) = ${fmtNum(d.phase_randomization.p_value_vs_fixed_threshold)}——遠比 block bootstrap 顯著。
       但這很大程度是相位隨機化本身的性質造成的：保留頻譜（自相關結構）、重新合成振幅後，代理序列的邊際分布會趨近常態、尾部比原始重尾資料薄很多，所以更容易把任何一個重尾觀測值判為「顯著」。
-      兩種方法對同一個觀測值給出矛盾結論，說明「這一天多異常」高度依賴你選擇的虛無假設，值得在解讀 G10 的 3/30 時特別謹慎。</p>
+      兩種整條序列的做法一個結構上不可能顯著、一個偏寬鬆，所以都不能拿來判斷 G10 的 3/30 有多異常。改用排名檢定後，G10 Pc3 的震前窗口 p = ${d.pre_event_window && d.pre_event_window.rank_p!=null ? fmtNum(d.pre_event_window.rank_p) + '（' + d.pre_event_window.null_ps.length + ' 個區塊，最小可能 p = ' + fmtNum(1/d.pre_event_window.null_ps.length) + '）' : '—'}，單組不顯著。</p>
     `;
+  })();
+
+  // ---------- rank test (primary pre-event result since 2026-09-25) ----------
+  (function buildRankTables(){
+    const w = DATA.window_test;
+    if(!w){ document.getElementById('rank-caption').textContent = '（找不到 surrogate_test/window_summary.json，請先跑 method_comparison.py）'; return; }
+    const labels = {all_groups: '全部組別', one_per_family: '共用資料的家族各留一組'};
+    let rows = '';
+    ['pc3','pc4'].forEach(band => ['all_groups','one_per_family'].forEach(sub => {
+      const r = w.rank_test[band][sub];
+      const primary = band === w.primary.band && sub === 'all_groups';
+      rows += `<tr${primary ? ' class="gm-row-flag"' : ''}><td>${band.toUpperCase()}${primary ? '（主要）' : ''}</td><td>${labels[sub]}</td>
+        <td>${r.n_groups}</td><td>${r.n_rank_p_lt_05}</td><td>${fmtNum(r.fisher_x, 2)}</td><td>${fmtNum(r.p, 4)}</td></tr>`;
+    }));
+    document.getElementById('rank-summary-table').innerHTML = `
+      <thead><tr><th>頻段</th><th>組別</th><th>組數</th><th>單組 p&lt;0.05</th><th>Fisher X</th><th>合併 p</th></tr></thead><tbody>${rows}</tbody>`;
+    const groups = w.rank_test.pc3.all_groups.groups;
+    const cell = (k) => { const g = w.per_group[k]; return !g || g.rank_p==null ? '<td>—</td>' : `<td>${fmtNum(g.rank_p)}（${g.n_blocks} 塊）</td>`; };
+    document.getElementById('rank-group-table').innerHTML = `
+      <thead><tr><th>組</th><th>Pc3 排名 p（區塊數）</th><th>Pc4 排名 p（區塊數）</th></tr></thead><tbody>` +
+      groups.map(g => `<tr><td>${g}</td>${cell(g+'_pc3')}${cell(g+'_pc4')}</tr>`).join('') + '</tbody>';
+    document.getElementById('rank-caption').innerHTML =
+      `震前 ${w.window_days} 天窗口的最低 z（只用非磁暴日）。沒有地震效應時，每個區塊一樣可能最低，所以單組 p 是準確的機率，但最小只能到 1 ÷ 區塊數。` +
+      `事先指定的主要檢定是 Pc3、全部組別；其餘列為探索性。解讀：沒有任何一組單獨顯著，但震前窗口普遍排在偏低的位置，屬於微弱、方向一致的線索，不是定論。`;
   })();
 
   // ---------- surrogate summary table ----------
