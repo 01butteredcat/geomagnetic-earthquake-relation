@@ -391,6 +391,10 @@ methods:
     notes:
       - >-
         2026-09-24 起另加「震前窗口版」：主震前 30 天內最負的 z，以窗口外背景期的中位數／MAD 標準化，虛無分布只由背景期重抽樣（留一窗），只用非磁暴日，並以不重疊的假主震日做安慰劑校準；跨組以每組安慰劑比例（向合併比例收縮）做 Poisson-二項檢定。舊版整條序列結果保留供驗證報告使用。
+      - >-
+        2026-09-25 起主要結果改用排名檢定：把序列切成對齊真窗口、互不重疊的 30 天區塊，看真窗口最低值的排名，
+        跨組以 Fisher 合併、虛無分布由每組隨機挑一個區塊模擬。原因是留一窗的區塊拔靴只能重組背景期已有的數值，
+        窗口最小值低於背景最小值時 p 固定落在下限（G11 Pc3 的 z = −1.2 也得到 0.0005）。這是前兆線事先指定的主要檢定（Pc3、全部組別）。
     code:
       - {file: scripts/surrogate_test.py, lines: "102-124", symbol: null_min_z}
 
@@ -667,6 +671,39 @@ methods:
       - {file: scripts/seismometer_comparison.py, lines: "684-700", symbol: geomag_noise_ratio}
       - {file: scripts/coseismic_dose_response.py, lines: "78-94", symbol: within_group_permutation_test}
 
+  F4:
+    name: 起始時間走時檢定（近站 vs 遠站異常起始時間）
+    group: F. 地震對照驗證
+    purpose: >-
+      外部磁擾在全台幾乎同時出現，震動造成的儀器雜訊則隨震波傳播、越遠越晚。偵測每站地磁 1 Hz 雜訊的起始時間，
+      看它是否跟著震源距離變化；不需要地震儀，也不需要標籤。
+    formula:
+      - |-
+        \sigma = 1.4826\,\operatorname{MAD}\bigl(\Delta B_{[-660,\,-60]\,\text{s}}\bigr), \qquad t_{\text{on}} = \min\bigl\{t \in [-60,\,180]\,\text{s} : |\Delta B_t| > 4\sigma,\ \textstyle\sum_{k=0}^{4} \mathbb{1}[|\Delta B_{t+k}| > 4\sigma] \ge 3\bigr\}
+      - |-
+        W(R) = \bigl[R/V_P - 5,\ R/V_S + 30\bigr]\,\text{s}, \qquad N_{\text{obs}} = \sum_i \mathbb{1}[t_{\text{on},i} \in W(R_i)] \ \text{vs.}\ \sum_i \operatorname{Bernoulli}(q_i)
+    where: >-
+      $R$ 為震源距離，$V_P = 6$、$V_S = 3.5$ km/s；$q_i$ 為同一站在 200 個隨機參考時刻的雜訊觸發落在同一 $W(R_i)$ 內的比例。
+      另做事件內置中的 Theil–Sen 斜率，p 值由只在同一事件內打亂起始時間 2000 次得到。
+    hypotheses:
+      h0: >-
+        起始時間和震波到時無關：落在到時窗內的比例不高於測站自身雜訊，斜率 ≤ 0。
+      h1: >-
+        起始時間跟著震波走（單尾），斜率約 $1/V_S$～$1/V_P$；外部磁擾則應為斜率約 0。
+    consts:
+      - {name: K_SIGMA, file: scripts/coseismic_onset_moveout.py}
+      - {name: SEARCH_LAGS, file: scripts/coseismic_onset_moveout.py}
+      - {name: ARRIVAL_PAD_SEC, file: scripts/coseismic_onset_moveout.py}
+      - {name: N_NULL, file: scripts/coseismic_onset_moveout.py}
+    pros:
+      - 全部事件、全部測站都能用；每站用自己的空值觸發分布校正，雜訊站不會製造假的到時一致。
+    cons:
+      - 起始時間偵測約有 5 s 延遲；xcg 等雜訊站在隨機時刻約 80% 會觸發；多數事件只有 1–2 站觸發，逐事件斜率常無法估計。
+    code:
+      - {file: scripts/coseismic_onset_moveout.py, lines: "118-148", symbol: detect_onset}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "281-303", symbol: pooled_moveout}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "306-317", symbol: arrival_window_test}
+
 # ---------------------------------------------------------------------------
 # Pipeline 步驟
 # ---------------------------------------------------------------------------
@@ -940,6 +977,19 @@ steps:
     outputs: [data/interim/coseismic_dose_response/per_event.csv, summary.json, summary.md]
     methods: [F3]
     after: [seismometer_comparison]
+
+  - id: coseismic_onset_moveout
+    lane: seismo
+    kind: stat
+    title: 起始時間走時檢定（近站 vs 遠站）
+    scripts: [coseismic_onset_moveout.py]
+    summary: >-
+      每起事件、每個測站偵測地磁 1 Hz 雜訊的起始時間，並以同站 200 個隨機參考時刻校正誤觸發；檢定起始時間是否落在
+      P～S 波到時窗內、是否隨震源距離延遲。M≥6 與 M<6 分開報告，另與共站地震儀的震動起始時間比對。
+    inputs: [原始 1Hz 地磁日檔, comparison_summary.csv]
+    outputs: [data/interim/coseismic_onset_moveout/onsets.csv, moveout_per_event.csv, summary.json, travel_time.png]
+    methods: [F4]
+    after: [raw, seismometer_comparison]
 
   - id: coseismic_joint_analysis
     lane: seismo

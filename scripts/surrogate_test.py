@@ -139,6 +139,7 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
                                 rng_w, tail="lower")
     pre_event = {k: v for k, v in win_res.items() if "whole" not in k}
     pre_event.update(mc.placebo_counts(series, window, rng_w, tail="lower"))
+    pre_event.update(mc.rank_window_test(series, window, tail="lower"))
     pre_event.update({"anchor": cfg.anchor_event.date, "window_days": mc.PRE_WINDOW_DAYS,
                       "storm_days_excluded": True,
                       "null": "leave-window-out (background days only)", "tail": "lower (most negative z)"})
@@ -211,10 +212,36 @@ def main():
         print(f"wrote {out_dir / 'window_summary.md'}", file=sys.stderr)
 
 
+# Pre-specified 2026-09-25, before looking at the rank-test numbers: the primary
+# pre-event test is PRIMARY_BAND + rank test + all groups; everything else is
+# exploratory. Sensitivity (S3): groups sharing a raw-data folder are not
+# independent, so keep only the largest-magnitude anchor per folder family.
+PRIMARY_BAND = "pc3"
+FAMILY_DROP = ("G6", "G7", "G24")  # keep G8 (ML6.7) of G6/G7/G8 and G23 (ML6.24) of G23/G24
+
+
+def rank_summary(results: list[dict], rng: np.random.Generator) -> dict:
+    out = {}
+    for band in BANDS:
+        rows = [(r["group"], r["pre_event_window"]) for r in results
+                if r.get("band") == band and r.get("pre_event_window", {}).get("rank_p") is not None]
+        entry = {}
+        for name, keep in (("all_groups", lambda g: True), ("one_per_family", lambda g: g not in FAMILY_DROP)):
+            sel = [(g, pe) for g, pe in rows if keep(g)]
+            entry[name] = {**mc.fisher_across_groups([pe["rank_p"] for _, pe in sel],
+                                                     [pe["null_ps"] for _, pe in sel], rng),
+                           "groups": [g for g, _ in sel]}
+        out[band] = entry
+    return out
+
+
 def window_summary(results: list[dict]) -> dict:
-    """Per band x surrogate: groups with pre-event p < 0.05, the pooled placebo
-    rate, and a binomial test of the former against the latter."""
-    out: dict = {"window_days": mc.PRE_WINDOW_DAYS, "tail": "lower", "bands": {}}
+    """Primary: rank_summary (rank test per group, Fisher across groups).
+    Superseded but kept for comparison: per band x surrogate, groups with
+    pre-event p < 0.05 against the placebo rate."""
+    out: dict = {"window_days": mc.PRE_WINDOW_DAYS, "tail": "lower",
+                 "primary": {"band": PRIMARY_BAND, "test": "rank test, Fisher across all groups"},
+                 "rank_test": rank_summary(results, np.random.default_rng(SEED)), "bands": {}}
     for band in BANDS:
         rows = [r["pre_event_window"] for r in results if r.get("band") == band and "pre_event_window" in r]
         entry = {}
@@ -240,7 +267,23 @@ def window_summary(results: list[dict]) -> dict:
 
 
 def render_window_summary(results: list[dict], summ: dict) -> str:
-    L = ["# ULF 替代資料檢定：震前窗口版（留一窗＋安慰劑校準）", "",
+    L = ["# ULF 替代資料檢定：震前窗口版", "",
+         "## 主要結果：排名檢定（2026-09-25 起）", "",
+         "每組把序列切成不重疊的 30 天區塊（對齊真窗口），看真窗口的最低值在所有區塊中排第幾：p =（1 + 比它更低的假區塊數）÷（區塊總數）。"
+         "沒有地震效應時，每個區塊一樣可能最低，所以這個 p 是準確的；代價是短序列的單組 p 無法小於 1 ÷ 區塊數。"
+         "跨組用 Fisher 合併（−2 Σ ln p），虛無分布由「每組隨機挑一個區塊當真窗口」模擬 20000 次。",
+         f"事先指定的主要檢定：{summ['primary']['band']}、全部組別。其餘都是探索性結果。"
+         "敏感度：共用原始資料的家族各只留規模最大的一組（G6/G7/G8 留 G8，G23/G24 留 G23）。", "",
+         "| 頻帶 | 組別 | 組數 | 單組 p<0.05 | 單組 p<0.10 | Fisher X | 合併 p |", "|---|---|---|---|---|---|---|"]
+    for band, e in summ["rank_test"].items():
+        for name, v in e.items():
+            label = "全部" if name == "all_groups" else "每家族一組"
+            star = "（主要）" if band == summ["primary"]["band"] and name == "all_groups" else ""
+            L.append(f"| {band}{star} | {label} | {v['n_groups']} | {v['n_rank_p_lt_05']} | {v['n_rank_p_lt_10']} "
+                     f"| {v['fisher_x']} | {v['p']} |")
+    L += ["", "## 舊版（已被排名檢定取代，保留比較）：留一窗＋安慰劑校準", "",
+         "留一窗的區塊拔靴只能重組背景期已有的數值：震前窗口最小值只要低於背景期最小值，p 就固定是下限 0.0005，"
+         "不管低多少（例如 G11 Pc3 的 z = −1.2）。下表的 p 值因此偏小，不能當成證據。", "",
          f"統計量：主震前 {summ['window_days']} 天內最負的 z（單尾，檢定「震前下凹」）。"
          "z 以震前窗口以外的背景期中位數／MAD 標準化；虛無分布只由背景期重抽樣（區塊拔靴、相位隨機化各 2000 組）。",
          "只用非磁暴日（磁暴與恢復期日排除，與夜間殘差、日變幅比值相同）。",
@@ -256,19 +299,21 @@ def render_window_summary(results: list[dict], summ: dict) -> str:
             L.append(f"| {band} | {sur} | {v['n_p_lt_05']}/{v['n_groups']} | {rate} | {v['binom_p_vs_placebo_rate']} "
                      f"| {v['mean_per_group_placebo_rate']} | {v['poisson_binomial_p_vs_own_placebo']} |")
     L += ["", "## 各組結果", "",
-          "| 組 | 頻帶 | 震前最低 z | p（區塊拔靴） | p（相位隨機化） | 窗口／背景天數 | 安慰劑窗數 | 舊版整條序列 p（拔靴／相位） |",
-          "|---|---|---|---|---|---|---|---|"]
+          "| 組 | 頻帶 | 震前最低 z | 排名 p（區塊數） | p（區塊拔靴，舊） | p（相位隨機化，舊） | 窗口／背景天數 | 安慰劑窗數 | 整條序列 p（拔靴／相位，舊） |",
+          "|---|---|---|---|---|---|---|---|---|"]
     for r in results:
         if "pre_event_window" not in r:
             continue
         pe = r["pre_event_window"]
-        L.append(f"| {r['group']} | {r['band']} | {pe.get('obs_window_min_z')} | {pe.get('p_window_block_bootstrap')} "
+        n_blocks = pe.get("rank_n_fake_windows", 0) + 1 if pe.get("rank_p") is not None else "—"
+        L.append(f"| {r['group']} | {r['band']} | {pe.get('obs_window_min_z')} | {pe.get('rank_p')}（{n_blocks}） "
+                 f"| {pe.get('p_window_block_bootstrap')} "
                  f"| {pe.get('p_window_phase_randomization')} | {pe['n_window_days']}／{pe.get('n_background_days')} "
                  f"| {pe['placebo_n']} | {r['block_bootstrap']['p_value_vs_observed_extreme']}／"
                  f"{r['phase_randomization']['p_value_vs_observed_extreme']} |")
     L += ["", "## 限制", "",
-          "- 4 個組合（2 頻帶 × 2 替代序列）同時檢定，未做多重比較校正。",
-          "- 留一窗虛無分布在安慰劑窗口上明顯偏寬鬆；短序列組只有約 5 個安慰劑窗口，各組比例的估計很粗。",
+          "- 主要檢定只有 1 個（Pc3、全部組別），不需要校正；其餘組合是探索性結果，若要一起看，應以 Bonferroni 調整。",
+          "- 排名檢定假設不同 30 天區塊可以互換：若序列有長期漂移，最低值會偏向序列兩端，而真窗口多半在中後段，結果會偏保守。",
           "- G6/G7/G8、G23/G24 共用原始資料，不是完全獨立的樣本。",
           "- 震前窗口與背景期的磁暴比例不同時，排除磁暴日後可用天數也不同，窗口內可能只剩少數幾天。", ""]
     return "\n".join(L) + "\n"

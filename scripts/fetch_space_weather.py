@@ -145,9 +145,20 @@ def internal_proxy_storm_days(cfg) -> pd.DataFrame:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--group", required=True)
+    ap.add_argument("--check-cache", action="store_true",
+                    help="exit 0 if storm_days.csv is high-confidence AND covers the folder's whole date range, else 1")
     args = ap.parse_args()
     cfg = load_group_config(args.group)
     start, end = _group_date_range(cfg)
+    if args.check_cache:
+        # A cache built before the folder's data was extended (G6/G7/G8, G17 until 2026-09-25) still
+        # says "high" but leaves later events without a storm flag, so coverage is checked too.
+        summary_path = cfg.interim_dir / "storm_days_summary.json"
+        ok = (cfg.interim_dir / "storm_days.csv").exists() and summary_path.exists()
+        if ok:
+            summary = json.loads(summary_path.read_text())
+            ok = summary.get("confidence", "").startswith("high") and summary["date_range"] == [start, end]
+        sys.exit(0 if ok else 1)
     print(f"[{args.group}] fetching space weather for {start}..{end}", file=sys.stderr)
 
     kp_df = fetch_kp(start, end)

@@ -274,6 +274,81 @@ def placebo_counts(s: pd.Series, real_window: set[str], rng: np.random.Generator
     return {"placebo_n": n, **{f"placebo_n_lt05_{sur}": k for sur, k in hits.items()}}
 
 
+def _window_extreme(values: np.ndarray, center: float, tail: str) -> float:
+    """Larger = more extreme: -min for the lower tail, max|x - center| for two."""
+    return float(-values.min()) if tail == "lower" else float(np.abs(values - center).max())
+
+
+def rank_window_test(s: pd.Series, real_window: set[str], tail: str = "lower") -> dict:
+    """Rank the real pre-event window's extreme among the other PRE_WINDOW_DAYS
+    blocks of the same series, tiled back and forward from the real window so no
+    two blocks overlap (each needs >= MIN_WINDOW_DAYS clean days). Under H0 the
+    blocks are exchangeable, so p = (1 + #{fake >= obs}) / (n_fake + 1) is exact
+    up to the day-to-day correlation across block edges.
+
+    Replaces (B)'s resampling p-value as the primary pre-event test (2026-09-25):
+    block bootstrap can only reuse background values, so whenever the window's
+    minimum is below the background minimum (G11 pc3: z = -1.2 vs -0.73) its p
+    sits at the floor 1/(N+1) however small the gap -- the chance of that under
+    H0 is about w/(w+n), not 0.0005. Sliding (overlapping) fake windows don't fix
+    it either: one low day then sits in up to 30 of them, so the real window
+    ranks first far more often than 1/(n+1) (14 % at nominal 5 % in
+    rank_self_test before the switch to tiling). Honest cost: a 150-day series
+    has ~4 fake blocks, so no single group can go below p = 0.2; significance
+    has to come from combining groups (fisher_across_groups).
+
+    `null_ps` is every block's p against all the others (real block included):
+    the exact per-group null distribution fisher_across_groups() draws from."""
+    dates = pd.to_datetime(s.index)
+    values = s.to_numpy(dtype=float)
+    idx = s.index.to_numpy()
+    center = float(np.median(values))
+
+    def stat(win: set[str]) -> float | None:
+        v = values[np.isin(idx, list(win))]
+        return _window_extreme(v, center, tail) if len(v) >= MIN_WINDOW_DAYS else None
+
+    obs = stat(real_window)
+    if obs is None:
+        return {"rank_p": None, "rank_n_fake_windows": 0}
+    anchor = pd.to_datetime(max(real_window)) + pd.Timedelta(days=1)
+    step = pd.Timedelta(days=PRE_WINDOW_DAYS)
+    fake = []
+    for direction in (-1, 1):
+        k = 1
+        while True:
+            a = anchor + direction * k * step
+            if a - step > dates.max() or a <= dates.min():
+                break
+            v = stat(set(pre_event_window(a, PRE_WINDOW_DAYS)))
+            if v is not None:
+                fake.append(v)
+            k += 1
+    if not fake:
+        return {"rank_p": None, "rank_n_fake_windows": 0}
+    everything = np.append(np.array(fake), obs)
+    all_ps = [(1 + np.sum(np.delete(everything, j) >= everything[j])) / len(everything) for j in range(len(everything))]
+    return {"rank_p": round(float(all_ps[-1]), 5),
+            "rank_n_fake_windows": len(fake),
+            "rank_min_attainable_p": round(1 / len(everything), 5),
+            "null_ps": [round(float(p), 5) for p in all_ps]}
+
+
+def fisher_across_groups(ps: list[float], null_ps: list[list[float]], rng: np.random.Generator,
+                         n_sim: int = 20000) -> dict:
+    """Fisher's X = -2 sum log p over groups, calibrated by drawing one fake
+    window's p per group (so the discreteness of short series is built into the
+    null instead of assuming uniform p)."""
+    obs = float(-2 * np.sum(np.log(ps)))
+    sims = np.zeros(n_sim)
+    for nps in null_ps:
+        sims += -2 * np.log(rng.choice(np.asarray(nps), n_sim))
+    return {"n_groups": len(ps), "fisher_x": round(obs, 3),
+            "p": round(float((1 + np.sum(sims >= obs)) / (n_sim + 1)), 5),
+            "n_rank_p_lt_05": int(sum(p < 0.05 for p in ps)),
+            "n_rank_p_lt_10": int(sum(p < 0.10 for p in ps))}
+
+
 # ---------------------------------------------------------------------------
 # Cross-group summary
 # ---------------------------------------------------------------------------
@@ -419,7 +494,51 @@ def self_test() -> bool:
           f"{nul['p_window_phase_randomization']}  {'PASS' if ok2 else 'FAIL'}", file=sys.stderr)
     print(f"[self-test] 100σ spike (leak check): p_window = {leak['p_window_block_bootstrap']} / "
           f"{leak['p_window_phase_randomization']}  {'PASS' if ok3 else 'FAIL'}", file=sys.stderr)
-    return ok1 and ok2 and ok3
+    return ok1 and ok2 and ok3 and rank_self_test()
+
+
+def rank_self_test(n_rep: int = 100, n_groups: int = 12) -> bool:
+    """rank_window_test + fisher_across_groups on 12 synthetic 150-day groups
+    (window ending on day 93, the project's typical fetch layout). Under H0 the
+    combined p must be < 0.05 in about 5 % of replicates; the leave-window-out
+    block bootstrap it replaces is shown per group for reference (printed, not
+    asserted). A dip injected in half the groups must be detected. Single groups
+    can't be tested for power: with ~4 fake blocks their p can't go below 0.2."""
+    global N_SURROGATES
+    rng = np.random.default_rng(SEED)
+    dates = pd.date_range("2024-01-01", periods=150).strftime("%Y%m%d")
+    window = set(pre_event_window(pd.Timestamp("2024-04-03"), PRE_WINDOW_DAYS))  # day 93 = 2024-04-03
+    w_pos = np.flatnonzero(np.isin(dates, list(window)))
+
+    def series() -> np.ndarray:
+        return np.cumsum(rng.normal(0, 0.3, 150)) * 0.1 + rng.normal(0, 1, 150)
+
+    def combined(dip_groups: int) -> float:
+        ps, nulls = [], []
+        for g in range(n_groups):
+            x = series()
+            if g < dip_groups:
+                x[w_pos[12]] -= 8.0
+            r = rank_window_test(pd.Series(x, index=dates), window)
+            ps.append(r["rank_p"])
+            nulls.append(r["null_ps"])
+        return fisher_across_groups(ps, nulls, rng, n_sim=5000)["p"]
+
+    fp = float(np.mean([combined(0) < 0.05 for _ in range(n_rep)]))
+    saved, N_SURROGATES = N_SURROGATES, 200
+    try:
+        bb = float(np.mean([surrogate_test(series(), w_pos, rng, tail="lower")["p_window_block_bootstrap"] < 0.05
+                            for _ in range(n_rep)]))
+    finally:
+        N_SURROGATES = saved
+    power = combined(n_groups // 2)
+    ok1, ok2 = fp <= 0.09, power < 0.01
+    print(f"[self-test] {n_groups} null groups, combined rank p<0.05 in {fp:.1%} of {n_rep}  "
+          f"{'PASS' if ok1 else 'FAIL'} (per-group leave-window-out block bootstrap: {bb:.1%}, for reference)",
+          file=sys.stderr)
+    print(f"[self-test] dip in {n_groups // 2}/{n_groups} groups: combined rank p = {power}  "
+          f"{'PASS' if ok2 else 'FAIL'}", file=sys.stderr)
+    return ok1 and ok2
 
 
 def main():
