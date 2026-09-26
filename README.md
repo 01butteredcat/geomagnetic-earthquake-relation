@@ -1,6 +1,6 @@
 # geomag_precursor
 
-用台灣中央氣象署（CWA）地磁觀測網的 1 秒解析度資料，統計檢定「地震前有沒有可偵測的地磁前兆」與「地震發生瞬間，地磁場有沒有真實變化（同震效應）」這兩個問題。資料涵蓋 2009–2026 年間 49 起 CWA M≥6.0 地震（依時間/地點分成 24 個獨立事件序列，避免同一序列的前震/主震/餘震被當成獨立樣本重複計算；詳細事件/日期範圍考證見本 repo 的 `CLAUDE.md`）。
+用台灣中央氣象署（CWA）地磁觀測網的 1 秒解析度資料，統計檢定「地震前有沒有可偵測的地磁前兆」與「地震發生瞬間，地磁場有沒有真實變化（同震效應）」這兩個問題。資料涵蓋 2009–2026 年間 137 起 CWA 地震（69 起 M≥6.0、68 起 M5 級；依時間/地點分成 24 個獨立事件序列，避免同一序列的前震/主震/餘震被當成獨立樣本重複計算；詳細事件/日期範圍考證見本 repo 的 `CLAUDE.md`）。
 
 這份文件是給**不熟悉這個 repo 的外部使用者**看的操作手冊：如何設置環境、去哪裡拿資料、怎麼跑整條分析、有哪些參數可以調整。如果你是 Claude Code（或其他 AI 助理）在這個 repo 裡工作，請改讀 `CLAUDE.md`（給 AI 助理的操作指南，假設了較多背景知識）。
 
@@ -101,7 +101,7 @@ cd scripts
 
 ```bash
 cd scripts
-.venv/bin/python3 coseismic_step_analysis.py --all        # 1. 49 起事件逐一 step/spike 偵測
+.venv/bin/python3 coseismic_step_analysis.py --all        # 1. 137 起事件逐一 step/spike 偵測
 .venv/bin/python3 coseismic_stacking_analysis.py --all    # 2. 跨事件疊加（不依賴步驟 1 的輸出檔，是獨立重算）
 .venv/bin/python3 seismometer_comparison.py --all         # 3. 比對地震儀資料（依賴 SEISMIC_DATA_DIRS 手動維護表 + seismometer/ 底下的資料）
 .venv/bin/python3 coseismic_joint_analysis.py --all        # 4. 聯合統計檢定（依賴步驟 3 輸出的 comparison_summary.csv）
@@ -113,7 +113,7 @@ cd scripts
 
 | 腳本 | 參數 | 說明 |
 |---|---|---|
-| `coseismic_step_analysis.py` | `--all`（跑全部 49 事件，預設只跑 G10 錨定事件）、`--no-injection`（跳過正對照組注入測試）、`--self-test` | **沒有 `--group`**，要嘛全部跑、要嘛只跑 G10 |
+| `coseismic_step_analysis.py` | `--all`（跑全部 137 事件，預設只跑 G10 錨定事件）、`--no-injection`（跳過正對照組注入測試）、`--self-test` | **沒有 `--group`**，要嘛全部跑、要嘛只跑 G10 |
 | `coseismic_stacking_analysis.py` | `--all`、`--group <ID>`（可重複指定）、`--self-test` | |
 | `seismometer_comparison.py` | `--all`、`--group <ID>`（可重複指定）、`--geomag-station <站碼>`（手動排查單一測站用）、`--self-test` | |
 | `coseismic_joint_analysis.py` | `--all`、`--self-test` | 沒有 `--group` |
@@ -189,7 +189,7 @@ cd scripts
 
 - **G14 的 5 起事件永遠不會有地震儀比對資料**：地動資料源只回溯到約 2012 年，G14 最早的事件是 2009 年，結構性缺口，不是還沒抓而已。
 - **測站有純量／向量世代分野**：G14–G18（2009–2016 年資料）與 G21、G22（2010、2012 年資料）全數是純量站（只有總磁場 F），完全跑不動 H/Z 篩選法與 ULF 極化分析；G4 之後（含 G19、G20）以及 G23、G24（2020 年資料，雖群組編號高但時間上已晚於向量站升級）才是向量站齊全的世代——這正是 `ULF_GROUPS` 只列這 14 組的原因（2026-09-20 `G6_G7_G8` 拆成 G6、G7、G8 後是 13 組，2026-09-22 `G23` 拆成 G23、G24 後變 14 組）。
-- **G21 永遠沒有地震儀比對資料**：2010-11-21 的事件早於地動資料源的回溯起點（2012-01-01），與 G14 同屬結構性缺口。G22、G23 已於 2026-09-20 補齊 mseed 與 PoleZero 並納入 `SEISMIC_DATA_DIRS`（`seismometer/` 現有 29 個 `GXX_MMDD` 資料夾），G23 於 2026-09-22 拆出 G24 後兩者共用同一批已補齊的資料，目前 49 個事件中 30 個可做比對。
+- **G21 永遠沒有地震儀比對資料**：2010-11-21 的事件早於地動資料源的回溯起點（2012-01-01），與 G14 同屬結構性缺口。G22、G23 已於 2026-09-20 補齊 mseed 與 PoleZero 並納入 `SEISMIC_DATA_DIRS`（`seismometer/` 現有 29 個 `GXX_MMDD` 資料夾），G23 於 2026-09-22 拆出 G24 後兩者共用同一批已補齊的資料，目前 137 起事件中 111 起可做比對（2026-09-27 新登錄的 20 起 M≥6 還沒抓地震儀資料）。
 - **同資料夾的兄弟組並非完全獨立**：G2／G3（共用 `G2_G3/`）與 G6／G7／G8（共用 `G6_G7_G8/`）的原始資料相同，虛無抽樣、`is_known_event` 旗標與窗口上限已改用整個資料夾的所有事件（`events.py::folder_events()`），回測也把兄弟事件的震前窗口排除在命中／誤報／分母之外；但 `cross_group_analysis.py` 的 `sliding_baseline_rate` 基線窗口仍可能含到兄弟事件附近的日期，這一點尚未處理。也因此跨組檢定裡這 5 組的結果並非五個獨立樣本。
 - **日尺度候選日對測站池很敏感**：G2 與 G3 用同一批原始資料，但近站各自依震央挑選（G2 為 hln,slg,sme；G3 為 ncg,hln,lyn），候選日從 5 天變成 13 天，14 天窗口的 F 法命中因此由 4/9 變 5/10（p 0.452→0.298，仍不顯著）。解讀單組結果時要記得這一點。
 - **`verify_pipeline` 的 `storm_cancellation_test` 目前失敗的組別（2026-09-22，含 bootstrap CI 改版與 G23/G24 拆分後的最新結果）**：G1、G2、G3、G11、G12、G13、G14、G23、G24。

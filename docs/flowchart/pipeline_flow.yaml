@@ -717,7 +717,7 @@ steps:
     scripts: []
     summary: >-
       CWA 地磁網 IAGA-2002 格式檔，每站每天 86400 列 1 秒資料（X/Y/Z 單位 nT，F 通常為佔位值 88888；ttn 為純純量站）。
-      23 個地震群組、49 個 M≥6.0 事件，資料夾 G1…G23（部分資料夾含多個群組）。
+      24 個地震群組、137 起事件（69 起 M≥6.0、68 起 M5），資料夾 G1…G23（部分資料夾含多個群組）。
     inputs: [GDMS 批次下載的 .sec / .sec.gz / .tgz]
     outputs: [每站每日一檔的 1Hz 序列]
     notes:
@@ -917,7 +917,7 @@ steps:
     title: 震時階躍/尖峰偵測
     scripts: [coseismic_step_analysis.py]
     summary: >-
-      對全部 49 個事件（不只錨點），在震央最近的測站上，把原始 1Hz 去趨勢（A2）後，於發震秒 ±180 秒掃描階躍（10/30/90 秒）
+      對全部 137 起事件（不只錨點），在震央最近的測站上，把原始 1Hz 去趨勢（A2）後，於發震秒 ±180 秒掃描階躍（10/30/90 秒）
       與尖峰統計量取極值，並和排除所有真實地震後的 2000 個隨機參考時刻比較（D7）。另附注入合成脈衝的偵測力（power curve）正向對照。
     inputs: [原始 1Hz 日檔, events.py 事件登錄]
     outputs: [data/interim/coseismic_step_analysis/]
@@ -945,7 +945,7 @@ steps:
     scripts: []
     summary: >-
       每個事件一個 seismometer/GXX_MMDD/ 資料夾，含 SAC PoleZero 儀器響應檔與 miniSEED 波形（100Hz，發震前 60 秒到後 600 秒）。
-      這不是地磁資料。目前 30/49 事件有資料，其中 6 件（G14、G21）因資料源 2012 年前不可得而永久缺漏。
+      這不是地磁資料。目前 111/137 事件有資料；其中 6 件（G14、G21）因資料源 2012 年前不可得而永久缺漏，2026-09-27 新登錄的 20 起 M≥6 還沒抓。
     inputs: [人工從資料源下載]
     outputs: [seismometer/ 資料夾（不入版控）]
     after: []
@@ -962,7 +962,7 @@ steps:
     inputs: [地震儀波形與 PZ 檔, 原始 1Hz 地磁日檔, coseismic_step_analysis 的 summary.csv]
     outputs: [comparison_summary.csv, coverage_summary.json, 個案研究 JSON]
     methods: [F1, F2, D7]
-    scope: 111/117 事件有地震儀資料
+    scope: 111/137 事件有地震儀資料
     after: [coseismic_step_analysis, seismic_data]
 
   - id: coseismic_dose_response
