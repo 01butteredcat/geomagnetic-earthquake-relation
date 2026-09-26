@@ -584,7 +584,7 @@ methods:
       - M≥6.0 那一欄樣本數常是個位數，binomial/empirical p 值有下限，「不顯著」不代表訊號不存在，只代表檢定力受限。
       - Hattori 距離-規模公式目前只是文件記載的理論背景，尚未實作成程式裡的距離篩選條件。
     code:
-      - {file: scripts/fetch_earthquake_catalog.py, lines: "119-147", symbol: fetch_cwa}
+      - {file: scripts/fetch_earthquake_catalog.py, lines: "127-155", symbol: fetch_cwa}
       - {file: scripts/prepare_validation_report_data.py, lines: "27-77", symbol: main}
 
   F1:

@@ -29,12 +29,16 @@ Scope, per plan (`~/.claude/plans/block-bootstrap-shiny-pearl.md`):
     space-time cluster) -- avoids treating an aftershock sequence as many
     independent samples, the same pseudo-replication concern events.py's own
     docstring raises for the 13-group design.
-  - Cross-referenced against events.py's 20 curated events (within 6h /
-    0.3 magnitude) and flagged `is_known_event` rather than duplicated.
+  - Cross-referenced against events.py's registered events (origin times
+    within KNOWN_EVENT_SEC and epicenters within KNOWN_EVENT_KM; magnitude
+    is NOT compared, since USGS and CWA ML routinely differ by more than
+    0.3 for the same earthquake) and flagged `is_known_event` rather than
+    duplicated.
 
 Usage:
   fetch_earthquake_catalog.py --min-mag 5.5
   fetch_earthquake_catalog.py --min-mag 5.0 --output data/external/extended_catalog_m5.0.csv
+  fetch_earthquake_catalog.py --min-mag 5.5 --reflag   # recompute is_known_event only, offline
 """
 from __future__ import annotations
 
@@ -57,8 +61,12 @@ ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G
 
 DECLUSTER_DAYS = 3
 DECLUSTER_KM = 100
-KNOWN_EVENT_HOURS = 6
-KNOWN_EVENT_MAG_TOL = 0.3
+# Same earthquake in the catalog and in events.py: origin times within a minute and epicenters
+# within 50 km. The old rule (6 h, magnitude within 0.3) missed duplicates whose USGS magnitude
+# differs from CWA ML by more than 0.3 (G4 2020-12-10: 6.1 vs 6.64, 0 s apart) and matched
+# distinct aftershocks hours away from a registered event.
+KNOWN_EVENT_SEC = 60
+KNOWN_EVENT_KM = 50
 
 # User-supplied CWA GDMS regional magnitude-report export (space-delimited, header
 # "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality"; date/time
@@ -175,10 +183,37 @@ def flag_known_events(events: list[dict], group_id: str) -> None:
         e["is_known_event"] = False
         for ev in known:
             known_dt = datetime.strptime(ev.time_utc, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-            hours = abs((e["_dt"] - known_dt).total_seconds()) / 3600
-            if hours <= KNOWN_EVENT_HOURS and abs(e["mag"] - ev.magnitude) <= KNOWN_EVENT_MAG_TOL:
+            if (abs((e["_dt"] - known_dt).total_seconds()) <= KNOWN_EVENT_SEC
+                    and haversine_km(e["lat"], e["lon"], ev.lat, ev.lon) <= KNOWN_EVENT_KM):
                 e["is_known_event"] = True
                 break
+
+
+def reflag_existing(path: Path) -> None:
+    """Recompute only is_known_event on an already-fetched catalog CSV, offline: rows,
+    declustering and group assignment stay exactly as fetched."""
+    with path.open(newline="") as f:
+        reader = csv.DictReader(f)
+        fields = reader.fieldnames
+        rows = list(reader)
+    n_changed = 0
+    for group_id in dict.fromkeys(r["group"] for r in rows):
+        grp = [r for r in rows if r["group"] == group_id]
+        evs = [{"_dt": datetime.strptime(r["time_utc"][:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc),
+                "lat": float(r["lat"]), "lon": float(r["lon"])} for r in grp]
+        flag_known_events(evs, group_id)
+        for r, e in zip(grp, evs):
+            new = str(e["is_known_event"])
+            if r["is_known_event"] != new:
+                n_changed += 1
+                print(f"  {group_id} {r['time_utc']} M{r['mag']} {r['source']}: "
+                      f"is_known_event {r['is_known_event']} -> {new}", file=sys.stderr)
+                r["is_known_event"] = new
+    with path.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        w.writerows(rows)
+    print(f"reflagged {path}: {n_changed} rows changed", file=sys.stderr)
 
 
 def main():
@@ -189,9 +224,14 @@ def main():
     ap.add_argument("--cwa-catalog", type=Path, default=CWA_CATALOG_DEFAULT,
                      help="CWA GDMS catalog export to prefer for groups whose window falls "
                           "entirely inside it; pass a nonexistent path to force USGS for all groups.")
+    ap.add_argument("--reflag", action="store_true",
+                    help="only recompute is_known_event on the existing output CSV (no fetching)")
     args = ap.parse_args()
 
     out_path = args.output or (PROJECT_DIR / "data" / "external" / f"extended_catalog_m{args.min_mag}.csv")
+    if args.reflag:
+        reflag_existing(out_path)
+        return
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     all_rows = []
