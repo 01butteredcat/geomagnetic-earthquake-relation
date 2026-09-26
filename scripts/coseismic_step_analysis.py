@@ -173,6 +173,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -185,6 +186,16 @@ from events import GROUPS, folder_events, get_group  # noqa: E402
 from stat_utils import histogram_summary  # noqa: E402
 
 SEED = 20260805
+
+
+def keyed_rng(*keys) -> np.random.Generator:
+    """Independent, stable random stream per key tuple, e.g. (group, event,
+    station, channel). One shared stream across all events made every null
+    draw depend on how many draws earlier events had consumed, so editing
+    any one event (or running a single event instead of --all) reshuffled
+    every later event's p-value."""
+    return np.random.default_rng([SEED, zlib.crc32("|".join(map(str, keys)).encode())])
+
 GROUP_ID = "G10"
 N_STATIONS = 2
 
@@ -561,7 +572,7 @@ def _storm_status(cfg: "common.GroupConfig", event_utc: pd.Timestamp) -> dict:
     }
 
 
-def process_event(cfg: "common.GroupConfig", group, event, rng: np.random.Generator,
+def process_event(cfg: "common.GroupConfig", group, event,
                    run_injection: bool = False) -> tuple[dict, list[dict], list[dict]]:
     """Run every (channel_type, station, channel) test for one Event.
     exclude_centers covers every event in `group` (not just this one) --
@@ -600,6 +611,7 @@ def process_event(cfg: "common.GroupConfig", group, event, rng: np.random.Genera
                 continue
 
             for ch_label, series in _build_channels(df).items():
+                rng = keyed_rng(cfg.group_id, event.date, channel_type, station, ch_label)
                 result = _test_channel(series, event_utc, exclude_centers, rng, ch_label, scan_half_sec)
                 result["station"] = station
                 result["channel_type"] = channel_type
@@ -626,7 +638,9 @@ def process_event(cfg: "common.GroupConfig", group, event, rng: np.random.Genera
 
                 if run_injection and result.get("data_status") == "ok":
                     injection_runs.append(
-                        run_injection_power_curve(series, exclude_centers, rng, f"{station}:{ch_label}")
+                        run_injection_power_curve(series, exclude_centers,
+                                                  keyed_rng(cfg.group_id, event.date, channel_type, station, ch_label, "injection"),
+                                                  f"{station}:{ch_label}")
                     )
 
     n_tests = len(summary_rows)
@@ -650,12 +664,11 @@ def run(group_id: str = GROUP_ID, run_injection: bool = True) -> dict:
     cfg = common.load_group_config(group_id)
     group = get_group(group_id)
     event = group.anchor_event
-    rng = np.random.default_rng(SEED)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "events").mkdir(exist_ok=True)
 
-    event_result, summary_rows, injection_runs = process_event(cfg, group, event, rng, run_injection=run_injection)
+    event_result, summary_rows, injection_runs = process_event(cfg, group, event, run_injection=run_injection)
 
     out_path = OUT_DIR / "events" / f"{group_id}__{event.date}.json"
     out_path.write_text(json.dumps(event_result, indent=2))
@@ -702,7 +715,6 @@ def run_all(run_injection: bool = False) -> dict:
     event under events/, a combined summary.csv across all events, and
     all_events_run_summary.json (the run_all_groups.sh-style per-item
     status rollup, so nothing is silently skipped)."""
-    rng = np.random.default_rng(SEED)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "events").mkdir(exist_ok=True)
 
@@ -714,7 +726,7 @@ def run_all(run_injection: bool = False) -> dict:
         cfg = common.load_group_config(group_id)
         for event in group.events:
             event_result, summary_rows, injection_runs = process_event(
-                cfg, group, event, rng, run_injection=run_injection)
+                cfg, group, event, run_injection=run_injection)
 
             out_path = OUT_DIR / "events" / f"{group_id}__{event.date}.json"
             out_path.write_text(json.dumps(event_result, indent=2))

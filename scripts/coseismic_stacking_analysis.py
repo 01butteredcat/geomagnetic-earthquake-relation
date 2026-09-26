@@ -132,6 +132,7 @@ from coseismic_step_analysis import (  # noqa: E402
     _detrend,
     _draw_null_centers,
     _load_station_days,
+    keyed_rng,
     _pos,
     _rank_stations_for_event,
     _spike_statistic,
@@ -474,8 +475,8 @@ def self_test() -> bool:
 # ---------------------------------------------------------------------------
 
 # Storm-sensitivity subsets: the same stack, re-run with storm-flagged events
-# dropped (and, separately, only the stricter onset days dropped). Uses its own
-# rng so the main combos above stay bit-identical to a run without this pass.
+# dropped (and, separately, only the stricter onset days dropped). Every (combo,
+# subset) draws from its own keyed_rng stream, so neither pass perturbs the other.
 # Events with an unknown flag are kept -- dropping them would conflate "no
 # space-weather data" with "storm".
 STORM_SUBSETS = {
@@ -485,7 +486,6 @@ STORM_SUBSETS = {
 
 
 def _storm_sensitivity_stacks(all_series: dict) -> list[dict]:
-    rng = np.random.default_rng(SEED + 100)
     rows: list[dict] = []
     for channel_type, ch_label in (("XYZ", "H"), ("F", "F")):
         for tier in STATION_TIERS:
@@ -498,6 +498,7 @@ def _storm_sensitivity_stacks(all_series: dict) -> list[dict]:
                     combo_id = f"{tier}__{ch_label}__{stat_name}"
                     row = {"combo_id": combo_id, "subset": subset_name,
                            "n_events_before": len(events), "n_events_kept": len(kept)}
+                    rng = keyed_rng("stack", combo_id, subset_name)
                     result = stack_series(kept, stat_name, rng) if kept else {"error": "no events left"}
                     if "error" in result:
                         row["error"] = result["error"]
@@ -514,7 +515,6 @@ def _storm_sensitivity_stacks(all_series: dict) -> list[dict]:
 
 def run_group_ids(group_ids: tuple[str, ...]) -> dict:
     all_series = load_all_event_series(group_ids)
-    rng = np.random.default_rng(SEED)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "combos").mkdir(exist_ok=True)
@@ -529,8 +529,8 @@ def run_group_ids(group_ids: tuple[str, ...]) -> dict:
             if not events:
                 continue
             for stat_name in STAT_NAMES:
-                result = stack_series(events, stat_name, rng)
                 combo_id = f"{tier}__{ch_label}__{stat_name}"
+                result = stack_series(events, stat_name, keyed_rng("stack", combo_id))
                 result["combo_id"] = combo_id
                 result["station_tier"] = tier
                 result["channel_type_pool"] = channel_type

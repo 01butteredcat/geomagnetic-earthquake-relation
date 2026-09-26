@@ -83,7 +83,7 @@ from scipy.stats import theilslopes
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
 from coseismic_step_analysis import (SEED, _build_channels, _effective_half_sec,  # noqa: E402
-                                     _load_station_days)
+                                     _load_station_days, keyed_rng)
 from events import GROUPS, folder_events  # noqa: E402
 from stat_utils import MAD_SCALE  # noqa: E402
 
@@ -186,7 +186,6 @@ def process_group(group_id: str, min_mag: float | None = None) -> list[dict]:
     cfg = common.load_group_config(group_id)
     group = GROUPS[group_id]
     exclude = [pd.Timestamp(e.time_utc) for e in folder_events(group_id)]
-    rng = np.random.default_rng([SEED, int(group_id[1:])])
     rows: list[dict] = []
     for event in group.events:
         if min_mag is not None and event.magnitude < min_mag:
@@ -216,7 +215,8 @@ def process_group(group_id: str, min_mag: float | None = None) -> list[dict]:
             values = series.to_numpy(dtype=float)
             p0 = int(round((event_utc - series.index[0]).total_seconds()))
             res = detect_onset(values, p0, search_hi)
-            null = null_triggers(values, series.index, exclude, rng, search_hi)
+            null = null_triggers(values, series.index, exclude,
+                                 keyed_rng("onset", group_id, event.date, station), search_hi)
             n_trig = sum(v is not None for v in null)
             row = {**base, **res, "n_null": len(null),
                    "null_false_rate": round(n_trig / len(null), 4) if null else None}
@@ -356,7 +356,6 @@ def _crosscheck_stats(m: pd.DataFrame) -> dict:
 
 
 def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame) -> dict:
-    rng = np.random.default_rng(SEED)
     trig = onsets[onsets.status == "onset"]
     subsets = {"m6": onsets.magnitude >= 6, "m5": onsets.magnitude < 6}
     out = {"seed": SEED, "k_sigma": K_SIGMA, "search_lags_sec": list(SEARCH_LAGS),
@@ -371,10 +370,12 @@ def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame) -> dict:
         out["subsets"][name] = {
             "n_events": int(len(pe)),
             "event_verdicts": pe.verdict.value_counts().to_dict(),
-            "arrival_window_all_triggers": arrival_window_test(t, rng),
-            "arrival_window_clean_stations": arrival_window_test(t[t.null_false_rate < CLEAN_FALSE_RATE], rng),
-            "pooled_all_triggers": pooled_moveout(t, rng),
-            "pooled_clean_stations": pooled_moveout(t[t.null_false_rate < CLEAN_FALSE_RATE], rng),
+            "arrival_window_all_triggers": arrival_window_test(t, keyed_rng("onset", name, "window_all")),
+            "arrival_window_clean_stations": arrival_window_test(t[t.null_false_rate < CLEAN_FALSE_RATE],
+                                                                 keyed_rng("onset", name, "window_clean")),
+            "pooled_all_triggers": pooled_moveout(t, keyed_rng("onset", name, "pooled_all")),
+            "pooled_clean_stations": pooled_moveout(t[t.null_false_rate < CLEAN_FALSE_RATE],
+                                                    keyed_rng("onset", name, "pooled_clean")),
             "trigger_rate_by_distance": trigger_rate_by_distance(onsets[mask]),
         }
     out["seismometer_crosscheck"] = seismometer_crosscheck(onsets)
