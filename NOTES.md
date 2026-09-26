@@ -4,16 +4,34 @@ This file provides guidance to Claude Code when working inside `geomag_precursor
 
 ## What this project is
 
-A Python analysis pipeline testing whether Taiwan's CWA (Central Weather Administration) geomagnetic network shows statistically detectable earthquake-precursor or coseismic signals, across a 23-group/49-event multi-earthquake dataset (2009–2026, Taiwan M≥6.0 events). Two independent lines of analysis exist:
+A Python analysis pipeline testing whether Taiwan's CWA (Central Weather Administration) geomagnetic network shows statistically detectable earthquake-precursor or coseismic signals, across a 24-group/49-event multi-earthquake dataset (2009–2026, Taiwan M≥6.0 events). Two independent lines of analysis exist:
 
 - **Daily-scale precursor screening** (`build_daily_features.py` → `compute_indices.py`/`ulf_analysis.py` → `cross_group_analysis.py`/`superposed_epoch_analysis.py`): looks for candidate anomalies in the days-to-weeks before each mainshock. Results: `data/interim/cross_group_summary.md`, `output/geomag_precursor_validation_report.html`.
 - **Coseismic (at-origin-second) analysis** (`coseismic_step_analysis.py` → `coseismic_stacking_analysis.py` → `seismometer_comparison.py`): looks for a step/spike right at each earthquake's origin second in the raw 1Hz data, then asks whether that's a real field change or shaking-induced instrument noise. This is the newer, still-active line of work — see "Coseismic pipeline" below.
 
+## Data Provenance
+
+- All earthquake event parameters (time, location, magnitude) come from the CWA catalog / CWA GDMS. Never describe them as coming from web searches, news, or press releases in reports or docs.
+- The event registry (`scripts/events.py`) must match the CWA catalog. When editing magnitudes or event lists, cross-check against the catalog and report any discrepancies.
+
+## Git & Publishing
+
+- Only `geomag_precursor/` is published to the public GitHub remote. Never push the container/parent repo (`precursor/`) to it.
+- Use the repo-local git email (already configured). Do not change the global git config.
+- Before committing, make sure no absolute local machine paths (e.g. `C:\Users\...`, `/home/...`) appear in code or docs. Use `PROJECT_DIR` in `scripts/common.py`, resolved relative to the repo.
+
+## Project Facts (keep current)
+
+- There are 24 station/event groups (G1–G24, after the G23/G24 split). Update this count whenever groups are split or merged. Pipeline-wide tasks such as storm cancellation or reruns apply to ALL groups unless stated otherwise.
+- Full rerun: `bash scripts/run_all_groups.sh`, then run verify (`scripts/verify_pipeline.py`). Report which verify failures existed before the rerun and which are new.
+- Magnitude tiers for validation: M≥6.0 / M≥5.5 / M≥5.0.
+- Analyses are either "daily" or "second-scale (coseismic)". State which line a task belongs to before starting.
+
 ## The raw data (G1..G24)
 
-49 raw CWA (USGS cross-referenced where noted) M≥6.0 earthquake records from 2009-07-14 through 2026-05-01, grouped by proximity in time/location into **24 independent event sequences**, since several records are foreshock/mainshock/aftershock of the same sequence and treating them as independent samples would be pseudo-replication. Each group `Gx` is a data-fetch window of "~93 days before the (first) mainshock as baseline, ~22 days after the last event in the sequence." G1–G13 (2018–2026) were the original batch; G14–G20 (added 2026-08-08) extend the dataset backward to 2009 plus two more recent 2024/2025 events, crossing the lower edge of the 20–30-group threshold commonly cited in the literature for a statistically meaningful precursor test (still not sufficient on its own — see `data/interim/cross_group_summary.md`'s own caveats, e.g. no independent quiet-period control); G21–G23 (added 2026-08-20, alongside non-anchor events appended to G6_G7_G8, G11, G12, and G17's existing windows) came from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`, not included in this repo) that surfaced further M≥6 events the original per-event web search had missed.
+49 CWA-catalog M≥6.0 earthquake records from 2009-07-14 through 2026-05-01, grouped by proximity in time/location into **24 independent event sequences**, since several records are foreshock/mainshock/aftershock of the same sequence and treating them as independent samples would be pseudo-replication. Each group `Gx` is a data-fetch window of "~93 days before the (first) mainshock as baseline, ~22 days after the last event in the sequence." G1–G13 (2018–2026) were the original batch; G14–G20 (added 2026-08-08) extend the dataset backward to 2009 plus two more recent 2024/2025 events, crossing the lower edge of the 20–30-group threshold commonly cited in the literature for a statistically meaningful precursor test (still not sufficient on its own — see `data/interim/cross_group_summary.md`'s own caveats, e.g. no independent quiet-period control); G21–G23 (added 2026-08-20, alongside non-anchor events appended to G6_G7_G8, G11, G12, and G17's existing windows) came from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`, not included in this repo) that surfaced further M≥6 events missing from the original event list.
 
-Full event/date-range rationale and background: `docs/13_groups_fetch_ranges.md` (G1–G13), `docs/candidate_groups_G14_G20.md` (G14–G20's candidate research), and `docs/candidate_fetch_ranges_from_GDMScatalog.md` (G21–G23's candidate research) — all superseded by `scripts/events.py` once a group's data was actually fetched and registered. Group-specific details (actual file counts, stations, known gaps) live in each `Gx/CLAUDE.md`. Precise per-event epicenter coordinates/depth/magnitude (CWA primary, USGS cross-reference where CWA coordinates weren't publicly found) are in `scripts/events.py`.
+Full event/date-range rationale and background: `docs/13_groups_fetch_ranges.md` (G1–G13), `docs/candidate_groups_G14_G20.md` (G14–G20's candidate research), and `docs/candidate_fetch_ranges_from_GDMScatalog.md` (G21–G23's candidate research) — all superseded by `scripts/events.py` once a group's data was actually fetched and registered. Group-specific details (actual file counts, stations, known gaps) live in each `Gx/CLAUDE.md`. Precise per-event epicenter coordinates/depth/magnitude, all from the CWA catalog / CWA GDMS (every event has `coord_source="CWA"`; USGS/JMA magnitudes appear only as reference values in some events' `note`), are in `scripts/events.py`.
 
 ### Layout
 
@@ -182,3 +200,16 @@ Other confirmed quirks handled in `seismometer_comparison.py` (see its module do
 ## Version control
 
 This project got a fresh `git init` on 2026-09-14 (its earlier 2026-08-14 history was dropped when `G1`..`G24` and, shortly after, `seismometer/` were moved in from the parent directory and it was re-established as a self-contained standalone repo — this is the only repo among the moved material that's published). `.gitignore` excludes `.venv/`, `__pycache__/`, `data/` (regenerable analysis intermediates/outputs, ~850MB, reproducible from `scripts/` + the raw data with the project's fixed seed `20260805` — not worth version-controlling), each `Gx/*` raw day-file/batch-archive (~18GB, too big for git; each `Gx/CLAUDE.md` is explicitly kept via a `!` negation), and all of `seismometer/` (~384MB, all binary, no docs to keep). Tracked: `scripts/`, `docs/`, `output/` (the built HTML reports), `requirements.txt`, each `Gx/CLAUDE.md`, this file, `README.md`.
+
+## Documentation
+
+- Math in markdown uses `$...$` inline and `$$...$$` display. Never use `\(...\)` or `\[...\]`.
+- Documentation, reports and figure labels are for Chinese grad-school application materials. Use Chinese labels on figures unless told otherwise.
+- `docs/statistical_methods.md` must stay in sync with the code. When a formula or function changes, update its formula and line references.
+- Files under `docs/` planning folders are historical records. Do not edit them unless asked.
+
+## Workflow
+
+- At the end of each work block: commit with clear split commits, update the progress notes file, and update memory with pending items (e.g. open verify failures).
+- Rendered outputs (HTML slides, flowcharts, `.docx`, charts) must be visually verified before reporting them done. Render the BUILT output, not the template.
+- For LICENSE files (CC-BY-4.0), do not fetch the license text from the web because it triggers content-filter errors. Ask the user to add it, or write a short header linking to the official URL.
