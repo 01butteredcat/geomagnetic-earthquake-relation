@@ -37,14 +37,14 @@ echo "== 4/8 surrogate_test.py (all groups) =="
 "$PYTHON" surrogate_test.py --all
 
 echo "== 5/8 superposed_epoch_analysis.py (M>=6.0, M>=5.5 and M>=5.0) =="
-"$PYTHON" superposed_epoch_analysis.py --catalog ../data/external/extended_catalog_m6.0.csv --label m6.0
-"$PYTHON" superposed_epoch_analysis.py --catalog ../data/external/extended_catalog_m5.5.csv --label m5.5
-"$PYTHON" superposed_epoch_analysis.py --catalog ../data/external/extended_catalog_m5.0.csv --label m5.0
+"$PYTHON" superposed_epoch_analysis.py --catalog ../data/external/extended_catalog_m6.0.csv --label m6.0 --min-mag 6.0
+"$PYTHON" superposed_epoch_analysis.py --catalog ../data/external/extended_catalog_m5.5.csv --label m5.5 --min-mag 5.5
+"$PYTHON" superposed_epoch_analysis.py --catalog ../data/external/extended_catalog_m5.0.csv --label m5.0 --min-mag 5.0
 
 echo "== 6/8 backtest_rule.py (M>=6.0, M>=5.5 and M>=5.0) =="
-"$PYTHON" backtest_rule.py --catalog ../data/external/extended_catalog_m6.0.csv --label m6.0
-"$PYTHON" backtest_rule.py --catalog ../data/external/extended_catalog_m5.5.csv --label m5.5
-"$PYTHON" backtest_rule.py --catalog ../data/external/extended_catalog_m5.0.csv --label m5.0
+"$PYTHON" backtest_rule.py --catalog ../data/external/extended_catalog_m6.0.csv --label m6.0 --min-mag 6.0
+"$PYTHON" backtest_rule.py --catalog ../data/external/extended_catalog_m5.5.csv --label m5.5 --min-mag 5.5
+"$PYTHON" backtest_rule.py --catalog ../data/external/extended_catalog_m5.0.csv --label m5.0 --min-mag 5.0
 
 echo "== 7/8 prepare_validation_report_data.py =="
 "$PYTHON" prepare_validation_report_data.py

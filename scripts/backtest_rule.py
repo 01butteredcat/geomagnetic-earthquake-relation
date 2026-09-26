@@ -16,7 +16,7 @@ baseline that script already established, instead of inventing a second,
 inconsistent baseline definition.
 
 Usage:
-  backtest_rule.py --catalog data/external/extended_catalog_m5.5.csv --label m5.5
+  backtest_rule.py --catalog data/external/extended_catalog_m5.5.csv --label m5.5 --min-mag 5.5
 """
 from __future__ import annotations
 
@@ -40,8 +40,8 @@ BANDS = ("pc3", "pc4")
 WINDOWS_DAYS = [7, 14, 30]
 
 
-def load_events_for_group(group_id: str, catalog_path: Path) -> list[pd.Timestamp]:
-    events = load_extended_events(catalog_path, (group_id,))
+def load_events_for_group(group_id: str, catalog_path: Path, min_mag: float) -> list[pd.Timestamp]:
+    events = load_extended_events(catalog_path, (group_id,), min_mag)
     return sorted({e["date"] for e in events})
 
 
@@ -67,11 +67,11 @@ def precursor_window_dates(event_date: pd.Timestamp, window_days: int) -> set[st
     return {(event_date - pd.Timedelta(days=d)).strftime("%Y%m%d") for d in range(1, window_days + 1)}
 
 
-def run_band(band: str, catalog_path: Path) -> dict:
+def run_band(band: str, catalog_path: Path, min_mag: float) -> dict:
     per_group = {}
     for group_id in ULF_GROUPS:
         all_dates, flagged = flagged_dates(group_id, band)
-        events = load_events_for_group(group_id, catalog_path)
+        events = load_events_for_group(group_id, catalog_path, min_mag)
         per_group[group_id] = {"all_dates": all_dates, "flagged": flagged, "events": events}
 
     windows_out = {}
@@ -152,6 +152,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", type=Path, required=True)
     ap.add_argument("--label", required=True)
+    ap.add_argument("--min-mag", type=float, required=True,
+                    help="magnitude threshold of this tier; must match the --catalog file's")
     args = ap.parse_args()
 
     out_dir = PROJECT_DIR / "data" / "interim" / "backtest"
@@ -159,7 +161,8 @@ def main():
 
     results = {}
     for band in BANDS:
-        r = run_band(band, args.catalog)
+        r = run_band(band, args.catalog, args.min_mag)
+        r["min_mag"] = args.min_mag
         results[band] = r
         for w in WINDOWS_DAYS:
             wr = r["windows"][str(w)]

@@ -17,8 +17,8 @@ different noise floors -- stacking raw nT-order differences across groups
 would be meaningless.
 
 Usage:
-  superposed_epoch_analysis.py --catalog data/external/extended_catalog_m5.5.csv --label m5.5
-  superposed_epoch_analysis.py --catalog data/external/extended_catalog_m5.0.csv --label m5.0
+  superposed_epoch_analysis.py --catalog data/external/extended_catalog_m5.5.csv --label m5.5 --min-mag 5.5
+  superposed_epoch_analysis.py --catalog data/external/extended_catalog_m5.0.csv --label m5.0 --min-mag 5.0
 """
 from __future__ import annotations
 
@@ -128,30 +128,36 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
     for g in list(real_dates_by_group):
         real_dates_by_group[g] += [pd.Timestamp(e.time_utc.split(" ")[0]) for e in folder_events(g)]
 
-    valid_ranges = {g: valid_date_range(s) for g, s in group_series.items()}
+    # Candidate fake epochs per group: every day whose full window fits the data AND that is at
+    # least NULL_EXCLUSION_BUFFER_DAYS from every real date. Drawing from this set (instead of
+    # retrying random days and falling back to the last try) guarantees no null epoch sits near a
+    # real earthquake; a group with no such day contributes nothing to the null band.
+    eligible_days: dict[str, list[pd.Timestamp]] = {}
+    for g in {ev["group"] for ev in events}:
+        series = group_series.get(g)
+        if series is None or band not in series:
+            continue
+        lo, hi = valid_date_range(series)
+        lo_bound = lo + pd.Timedelta(days=WINDOW_BEFORE_DAYS)
+        hi_bound = hi - pd.Timedelta(days=WINDOW_AFTER_DAYS)
+        real = real_dates_by_group.get(g, [])
+        eligible_days[g] = [d for d in pd.date_range(lo_bound, hi_bound, freq="D")
+                            if all(abs((d - rd).days) >= NULL_EXCLUSION_BUFFER_DAYS for rd in real)]
+    groups_without_eligible = sorted(g for g, days in eligible_days.items() if not days)
 
     null_stacks = np.empty((N_NULL, M.shape[1]))
+    n_null_events = []
     for r in range(N_NULL):
         null_matrix = []
         for ev in events:
-            series = group_series.get(ev["group"])
-            if series is None or band not in series:
+            days = eligible_days.get(ev["group"])
+            if not days:
                 continue
-            lo, hi = valid_ranges[ev["group"]]
-            lo_bound = lo + pd.Timedelta(days=WINDOW_BEFORE_DAYS)
-            hi_bound = hi - pd.Timedelta(days=WINDOW_AFTER_DAYS)
-            if lo_bound >= hi_bound:
-                continue
-            for _ in range(20):  # retry a few times to avoid the exclusion buffer
-                offset_days = int(rng.integers(0, max(1, (hi_bound - lo_bound).days + 1)))
-                fake_date = lo_bound + pd.Timedelta(days=offset_days)
-                too_close = any(abs((fake_date - rd).days) < NULL_EXCLUSION_BUFFER_DAYS
-                                 for rd in real_dates_by_group.get(ev["group"], []))
-                if not too_close:
-                    break
-            w = extract_window(series, band, fake_date)
+            fake_date = days[int(rng.integers(0, len(days)))]
+            w = extract_window(group_series[ev["group"]], band, fake_date)
             if not np.all(np.isnan(w)):
                 null_matrix.append(w)
+        n_null_events.append(len(null_matrix))
         null_stacks[r] = np.nanmean(np.array(null_matrix), axis=0) if null_matrix else np.nan
 
     null_lo = np.nanpercentile(null_stacks, 5, axis=0)
@@ -171,6 +177,9 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
         "null_band_p5": [round(float(v), 4) for v in null_lo],
         "null_band_p50": [round(float(v), 4) for v in null_median],
         "null_band_p95": [round(float(v), 4) for v in null_hi],
+        "null_exclusion_buffer_days": NULL_EXCLUSION_BUFFER_DAYS,
+        "null_groups_without_eligible_days": groups_without_eligible,
+        "null_events_per_realization_median": float(np.median(n_null_events)) if n_null_events else 0.0,
     }
 
 
@@ -178,6 +187,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", type=Path, required=True)
     ap.add_argument("--label", required=True, help="e.g. m5.5 or m5.0, used in output filenames")
+    ap.add_argument("--min-mag", type=float, required=True,
+                    help="magnitude threshold of this tier; must match the --catalog file's")
     args = ap.parse_args()
 
     group_series = {}
@@ -186,7 +197,7 @@ def main():
         if s is not None:
             group_series[g] = s
 
-    events = load_extended_events(args.catalog, ULF_GROUPS)
+    events = load_extended_events(args.catalog, ULF_GROUPS, args.min_mag)
     print(f"{len(events)} candidate events across {len(group_series)} groups", file=sys.stderr)
 
     out_dir = PROJECT_DIR / "data" / "interim" / "superposed_epoch"
@@ -195,6 +206,7 @@ def main():
     rng = np.random.default_rng(SEED)
     for band in BANDS:
         result = run_band(band, events, group_series, rng)
+        result["min_mag"] = args.min_mag
         out_path = out_dir / f"{band}_stack_{args.label}.json"
         out_path.write_text(json.dumps(result, indent=2))
         if "error" in result:
