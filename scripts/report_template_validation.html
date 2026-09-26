@@ -488,6 +488,7 @@ if (!DATA) {
       ${m4InNull ? '<b>落在虛無基準 90% 區間內</b>，也就是說用更多事件疊加之後，day -4 這個特定位置並沒有明顯浮現出比隨機對齊更異常的下沉。' : '<b>超出虛無基準 90% 區間</b>，比隨機對齊更極端。'}</p>
       <p><b>整條疊加曲線中，超出虛無基準 90% 區間的相對天數：</b>${outside.length ? outside.join('、') + '（共 ' + outside.length + ' 天，佔 ' + lags.length + ' 天窗口中約 ' + (outside.length/lags.length*100).toFixed(0) + '%——注意窗口越長、多重比較下純粹碰運氣也會有幾天超出 90% 區間，不宜只挑其中一天過度解讀）' : '<b>無</b>——疊加後沒有任何一天明顯超出隨機對齊的基準區間。'}</p>
       <p>邊界天數（接近 -30 或 +10）貢獻的事件數較少（部分組別資料窗口不夠長），估計較不穩定，解讀時應以 n_contributing（滑鼠懸停可見）較高的中段天數為主。</p>
+      ${(d.null_groups_without_eligible_days||[]).length ? `<p><b>比較用的組別：</b>虛無基準的假發震日必須離所有真實地震至少 ${d.null_exclusion_buffer_days} 天；${d.null_groups_without_eligible_days.join('、')} 事件太密集，找不到這樣的日子，所以疊加曲線和虛無基準都不含這些組（本級全部 ${d.n_events_all} 起事件中，用於比較的是 ${d.n_events_used} 起）。</p>` : ''}
     `;
   }
   // ---------- SEA events table ----------

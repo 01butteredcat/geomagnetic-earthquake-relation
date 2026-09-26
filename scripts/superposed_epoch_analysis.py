@@ -87,10 +87,33 @@ def valid_date_range(series: dict) -> tuple[pd.Timestamp, pd.Timestamp]:
     return min(ds), max(ds)
 
 
-def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.Generator) -> dict:
-    lags = np.arange(-WINDOW_BEFORE_DAYS, WINDOW_AFTER_DAYS + 1)
-    matrix = []
-    used_events = []
+def _eligible_null_days(band: str, events: list[dict], group_series: dict) -> dict[str, list[pd.Timestamp]]:
+    """Candidate fake epochs per group: every day whose full window fits the data AND that is at
+    least NULL_EXCLUSION_BUFFER_DAYS from every real date -- this tier's events plus every
+    registered event in the group's raw-data folder (siblings see the same days). Drawing from
+    this set, instead of retrying random days and falling back to the last try, guarantees no
+    null epoch sits near a real earthquake. Dense groups (e.g. G11's 32 events) can end up with
+    no eligible day at all."""
+    real_dates_by_group: dict[str, list[pd.Timestamp]] = {}
+    for ev in events:
+        real_dates_by_group.setdefault(ev["group"], []).append(ev["date"])
+    for g in list(real_dates_by_group):
+        real_dates_by_group[g] += [pd.Timestamp(e.time_utc.split(" ")[0]) for e in folder_events(g)]
+    eligible: dict[str, list[pd.Timestamp]] = {}
+    for g, real in real_dates_by_group.items():
+        series = group_series.get(g)
+        if series is None or band not in series:
+            continue
+        lo, hi = valid_date_range(series)
+        lo_bound = lo + pd.Timedelta(days=WINDOW_BEFORE_DAYS)
+        hi_bound = hi - pd.Timedelta(days=WINDOW_AFTER_DAYS)
+        eligible[g] = [d for d in pd.date_range(lo_bound, hi_bound, freq="D")
+                       if all(abs((d - rd).days) >= NULL_EXCLUSION_BUFFER_DAYS for rd in real)]
+    return eligible
+
+
+def _event_windows(band: str, events: list[dict], group_series: dict) -> tuple[list, list[dict]]:
+    matrix, used = [], []
     for ev in events:
         series = group_series.get(ev["group"])
         if series is None or band not in series:
@@ -99,10 +122,34 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
         if np.all(np.isnan(w)):
             continue
         matrix.append(w)
-        used_events.append({"group": ev["group"], "date": ev["date"].strftime("%Y-%m-%d"),
-                             "mag": ev["mag"], "source": ev["source"]})
-    if not matrix:
+        used.append({"group": ev["group"], "date": ev["date"].strftime("%Y-%m-%d"),
+                     "mag": ev["mag"], "source": ev["source"]})
+    return matrix, used
+
+
+def _r4(a) -> list:
+    return [None if np.isnan(v) else round(float(v), 4) for v in a]
+
+
+def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.Generator) -> dict:
+    """The stack compared against the null band uses only groups that have eligible null days,
+    so real stack and null band are built from the same groups -- otherwise a dense group
+    missing from the null (G11's stack sits ~2 z above the others) shifts the real stack
+    outside the band at every lag. The stack over all of this tier's events is kept alongside
+    as `*_all_events`, descriptive only."""
+    lags = np.arange(-WINDOW_BEFORE_DAYS, WINDOW_AFTER_DAYS + 1)
+    all_matrix, all_used = _event_windows(band, events, group_series)
+    if not all_matrix:
         return {"band": band, "error": "no events with usable data"}
+    M_all = np.array(all_matrix)
+
+    eligible_days = _eligible_null_days(band, events, group_series)
+    groups_without_eligible = sorted(g for g, days in eligible_days.items() if not days)
+    comparable = [ev for ev in events if eligible_days.get(ev["group"])]
+    matrix, used_events = _event_windows(band, comparable, group_series)
+    if not matrix:
+        return {"band": band, "error": "no events in groups with eligible null days",
+                "null_groups_without_eligible_days": groups_without_eligible}
     M = np.array(matrix)  # n_events x n_lags
 
     real_stack_mean = np.nanmean(M, axis=0)
@@ -118,46 +165,16 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
     ci_lo = np.nanpercentile(boot, 5, axis=0)
     ci_hi = np.nanpercentile(boot, 95, axis=0)
 
-    # null band: repeat the whole stacking procedure with random, earthquake-
-    # unrelated epoch dates (same group membership/event count preserved)
-    real_dates_by_group: dict[str, list[pd.Timestamp]] = {}
-    for ev in events:
-        real_dates_by_group.setdefault(ev["group"], []).append(ev["date"])
-    # sibling groups (shared raw-data folder) see the same days, so their registered events must
-    # stay out of this group's random epoch dates too
-    for g in list(real_dates_by_group):
-        real_dates_by_group[g] += [pd.Timestamp(e.time_utc.split(" ")[0]) for e in folder_events(g)]
-
-    # Candidate fake epochs per group: every day whose full window fits the data AND that is at
-    # least NULL_EXCLUSION_BUFFER_DAYS from every real date. Drawing from this set (instead of
-    # retrying random days and falling back to the last try) guarantees no null epoch sits near a
-    # real earthquake; a group with no such day contributes nothing to the null band.
-    eligible_days: dict[str, list[pd.Timestamp]] = {}
-    for g in {ev["group"] for ev in events}:
-        series = group_series.get(g)
-        if series is None or band not in series:
-            continue
-        lo, hi = valid_date_range(series)
-        lo_bound = lo + pd.Timedelta(days=WINDOW_BEFORE_DAYS)
-        hi_bound = hi - pd.Timedelta(days=WINDOW_AFTER_DAYS)
-        real = real_dates_by_group.get(g, [])
-        eligible_days[g] = [d for d in pd.date_range(lo_bound, hi_bound, freq="D")
-                            if all(abs((d - rd).days) >= NULL_EXCLUSION_BUFFER_DAYS for rd in real)]
-    groups_without_eligible = sorted(g for g, days in eligible_days.items() if not days)
-
+    # null band: repeat the whole stacking procedure with random, earthquake-unrelated epoch
+    # dates (one fake epoch per comparable event, drawn from that event's group)
     null_stacks = np.empty((N_NULL, M.shape[1]))
-    n_null_events = []
     for r in range(N_NULL):
         null_matrix = []
-        for ev in events:
-            days = eligible_days.get(ev["group"])
-            if not days:
-                continue
-            fake_date = days[int(rng.integers(0, len(days)))]
-            w = extract_window(group_series[ev["group"]], band, fake_date)
+        for ev in comparable:
+            days = eligible_days[ev["group"]]
+            w = extract_window(group_series[ev["group"]], band, days[int(rng.integers(0, len(days)))])
             if not np.all(np.isnan(w)):
                 null_matrix.append(w)
-        n_null_events.append(len(null_matrix))
         null_stacks[r] = np.nanmean(np.array(null_matrix), axis=0) if null_matrix else np.nan
 
     null_lo = np.nanpercentile(null_stacks, 5, axis=0)
@@ -169,8 +186,8 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
         "n_events_used": len(used_events),
         "events_used": used_events,
         "lags_days": lags.tolist(),
-        "stack_mean": [None if np.isnan(v) else round(float(v), 4) for v in real_stack_mean],
-        "stack_median": [None if np.isnan(v) else round(float(v), 4) for v in real_stack_median],
+        "stack_mean": _r4(real_stack_mean),
+        "stack_median": _r4(real_stack_median),
         "n_contributing_per_lag": n_contributing.tolist(),
         "bootstrap_ci90_lo": [round(float(v), 4) for v in ci_lo],
         "bootstrap_ci90_hi": [round(float(v), 4) for v in ci_hi],
@@ -179,7 +196,10 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
         "null_band_p95": [round(float(v), 4) for v in null_hi],
         "null_exclusion_buffer_days": NULL_EXCLUSION_BUFFER_DAYS,
         "null_groups_without_eligible_days": groups_without_eligible,
-        "null_events_per_realization_median": float(np.median(n_null_events)) if n_null_events else 0.0,
+        "n_events_all": len(all_used),
+        "events_all": all_used,
+        "stack_mean_all_events": _r4(np.nanmean(M_all, axis=0)),
+        "n_contributing_per_lag_all_events": np.sum(~np.isnan(M_all), axis=0).tolist(),
     }
 
 

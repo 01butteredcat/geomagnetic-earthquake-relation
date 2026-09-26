@@ -285,7 +285,7 @@
 
 ### E1. 疊加時間分析（Superposed Epoch Analysis, SEA）+ Bootstrap 信賴區間 + Null Band
 - **用途**：將多個獨立地震事件的異常序列，依「距地震發生日/秒的相對時間（lag）」對齊堆疊，檢驗是否存在跨事件一致的異常型態（而非單一事件的偶然現象）。日尺度版本用於震前 ULF 差分序列；秒尺度版本（`coseismic_stacking_analysis.py`）用於 coseismic 階躍/尖峰統計量。
-- **程式碼**：`scripts/superposed_epoch_analysis.py:90-183`；`scripts/coseismic_stacking_analysis.py:158-413`；事件清單 `scripts/catalog_utils.py::load_extended_events`
+- **程式碼**：`scripts/superposed_epoch_analysis.py:90-203`；`scripts/coseismic_stacking_analysis.py:158-413`；事件清單 `scripts/catalog_utils.py::load_extended_events`
 - **數學式**：設 $M$ 為 $n_{\text{events}}\times n_{\text{lags}}$ 矩陣，各列為單一事件對齊後的序列：
 
   $$
@@ -301,7 +301,7 @@
   \text{CI}_{90\%} = \bigl[P_5(\bar{S}^{(1..B)}),\ P_{95}(\bar{S}^{(1..B)})\bigr]
   $$
 
-  Null band：以同群組但earthquake-unrelated 的隨機參考日期重複整個堆疊流程 $R$ 次（$R=1000$），取其 5/50/95 百分位作為「純巧合下堆疊結果應落在的範圍」。日尺度版本的隨機日期從「窗口完整落在資料內、且距本級事件與同資料夾所有登錄事件都至少 30 天」的可用日中均勻抽取；沒有可用日的組不進 null band，輸出的 `null_groups_without_eligible_days` 會列出這些組（2026-09-26 起；之前重試失敗時會沿用太靠近真實地震的日期）。各規模級距的事件清單只收規模 ≥ 門檻的事件（`--min-mag`，`events.py` 的事件也一樣過濾）。
+  Null band：以同群組但earthquake-unrelated 的隨機參考日期重複整個堆疊流程 $R$ 次（$R=1000$），取其 5/50/95 百分位作為「純巧合下堆疊結果應落在的範圍」。日尺度版本的隨機日期從「窗口完整落在資料內、且距本級事件與同資料夾所有登錄事件都至少 30 天」的可用日中均勻抽取；沒有可用日的組（事件太密集，例如 G11）不進 null band，**拿來和 null band 比較的真實堆疊與 bootstrap CI 也只用同樣這些組**，兩邊組成才一致；本級全部事件的堆疊另存為 `stack_mean_all_events`，只作描述。`null_groups_without_eligible_days` 列出被排除的組（2026-09-26 起；之前重試失敗時會沿用太靠近真實地震的日期，且真實堆疊含全部組）。各規模級距的事件清單只收規模 ≥ 門檻的事件（`--min-mag`，`events.py` 的事件也一樣過濾）。
 - **虛無假說 H₀**：以地震時刻對齊堆疊出的平均序列，和以隨機、與地震無關的參考時刻堆疊出的序列來自同一分布；跨事件沒有一致的異常型態。
 - **對立假說 H₁**：秒尺度：堆疊後的峰值 $|z|$ 大於虛無序列自身的峰值分布（單尾）。日尺度：某些 lag 落在 null band（5–95 百分位）之外；因為是逐點比較，只作描述性參考，不是正式檢定。
 - **優點**：直接檢驗「跨事件一致性」，是區分「單一事件的雜訊巧合」與「真正物理前兆」最有力的證據型態之一；Bootstrap CI 與 Null band 皆為非母數方法，適合小樣本、非常態資料；秒尺度版本额外用「虛無序列自身峰值分布」而非逐點百分位判斷顯著性，避免了 look-elsewhere 問題（見模組內文件字串說明，`coseismic_stacking_analysis.py:372-385`）。

@@ -530,7 +530,7 @@ methods:
       - 日尺度只有 ULF_GROUPS（向量站群組）可用，事件數仍偏少；小樣本下 bootstrap 對總體變異的估計可能偏窄。
       - 各事件資料品質與測站覆蓋不一，以 nanmean/nanmedian 處理缺值，有效樣本數隨 lag 變動，邊緣 lag 統計力較弱。
     code:
-      - {file: scripts/superposed_epoch_analysis.py, lines: "90-183", symbol: run_band}
+      - {file: scripts/superposed_epoch_analysis.py, lines: "134-203", symbol: run_band}
       - {file: scripts/coseismic_stacking_analysis.py, lines: "310-413", symbol: stack_series}
 
   E2:
