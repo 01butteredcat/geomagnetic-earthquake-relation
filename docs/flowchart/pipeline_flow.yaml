@@ -86,7 +86,7 @@ methods:
       - 相較真正的高通濾波器，滾動平均頻率響應較差（旁瓣大），並非嚴謹的頻域設計。
     code:
       - {file: scripts/ulf_analysis.py, lines: "52-54", symbol: _detrend}
-      - {file: scripts/coseismic_step_analysis.py, lines: "219-223", symbol: _detrend}
+      - {file: scripts/coseismic_step_analysis.py, lines: "241-245", symbol: _detrend}
 
   B1:
     name: 中位數 / MAD 穩健 z-score
@@ -490,9 +490,9 @@ methods:
       - 搜尋窗越寬，「窗內最大值」越容易偶然偏大（look-elsewhere）；換成更寬視窗時，非邊界事件的峰值也會被改變。
       - 單事件層級的 p-value 仍需謹慎解讀多重比較（秒級堆疊 E1 用虛無序列自身峰值分布緩解）。
     code:
-      - {file: scripts/coseismic_step_analysis.py, lines: "226-246", symbol: _step_statistic}
-      - {file: scripts/coseismic_step_analysis.py, lines: "292-338", symbol: _extremum_in_window}
-      - {file: scripts/coseismic_step_analysis.py, lines: "382-396", symbol: _summarize_test}
+      - {file: scripts/coseismic_step_analysis.py, lines: "248-262", symbol: _step_statistic}
+      - {file: scripts/coseismic_step_analysis.py, lines: "314-341", symbol: _extremum_in_window}
+      - {file: scripts/coseismic_step_analysis.py, lines: "404-418", symbol: _summarize_test}
 
   E1:
     name: 疊加時間分析（SEA）＋ Bootstrap 信賴區間 ＋ Null Band
@@ -530,8 +530,8 @@ methods:
       - 日尺度只有 ULF_GROUPS（向量站群組）可用，事件數仍偏少；小樣本下 bootstrap 對總體變異的估計可能偏窄。
       - 各事件資料品質與測站覆蓋不一，以 nanmean/nanmedian 處理缺值，有效樣本數隨 lag 變動，邊緣 lag 統計力較弱。
     code:
-      - {file: scripts/superposed_epoch_analysis.py, lines: "90-174", symbol: run_band}
-      - {file: scripts/coseismic_stacking_analysis.py, lines: "304-407", symbol: stack_series}
+      - {file: scripts/superposed_epoch_analysis.py, lines: "90-183", symbol: run_band}
+      - {file: scripts/coseismic_stacking_analysis.py, lines: "310-413", symbol: stack_series}
 
   E2:
     name: 規則回測（Precision / Recall / False-Alarm Rate）

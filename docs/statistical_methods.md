@@ -37,7 +37,7 @@
 
 ### A2. 去趨勢（1 小時置中滾動平均）
 - **用途**：在做 ULF 頻帶濾波（見 C1）或 coseismic 階躍偵測（見 D7）前，先移除長週期背景趨勢（如日變 Sq 曲線），避免其能量洩漏進目標頻帶。
-- **程式碼**：`scripts/ulf_analysis.py:52-54`；`scripts/coseismic_step_analysis.py:219-223`（獨立複製的同一公式）
+- **程式碼**：`scripts/ulf_analysis.py:52-54`；`scripts/coseismic_step_analysis.py:241-245`（獨立複製的同一公式）
 - **數學式**：
 
   $$
@@ -260,7 +260,7 @@
 
 ### D7. 地震對照組重抽樣 p-value（Coseismic 隨機參考時刻）
 - **用途**：在地震發生時刻附近偵測「階躍/尖峰」統計量後，另外抽取同一群組中大量與真實地震保持一定緩衝距離的隨機參考時刻，計算相同統計量在「無地震」情境下有多極端，藉此得到經驗 p-value。
-- **程式碼**：`scripts/coseismic_step_analysis.py:292-338`（`_extremum_in_window`、`_draw_null_centers`），`N_NULL=2000`
+- **程式碼**：`scripts/coseismic_step_analysis.py:314-341`（`_extremum_in_window`、`_draw_null_centers`），`N_NULL=2000`；亂數流 `keyed_rng`（`:191-197`）
 - **數學式**：設 $d_t$ 為去趨勢（A2）後的序列，階躍統計量（$M \in \{10, 30, 90\}$ 秒）與尖峰統計量為：
 
   $$
@@ -273,7 +273,7 @@
   p = \frac{1+\#\{r : |\text{null}_r| \ge |\text{obs}|\}}{N_{\text{null}}+1}
   $$
 
-  隨機參考時刻需與所有真實地震事件保持 `exclude_buffer_sec` 以上距離，避免虛無分布被真實異常污染。
+  隨機參考時刻需與所有真實地震事件保持 `exclude_buffer_sec` 以上距離，避免虛無分布被真實異常污染。每個（組、事件、站群、測站、分量）各用一條獨立的亂數流（`keyed_rng`，2026-09-26 起；秒尺度堆疊與起始時間分析也一樣），所以更動某一筆事件不會改到其他事件的虛無抽樣，單事件執行與 `--all` 的結果也相同。
 - **虛無假說 H₀**：地震發生時刻 ±180 秒內的階躍／尖峰極值，與同一測站、同一時期隨機參考時刻用相同程序取得的極值來自同一分布；也就是地震時沒有額外的磁場跳動。
 - **對立假說 H₁**：地震時刻附近的極值大於隨機參考時刻的極值（單尾；統計量已取絕對值，正負方向的跳動都算）。
 - **優點**：虛無分布直接來自同一測站/同一時期的真實雜訊特性，不需假設雜訊分布形式；`_effective_half_sec` 機制確保搜尋窗不會跨越到鄰近的另一起真實地震，避免污染。
@@ -285,7 +285,7 @@
 
 ### E1. 疊加時間分析（Superposed Epoch Analysis, SEA）+ Bootstrap 信賴區間 + Null Band
 - **用途**：將多個獨立地震事件的異常序列，依「距地震發生日/秒的相對時間（lag）」對齊堆疊，檢驗是否存在跨事件一致的異常型態（而非單一事件的偶然現象）。日尺度版本用於震前 ULF 差分序列；秒尺度版本（`coseismic_stacking_analysis.py`）用於 coseismic 階躍/尖峰統計量。
-- **程式碼**：`scripts/superposed_epoch_analysis.py:90-174`；`scripts/coseismic_stacking_analysis.py:157-407`
+- **程式碼**：`scripts/superposed_epoch_analysis.py:90-183`；`scripts/coseismic_stacking_analysis.py:158-413`；事件清單 `scripts/catalog_utils.py::load_extended_events`
 - **數學式**：設 $M$ 為 $n_{\text{events}}\times n_{\text{lags}}$ 矩陣，各列為單一事件對齊後的序列：
 
   $$
@@ -301,15 +301,15 @@
   \text{CI}_{90\%} = \bigl[P_5(\bar{S}^{(1..B)}),\ P_{95}(\bar{S}^{(1..B)})\bigr]
   $$
 
-  Null band：以同群組但earthquake-unrelated 的隨機參考日期重複整個堆疊流程 $R$ 次（$R=1000$），取其 5/50/95 百分位作為「純巧合下堆疊結果應落在的範圍」。
+  Null band：以同群組但earthquake-unrelated 的隨機參考日期重複整個堆疊流程 $R$ 次（$R=1000$），取其 5/50/95 百分位作為「純巧合下堆疊結果應落在的範圍」。日尺度版本的隨機日期從「窗口完整落在資料內、且距本級事件與同資料夾所有登錄事件都至少 30 天」的可用日中均勻抽取；沒有可用日的組不進 null band，輸出的 `null_groups_without_eligible_days` 會列出這些組（2026-09-26 起；之前重試失敗時會沿用太靠近真實地震的日期）。各規模級距的事件清單只收規模 ≥ 門檻的事件（`--min-mag`，`events.py` 的事件也一樣過濾）。
 - **虛無假說 H₀**：以地震時刻對齊堆疊出的平均序列，和以隨機、與地震無關的參考時刻堆疊出的序列來自同一分布；跨事件沒有一致的異常型態。
 - **對立假說 H₁**：秒尺度：堆疊後的峰值 $|z|$ 大於虛無序列自身的峰值分布（單尾）。日尺度：某些 lag 落在 null band（5–95 百分位）之外；因為是逐點比較，只作描述性參考，不是正式檢定。
-- **優點**：直接檢驗「跨事件一致性」，是區分「單一事件的雜訊巧合」與「真正物理前兆」最有力的證據型態之一；Bootstrap CI 與 Null band 皆為非母數方法，適合小樣本、非常態資料；秒尺度版本额外用「虛無序列自身峰值分布」而非逐點百分位判斷顯著性，避免了 look-elsewhere 問題（見模組內文件字串說明，`coseismic_stacking_analysis.py:366-376`）。
+- **優點**：直接檢驗「跨事件一致性」，是區分「單一事件的雜訊巧合」與「真正物理前兆」最有力的證據型態之一；Bootstrap CI 與 Null band 皆為非母數方法，適合小樣本、非常態資料；秒尺度版本额外用「虛無序列自身峰值分布」而非逐點百分位判斷顯著性，避免了 look-elsewhere 問題（見模組內文件字串說明，`coseismic_stacking_analysis.py:372-385`）。
 - **缺點**：事件數仍偏少（日尺度版本僅 ULF_GROUPS 的 13 個向量站群組可用；秒尺度版本涵蓋 49 事件），bootstrap 對總體變異的估計在小樣本下可能偏窄；不同事件的資料品質/測站覆蓋不一致，堆疊時以 `nanmean`/`nanmedian` 處理缺值，可能讓「有效樣本數」隨 lag 而變動，邊緣 lag 的統計力較弱。
 
 ### E2. 規則回測（Precision / Recall / False-Alarm Rate）與滑動窗基準率
 - **用途**：把「z ≤ −4.1」這條固定規則當作實際的地震前兆警報規則，對照完整地震目錄回測其實務表現：抓到的天數中有多少真的在觸發窗、真正抓到的事件比例多少、非事件期間誤報率多高。
-- **程式碼**：`scripts/backtest_rule.py:48-150`；`sliding_baseline_rate`（`scripts/cross_group_analysis.py`）
+- **程式碼**：`scripts/backtest_rule.py:43-150`（事件清單同 E1，依 `--min-mag` 過濾）；`sliding_baseline_rate`（`scripts/cross_group_analysis.py`）
 - **數學式**：
 
   $$
