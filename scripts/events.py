@@ -1,14 +1,12 @@
-"""Earthquake event / group registry for the 23-group multi-event
+"""Earthquake event / group registry for the 24-group multi-event
 geomagnetic precursor pipeline (originally 13 groups; see the dated entries
-below for how it grew to 23).
+below for how it grew to 24).
 
-Precise epicenter coordinates/depth/magnitude were compiled from CWA
-(Central Weather Administration) earthquake bulletins, cross-checked against
-USGS where CWA's own decimal coordinates could not be located via web
-search -- see each event's `coord_source`/`coord_confidence`/`note` fields.
-This is real research data, not placeholders: where precision is genuinely
-lower (CWA coordinates unavailable, using USGS as a substitute), that is
-recorded explicitly rather than silently treated as equally precise.
+Epicenter coordinates/depth/magnitude are from the CWA (Central Weather
+Administration) earthquake catalog / CWA GDMS -- every event has
+`coord_source="CWA"`. USGS/JMA magnitudes appear only as reference values in
+some events' `note`. `coord_confidence` records lower-precision entries
+explicitly rather than silently treating them as equally precise.
 
 Each group's `anchor` event is the single largest-magnitude event in that
 group -- the one test point used for cross-group statistics (§7 of the
@@ -688,9 +686,9 @@ GROUPS: dict[str, Group] = {
     )),
     # --- G14-G20: added 2026-08-08. Candidate events were pre-researched (relative-bearing
     # locations + USGS-sourced approximate magnitudes only) in docs/candidate_groups_G14_G20.md;
-    # precise CWA/USGS coordinates/depths/magnitudes below were researched fresh via WebSearch/
-    # WebFetch against CWA bulletin pages, USGS FDSN, and zh-Wikipedia articles citing CWA, after
-    # the user manually fetched G14-G20's raw .tgz data from GDMS on 2026-08-07.
+    # the coordinates/depths/magnitudes below are CWA catalog values (all CWA-sourced since the
+    # 2026-08-20 GDMS catalog upgrade), registered after the user manually fetched G14-G20's raw
+    # .tgz data from GDMS on 2026-08-07.
     "G14": Group("G14", "G14", (
         Event("2009-07-14", "2009-07-14 02:05:01", 24.0228, 122.2193, 18.08, 6.00, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
@@ -886,7 +884,7 @@ GROUPS: dict[str, Group] = {
                    "(M7.3) and the 2024-04-03 Hualien earthquake (G10, M7.2 as originally reported and "
                    "still CWA's own press-comparison figure; see G10's note on CWA's later 2025-02-01 "
                    "revision to ML7.1). G10's 2024-04-03 mainshock remains the largest-magnitude event "
-                   "in this 23-group registry either way (7.2 or 7.1, both > this event's 7.0). "
+                   "in this 24-group registry either way (7.2 or 7.1, both > this event's 7.0). "
                    "Mww 6.6 (USGS, us7000rl2n) -- one of the largest CWA/USGS magnitude gaps documented "
                    "in this registry (0.4 magnitude units, using CWA's press-comparison M7.0 figure). "
                    "Depth also varies by source/report stage: 67.7km (CWA finalized report, scweb detail "
