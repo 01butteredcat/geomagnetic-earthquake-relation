@@ -868,11 +868,13 @@ GROUPS: dict[str, Group] = {
                    "anchor reassignment is triggered."),
     )),
     "G20": Group("G20", "G20", (
-        Event("2025-12-24", "2025-12-24 17:47:06", 22.85, 121.15, 11.9, 6.1, "ML", "CWA",
+        Event("2025-12-24", "2025-12-24 17:47:06", 22.8855, 121.0723, 9.20, 6.07, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
               note="Taitung Beinan (台東卑南), 10.1km N of Taitung County government, extremely shallow. "
-                   "CWA M6.1. Mww 6.0 (USGS, us7000rkjm)."),
-        Event("2025-12-27", "2025-12-27 23:05:56", 24.66, 122.00, 67.7, 7.0, "M", "CWA",
+                   "CWA M6.1. Mww 6.0 (USGS, us7000rkjm). 2026-09-26: coordinates/depth/magnitude "
+                   "replaced with the CWA GDMS catalog values (GDMScatalog.txt; was 22.85N/121.15E, "
+                   "11.9km, ML6.1 -- ~8km off in longitude)."),
+        Event("2025-12-27", "2025-12-27 23:05:56", 24.6622, 122.0043, 67.69, 7.01, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="Offshore ESE Yilan. CWA's finalized report puts this at M7.0 (NOT M6.6 as "
                    "docs/candidate_groups_G14_G20.md's USGS-sourced candidate table characterized it). "
