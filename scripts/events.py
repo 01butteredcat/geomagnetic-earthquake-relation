@@ -117,9 +117,9 @@ GROUPS: dict[str, Group] = {
               note="USGS reports this same event as Mww 6.1 (us1000cfn6) -- an unusually large ML/Mw gap "
                    "documented in seismological literature. CWA ML5.8 used here for consistency with the "
                    "rest of this registry, which prefers CWA throughout."),
-        Event("2018-02-06", "2018-02-06 23:50:00", 24.10, 121.73, 6.3, 6.2, "ML", "CWA",
+        Event("2018-02-06", "2018-02-06 23:50:41", 24.1007, 121.7297, 6.31, 6.26, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="Hualien. Mw 6.4 (USGS) / Mj 6.7 (JMA)."),
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 23:50:00, 24.10N/121.73E, 6.3km, ML6.2). Hualien. Mw 6.4 (USGS) / Mj 6.7 (JMA)."),
     )),
     # G2 and G3 share one raw-data folder (`G2_G3/`) purely because they were fetched together for
     # convenience -- they are independent events (112 days and ~45km apart), so each is its own
@@ -127,9 +127,9 @@ GROUPS: dict[str, Group] = {
     # anchor was G2, leaving G3 out of every cross-group test). See folder_events() below for how
     # analyses that must exclude "every real event in this data" still see both.
     "G2": Group("G2", "G2_G3", (
-        Event("2019-04-18", "2019-04-18 13:01:07", 24.06, 121.54, 18.8, 6.3, "ML", "CWA",
+        Event("2019-04-18", "2019-04-18 13:01:07", 24.0543, 121.5592, 20.33, 6.32, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="Hualien Xiulin (花蓮秀林). Mw 6.1 (USGS)."),
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 24.06N/121.54E, 18.8km, ML6.3). Hualien Xiulin (花蓮秀林). Mw 6.1 (USGS)."),
     )),
     "G3": Group("G3", "G2_G3", (
         Event("2019-08-08", "2019-08-08 05:28:04", 24.44, 121.91, 24.2, 6.2, "ML", "CWA",
@@ -138,9 +138,9 @@ GROUPS: dict[str, Group] = {
                    "of G2_G3 (previously the non-anchor second event of the merged group)."),
     )),
     "G4": Group("G4", "G4", (
-        Event("2020-12-10", "2020-12-10 21:19:58", 24.74, 122.03, 76.8, 6.7, "M", "CWA",
+        Event("2020-12-10", "2020-12-10 21:19:58", 24.7395, 122.0035, 75.71, 6.64, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="Offshore Yilan, deep subduction-zone event. Mww 6.1/depth 71km (USGS), M6.3/depth 86km "
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 24.74N/122.03E, 76.8km, M6.7). Offshore Yilan, deep subduction-zone event. Mww 6.1/depth 71km (USGS), M6.3/depth 86km "
                    "(JMA) -- depth estimate varies substantially by agency for this event; CWA's 76.8km "
                    "used as primary."),
     )),
@@ -230,9 +230,9 @@ GROUPS: dict[str, Group] = {
                    "calendar date hence the 'a' suffix even though it precedes the anchor chronologically "
                    "(the anchor keeps its plain, un-suffixed date). See "
                    "docs/candidate_groups_from_GDMScatalog.md Table 1."),
-        Event("2022-09-18", "2022-09-18 14:44:00", 23.14, 121.20, 7.8, 6.8, "ML", "CWA",
+        Event("2022-09-18", "2022-09-18 14:44:15", 23.1370, 121.1958, 7.81, 6.83, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="Chishang/Guanshan mainshock. Mw 6.9 (USGS)."),
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 14:44:00, 23.14N/121.20E, 7.8km, ML6.8). Chishang/Guanshan mainshock. Mw 6.9 (USGS)."),
         Event("2022-09-19", "2022-09-19 10:07:45", 23.4410, 121.2995, 13.38, 6.02, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
               note="Added 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
@@ -262,9 +262,9 @@ GROUPS: dict[str, Group] = {
               note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
                    "(GDMScatalog.json, quality B, 99 stations, exact origin-time match to the second) -- "
                    "supersedes the previous USGS Mww6.1 (us6000mt0r) substitute coordinates."),
-        Event("2024-04-23b", "2024-04-23 02:32:49", 23.85, 121.54, 5.5, 6.3, "ML", "CWA",
+        Event("2024-04-23b", "2024-04-23 02:32:48", 23.8482, 121.5208, 7.74, 6.22, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
-              note="Shoufeng Township. Mww 6.1 (USGS)."),
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 02:32:49, 23.85N/121.54E, 5.5km, ML6.3). Shoufeng Township. Mww 6.1 (USGS)."),
         Event("2024-04-23c", "2024-04-23 08:04:05", 23.8352, 121.5715, 11.68, 6.14, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
               note="Added 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
@@ -289,9 +289,9 @@ GROUPS: dict[str, Group] = {
                    "(GDMScatalog.json, quality B, 99 stations) -- previously unregistered independent "
                    "event falling within G10's existing fetch window. See "
                    "docs/candidate_groups_from_GDMScatalog.md Table 1."),
-        Event("2024-05-10", "2024-05-10 15:45:00", 24.2315, 121.8342, 7.72, 6.01, "ML", "CWA",
+        Event("2024-05-10", "2024-05-10 15:45:18", 24.2315, 121.8342, 7.72, 6.01, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
-              note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 15:45:00). Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
                    "(GDMScatalog.json, quality C, 99 stations, origin time matches to within 18s) -- "
                    "supersedes both the previous ML5.8 magnitude and the USGS Mww5.8 (us6000mxpi) "
                    "substitute coordinates; the catalog's ML6.01 is notably higher than the ML5.8 this "
@@ -605,9 +605,9 @@ GROUPS: dict[str, Group] = {
                    "anchor reassignment is triggered."),
     )),
     "G13": Group("G13", "G13", (
-        Event("2026-05-01", "2026-05-01 20:39:55", 24.93, 122.08, 98.3, 6.1, "M", "CWA",
+        Event("2026-05-01", "2026-05-01 20:39:55", 24.9067, 122.0602, 100.86, 6.19, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="CWA official report EQ115037. NE offshore Yilan, deep event. Mww 5.8 (USGS)."),
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 24.93N/122.08E, 98.3km, M6.1). CWA official report EQ115037. NE offshore Yilan, deep event. Mww 5.8 (USGS)."),
         Event("2026-02-24", "2026-02-24 12:37:15", 24.6567, 121.9048, 63.99, 5.68, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
               note="Added 2026-09-23 from a user-supplied CWA GDMS regional magnitude-report export "
@@ -690,9 +690,9 @@ GROUPS: dict[str, Group] = {
     # 2026-08-20 GDMS catalog upgrade), registered after the user manually fetched G14-G20's raw
     # .tgz data from GDMS on 2026-08-07.
     "G14": Group("G14", "G14", (
-        Event("2009-07-14", "2009-07-14 02:05:01", 24.0228, 122.2193, 18.08, 6.00, "ML", "CWA",
+        Event("2009-07-14", "2009-07-14 02:05:02", 24.0228, 122.2193, 18.08, 6.00, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
-              note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 02:05:01). Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
                    "(GDMScatalog.json, quality C, 74 stations, origin time matches to within 1s) -- "
                    "supersedes the previous USGS Mwc6.3 (usp000gz7c) substitute magnitude/coordinates. "
                    "61km E of Hualien City per USGS."),
@@ -717,9 +717,9 @@ GROUPS: dict[str, Group] = {
                    "2009-11-05 17:32 Nantou, ML6.2/23.79N,120.72E/24.1km, both matching this record "
                    "closely). Commonly referenced simply as the 2009年11月5日南投(鹿谷)地震 -- no distinct "
                    "named designation like '921'. See docs/candidate_groups_from_GDMScatalog.md Table 1."),
-        Event("2009-12-19", "2009-12-19 21:02:00", 23.79, 121.66, 43.8, 6.9, "ML", "CWA",
+        Event("2009-12-19", "2009-12-19 21:02:16", 23.7880, 121.6633, 43.78, 6.92, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="CWA ML6.9, 21.4km SE of Hualien City offshore, depth 43.8km (per zh-Wikipedia citing "
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 21:02:00, 23.79N/121.66E, 43.8km, ML6.9). CWA ML6.9, 21.4km SE of Hualien City offshore, depth 43.8km (per zh-Wikipedia citing "
                    "the CWA bulletin). USGS reports this same event as Mwc6.4 (usp000h56g) -- a large "
                    "ML/Mw gap similar to the one already documented for G1's 2018-02-04 event. This "
                    "registry's mechanical 'largest CWA magnitude in group' anchor rule resolves what "
@@ -812,9 +812,9 @@ GROUPS: dict[str, Group] = {
                    "triggered."),
     )),
     "G18": Group("G18", "G18", (
-        Event("2016-02-06", "2016-02-06 03:57:27", 22.93, 120.54, 16.7, 6.6, "ML", "CWA",
+        Event("2016-02-06", "2016-02-06 03:57:26", 22.9220, 120.5438, 14.64, 6.6, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
-              note="Kaohsiung Meinong (高雄美濃). CWA revised this event's magnitude upward from an "
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 03:57:27, 22.93N/120.54E, 16.7km). Kaohsiung Meinong (高雄美濃). CWA revised this event's magnitude upward from an "
                    "initial ML6.4 rapid report to a final ML6.6 (max intensity also revised, from Meinong "
                    "district itself to Tainan Xinhua at intensity 7) -- this entry uses the final/revised "
                    "CWA catalog value, mirroring the G6_G7_G8 2022-03-23 event's revision precedent "
@@ -841,9 +841,9 @@ GROUPS: dict[str, Group] = {
                    "this note that said otherwise."),
     )),
     "G19": Group("G19", "G19", (
-        Event("2024-08-16", "2024-08-16 07:35:53", 23.7828, 121.7050, 19.36, 6.37, "ML", "CWA",
+        Event("2024-08-16", "2024-08-16 07:35:55", 23.7828, 121.7050, 19.36, 6.37, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
-              note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
+              note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 07:35:53). Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
                    "(GDMScatalog.json, quality B, 99 stations, origin time matches to within 2s) -- "
                    "supersedes the previous USGS Mww6.1 (us7000n7b8, 30km SSE of Hualien City) substitute "
                    "coordinates/depth; also differs from the 9.7km depth previously cited from Focus "
