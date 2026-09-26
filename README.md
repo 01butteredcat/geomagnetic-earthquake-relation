@@ -32,7 +32,7 @@ python3 -m venv .venv
 | 地磁 1 秒解析度資料（IAGA-2002 格式 `.sec`，也接受 `.sec.gz`/`.tgz`） | `G1/`、`G2_G3/`、…、`G23/`（本 repo 底下，每個原始資料夾對應一或多個 group_id，命名 `<station><YYYYMMDD>dsec.sec`；2026-09-14 整併進本目錄，讓這個 repo 自成一個完整自包的專案） | CWA GDMS 地磁資料下載系統（`gdms.cwb.gov.tw`），需申請帳號登入 | **使用者手動下載**，repo 完全不含 |
 | 地震儀/加速度計波形（SAC PoleZero 響應檔 + miniSEED） | `seismometer/<GXX_MMDD>/`（本 repo 底下，如 `seismometer/G10_0403/`；2026-09-14 跟著 `Gx` 一起整併進本目錄） | 使用者自行取得的地震儀網路資料 | **使用者手動下載**，且下載後要同步更新 `seismometer_comparison.py::SEISMIC_DATA_DIRS` 這個手動維護的對照表（folder 名稱 ↔ mseed 檔名，兩者並非永遠一致，例如 G9 的 folder 是 `G9_0918`、mseed 檔是 `G09_0918_w.mseed`） |
 | 空間天氣指數（Dst/Kp） | `data/external/<group>/{kp,dst}.csv`（在 repo 內，但被 `.gitignore` 排除） | `kp.gfz.de`、`wdc.kugi.kyoto-u.ac.jp` | `fetch_space_weather.py` **自動連網抓取**；只有 Kp＋Dst 完整（摘要 `confidence: high`）的快取才會被沿用，抓取不完整會自動重試（要強制重抓可刪除該組的 `storm_days.csv`） |
-| 擴充地震目錄 | `data/external/extended_catalog_m5.{0,5}.csv` | USGS FDSN Event API | `fetch_earthquake_catalog.py` **自動連網抓取** |
+| 擴充地震目錄 | `data/external/extended_catalog_m5.{0,5}.csv` | USGS FDSN Event API；時間窗完全落在 2024-09-01～2026-07-31 的組別改讀 CWA GDMS 目錄 `../GDMScatalog.txt`（本 repo 的上一層目錄，使用者自行從 GDMS 匯出，**repo 不含**） | `fetch_earthquake_catalog.py` **自動連網抓取**；找不到 `GDMScatalog.txt` 時全部組別都退回 USGS，那幾組的目錄會跟原本結果略有不同 |
 
 只有地磁資料與地震儀資料需要使用者自己張羅；後兩項腳本會自己處理（前提是要有對外網路連線）。
 
@@ -90,7 +90,7 @@ cd scripts
 | 腳本 | 參數 | 說明 |
 |---|---|---|
 | `build_daily_features.py` / `timezone_check.py` / `fetch_space_weather.py` / `compute_indices.py` / `ulf_analysis.py` / `verify_pipeline.py` / `prepare_report_data.py` / `build_artifact.py` | `--group <ID>`（必填） | 單一 group_id，如 `G10`、`G3` |
-| `fetch_earthquake_catalog.py` | `--min-mag <float>`（預設 5.5）、`--output <path>`、`--groups <ID...>`（預設全部 `ULF_GROUPS`） | 抓 USGS 擴充地震目錄 |
+| `fetch_earthquake_catalog.py` | `--min-mag <float>`（預設 5.5）、`--output <path>`、`--groups <ID...>`（預設全部 `ULF_GROUPS`）、`--cwa-catalog <path>`（預設 `../GDMScatalog.txt`，不存在就全用 USGS） | 抓擴充地震目錄（USGS，2024-09～2026-07 的組別優先用 CWA GDMS） |
 | `surrogate_test.py` | `--group <ID>`、`--all` | 洗牌顯著性檢定 |
 | `superposed_epoch_analysis.py` / `backtest_rule.py` | `--catalog <path>`（必填）、`--label <str>`（必填，如 `m5.5`） | 疊加曆元分析／規則回測 |
 | `cross_group_analysis.py` / `prepare_validation_report_data.py` / `build_validation_report.py` | （無參數） | 直接執行即可 |
