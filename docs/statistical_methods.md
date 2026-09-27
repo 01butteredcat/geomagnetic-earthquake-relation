@@ -54,7 +54,7 @@
 
 ### B1. 中位數/MAD 穩健 z-score
 - **用途**：本專案幾乎所有異常判定的共同基礎統計量——將夜間平均 H/Z/F 值、ULF near−far 差值序列等標準化，用來偵測偏離「正常」範圍的日子。
-- **程式碼**：`scripts/stat_utils.py:27-37`（全序列版，各腳本共用）；`scripts/compute_indices.py:84-99`（21 天滾動窗版，`TRAILING_WINDOW_DAYS=21`、`MIN_CLEAN_POINTS=5`）
+- **程式碼**：`scripts/stat_utils.py:29-39`（全序列版，各腳本共用）；`scripts/compute_indices.py:84-99`（21 天滾動窗版，`TRAILING_WINDOW_DAYS=21`、`MIN_CLEAN_POINTS=5`）
 - **數學式**：
 
   $$
@@ -77,19 +77,21 @@
   設 $y_t=$ 近測站群 MAD-z 中位數（near_index）、$x_t=$ 遠測站群 MAD-z 中位數（far_index），僅用「乾淨日」擬合：
 
   $$
-  \hat{\beta} = \operatorname{median}_{i<j}\left(\frac{y_j-y_i}{x_j-x_i}\right), \qquad \hat{\alpha} = \operatorname{median}(y_t - \hat{\beta} x_t)
+  \hat{\beta} = \operatorname{median}_{i<j}\left(\frac{y_j-y_i}{x_j-x_i}\right), \qquad \hat{\alpha} = \operatorname{median}(y_t) - \hat{\beta}\,\operatorname{median}(x_t)
   $$
   $$
   \text{local\_anomaly}_t = y_t - (\hat{\beta} x_t + \hat{\alpha})
   $$
 
-  候選異常日旗標：$|\text{local\_anomaly}_t| > 2.5 \times \text{MAD}(\text{residual})$
+  （截距是 `scipy.stats.theilslopes` 的預設算法。）
+
+  候選異常日旗標：$|\text{local\_anomaly}_t| > 2.5 \times \text{MAD}(\text{residual})$，而且當天必須是乾淨日（`is_clean_day`）
 - **優點**：Theil–Sen 斜率估計對離群值穩健（崩潰點約 29%，遠高於最小二乘法的 0%）；不需誤差常態假設；能有效扣除全網共模的磁暴/日變訊號，凸顯局部異常。
 - **缺點**：假設 near/far 關係為線性、且斜率在整個視窗內恆定，若局部異常本身很大也會被線性擬合部分「吸收」而低估；`n_fit_days < 10` 時退化為零斜率（不校正），可能失真；仍只是雙變量迴歸，未考慮測站間的空間相關結構。
 
 ### B3. 全天日變幅比值（Diurnal Range Ratio，Liu et al., 2006）
 - **用途**：另一種扣除全網共模訊號的做法。比較震央附近觀測站 o 與 100 km 內參考站 r 的總磁場 F 全天日變幅；全球性擾動在近距離兩站幾乎相同，比值在平靜期接近常數，觀測站下方地殼導電度改變時會往任一方向偏離。用於跨方法比較（B2 vs 本法），不參與候選日判定。
-- **程式碼**：`scripts/method_comparison.py:101-261`（`pick_station_pair`、`range_ratio_series`、`surrogate_test`、`placebo_counts`）
+- **程式碼**：`scripts/method_comparison.py:102-274`（`pick_station_pair`、`range_ratio_series`、`surrogate_test`、`placebo_counts`）
 - **數學式**：
 
   $$
@@ -157,7 +159,7 @@
 
 ### D1. Shapiro–Wilk 常態性檢定
 - **用途**：檢驗 ULF near−far 差分序列是否服從常態分布，用來論證後續為何改用重抽樣式檢定而非傳統母數檢定。
-- **程式碼**：`scripts/surrogate_test.py:31,68`，`scipy.stats.shapiro`
+- **程式碼**：`scripts/surrogate_test.py:51,91`，`scipy.stats.shapiro`
 - **數學式**：
 
   $$
@@ -172,7 +174,7 @@
 
 ### D2. 傅立葉相位隨機化替代資料法（FFT Phase Randomization Surrogate）
 - **用途**：產生與觀測序列**振幅頻譜（自相關結構）相同**、但與真實地震時間完全無關的「虛擬序列」，作為虛無假設（null hypothesis）分布的一種來源。
-- **程式碼**：`scripts/stat_utils.py:81-101`
+- **程式碼**：`scripts/stat_utils.py:83-103`
 - **數學式**：
 
   $$
@@ -191,10 +193,10 @@
 
 ### D3. 循環區塊拔靴法（Circular Block Bootstrap Surrogate）
 - **用途**：另一種虛無假設替代序列生成法，透過重組「連續區塊」而非單點打亂，保留序列的短期自相關（而非只保留頻譜）。
-- **程式碼**：`scripts/stat_utils.py:40-78`
+- **程式碼**：`scripts/stat_utils.py:42-80`
 - **數學式**：
 
-  區塊長度 $\ell$ 由自相關函數（ACF）首次降到 $1/e$ 以下的落後期（lag）決定（下限 3、上限 $n/5$）：
+  區塊長度 $\ell$ 由自相關函數（ACF）首次降到 $1/e$ 以下的落後期（lag）決定（下限 3、上限 $n/5$）。最多只找到 lag 30（`max_lag=30`）；若到 lag 30 ACF 都沒降到 $1/e$ 以下，就用 $\max(3, \min(30, n/5))$：
 
   $$
   \rho(k) = \frac{\sum_t (x_t-\bar x)(x_{t+k}-\bar x)}{n\cdot\operatorname{Var}(x)}, \qquad
@@ -240,7 +242,7 @@
   $$
 - **虛無假說 H₀**：每個群組在震前視窗內出現候選異常的機率等於其基準率 $p_0$，也就是候選異常出現的時間與地震無關。
 - **對立假說 H₁**：震前視窗內出現候選異常的機率大於 $p_0$（單尾，greater）。
-- **優點**：精確檢定（非常態近似），小樣本（群組數少，如本專案 23 群）下仍有效；直接回答「這不只是單一事件湊巧」的問題，是跨事件驗證的核心統計工具。
+- **優點**：精確檢定（非常態近似），小樣本（群組數少，如本專案 24 群）下仍有效；向量站組與僅純量組分開檢定、不合併（`tier`）；直接回答「這不只是單一事件湊巧」的問題，是跨事件驗證的核心統計工具。
 - **缺點**：把每個群組視為一次獨立的白努利試驗，忽略了群組間可能的地理/時間相依性（如同一斷層帶的連續地震）；基準率 $p_0$ 本身依賴滑動窗方法估計，若基準率估計有偏誤會直接傳導到檢定結果。
 
 ### D6. 標籤置換檢定（Label-Permutation Test）
@@ -256,7 +258,7 @@
 - **虛無假說 H₀**：「與震動同步」和「領先或持續於震動」兩組標籤可以互換：兩組事件的堆疊統計量來自同一分布，差異 $\Delta$ 只是隨機分組造成的。
 - **對立假說 H₁**：兩組的堆疊統計量確實不同（雙尾，以 $|\Delta|$ 判斷）。
 - **優點**：置換檢定不需任何分布假設，天生適合處理小樣本、非常態的分組比較；分子/分母各加 1 的寫法（"add-one" 校正）避免 p-value 恰好為 0，是標準穩健做法。
-- **缺點**：兩組事件數都很少（本專案 27 個事件有地震儀資料、其中 23 個有可用地磁，noise_arm 12／signal_arm 11），置換檢定的解析度（可達到的最小 p-value）受限；分組本身（noise_arm vs. signal_arm）依賴前一步驟 `alignment_verdict` 的規則式分類，並非統計上獨立產生。
+- **缺點**：兩組事件數仍有限（本專案 111 個事件有地震儀資料、其中 94 個能分組，noise_arm 48／signal_arm 46；M≥6 更少），置換檢定的解析度（可達到的最小 p-value）受限；分組本身（noise_arm vs. signal_arm）依賴前一步驟 `alignment_verdict` 的規則式分類，並非統計上獨立產生。
 
 ### D7. 地震對照組重抽樣 p-value（Coseismic 隨機參考時刻）
 - **用途**：在地震發生時刻附近偵測「階躍/尖峰」統計量後，另外抽取同一群組中大量與真實地震保持一定緩衝距離的隨機參考時刻，計算相同統計量在「無地震」情境下有多極端，藉此得到經驗 p-value。
@@ -273,7 +275,7 @@
   p = \frac{1+\#\{r : |\text{null}_r| \ge |\text{obs}|\}}{N_{\text{null}}+1}
   $$
 
-  隨機參考時刻需與所有真實地震事件保持 `exclude_buffer_sec` 以上距離，避免虛無分布被真實異常污染。每個（組、事件、站群、測站、分量）各用一條獨立的亂數流（`keyed_rng`，2026-09-26 起；秒尺度堆疊與起始時間分析也一樣），所以更動某一筆事件不會改到其他事件的虛無抽樣，單事件執行與 `--all` 的結果也相同。
+  隨機參考時刻需與所有真實地震事件保持 `exclude_buffer_sec` 以上距離，避免虛無分布被真實異常污染。每個（組、事件、站群、測站、分量）各用一條獨立的亂數流（`keyed_rng`，2026-09-26 起）。秒尺度堆疊是每個組合一條（`keyed_rng("stack", combo_id[, subset])`），起始時間分析是每個（組、事件、測站）一條，所以更動某一筆事件不會改到其他事件的虛無抽樣，單事件執行與 `--all` 的結果也相同。
 - **虛無假說 H₀**：地震發生時刻 ±180 秒內的階躍／尖峰極值，與同一測站、同一時期隨機參考時刻用相同程序取得的極值來自同一分布；也就是地震時沒有額外的磁場跳動。
 - **對立假說 H₁**：地震時刻附近的極值大於隨機參考時刻的極值（單尾；統計量已取絕對值，正負方向的跳動都算）。
 - **優點**：虛無分布直接來自同一測站/同一時期的真實雜訊特性，不需假設雜訊分布形式；`_effective_half_sec` 機制確保搜尋窗不會跨越到鄰近的另一起真實地震，避免污染。
@@ -285,7 +287,7 @@
 
 ### E1. 疊加時間分析（Superposed Epoch Analysis, SEA）+ Bootstrap 信賴區間 + Null Band
 - **用途**：將多個獨立地震事件的異常序列，依「距地震發生日/秒的相對時間（lag）」對齊堆疊，檢驗是否存在跨事件一致的異常型態（而非單一事件的偶然現象）。日尺度版本用於震前 ULF 差分序列；秒尺度版本（`coseismic_stacking_analysis.py`）用於 coseismic 階躍/尖峰統計量。
-- **程式碼**：`scripts/superposed_epoch_analysis.py:90-203`；`scripts/coseismic_stacking_analysis.py:158-413`；事件清單 `scripts/catalog_utils.py::load_extended_events`
+- **程式碼**：`scripts/superposed_epoch_analysis.py:90-203`；`scripts/coseismic_stacking_analysis.py:159-413`；事件清單 `scripts/catalog_utils.py::load_extended_events`
 - **數學式**：設 $M$ 為 $n_{\text{events}}\times n_{\text{lags}}$ 矩陣，各列為單一事件對齊後的序列：
 
   $$
@@ -305,7 +307,7 @@
 - **虛無假說 H₀**：以地震時刻對齊堆疊出的平均序列，和以隨機、與地震無關的參考時刻堆疊出的序列來自同一分布；跨事件沒有一致的異常型態。
 - **對立假說 H₁**：秒尺度：堆疊後的峰值 $|z|$ 大於虛無序列自身的峰值分布（單尾）。日尺度：某些 lag 落在 null band（5–95 百分位）之外；因為是逐點比較，只作描述性參考，不是正式檢定。
 - **優點**：直接檢驗「跨事件一致性」，是區分「單一事件的雜訊巧合」與「真正物理前兆」最有力的證據型態之一；Bootstrap CI 與 Null band 皆為非母數方法，適合小樣本、非常態資料；秒尺度版本额外用「虛無序列自身峰值分布」而非逐點百分位判斷顯著性，避免了 look-elsewhere 問題（見模組內文件字串說明，`coseismic_stacking_analysis.py:372-385`）。
-- **缺點**：事件數仍偏少（日尺度版本僅 ULF_GROUPS 的 13 個向量站群組可用；秒尺度版本涵蓋 137 起事件），bootstrap 對總體變異的估計在小樣本下可能偏窄；不同事件的資料品質/測站覆蓋不一致，堆疊時以 `nanmean`/`nanmedian` 處理缺值，可能讓「有效樣本數」隨 lag 而變動，邊緣 lag 的統計力較弱。
+- **缺點**：事件數仍偏少（日尺度版本僅 ULF_GROUPS 的 14 個向量站群組可用；秒尺度版本涵蓋 137 起事件），bootstrap 對總體變異的估計在小樣本下可能偏窄；不同事件的資料品質/測站覆蓋不一致，堆疊時以 `nanmean`/`nanmedian` 處理缺值，可能讓「有效樣本數」隨 lag 而變動，邊緣 lag 的統計力較弱。
 
 ### E2. 規則回測（Precision / Recall / False-Alarm Rate）與滑動窗基準率
 - **用途**：把「z ≤ −4.1」這條固定規則當作實際的地震前兆警報規則，對照完整地震目錄回測其實務表現：抓到的天數中有多少真的在觸發窗、真正抓到的事件比例多少、非事件期間誤報率多高。
@@ -362,7 +364,7 @@
 
 ### F3. 劑量反應檢定（地磁異常 vs 地動強度 PGA）
 - **用途**：若同震地磁異常是磁力儀被搖晃造成的，異常大小應隨磁力儀附近的地動強度增加。以 PGA 為「劑量」、地磁異常為「反應」做等級相關，不需要 aligned／leads 標籤（加上顯著性門檻後，有顯著異常可判定的事件只剩 7 起）。
-- **程式碼**：`scripts/seismometer_comparison.py:449-500`（`peak_ground_acceleration`）、`:684-700`（`geomag_noise_ratio`）；`scripts/coseismic_dose_response.py:78-94`（`within_group_permutation_test`）
+- **程式碼**：`scripts/seismometer_comparison.py:449-494`（`peak_ground_acceleration`）、`:684-699`（`geomag_noise_ratio`）；`scripts/coseismic_dose_response.py:78-94`（`within_group_permutation_test`）
 - **數學式**：
 
   $$
@@ -384,13 +386,13 @@
 - **數學式**：
 
   $$
-  \sigma = 1.4826\,\operatorname{MAD}\bigl(\Delta B_{[-660,\,-60]\,\text{s}}\bigr), \qquad t_{\text{on}} = \min\Bigl\{t \in [-60,\,180]\,\text{s} : |\Delta B_t| > 4\sigma,\ \textstyle\sum_{k=0}^{4} \mathbb{1}\bigl[|\Delta B_{t+k}| > 4\sigma\bigr] \ge 3\Bigr\}
+  \sigma = 1.4826\,\operatorname{median}\bigl(|\Delta B - \operatorname{median}(\Delta B)|\bigr)_{[-660,\,-60]\,\text{s}}, \qquad t_{\text{on}} = \min\Bigl\{t \in [-60,\,180]\,\text{s} : |\Delta B_t| > 4\sigma,\ \textstyle\sum_{k=0}^{4} \mathbb{1}\bigl[|\Delta B_{t+k}| > 4\sigma\bigr] \ge 3\Bigr\}
   $$
   $$
   W(R) = \Bigl[\tfrac{R}{V_P} - 5,\ \tfrac{R}{V_S} + 30\Bigr]\,\text{s}, \qquad N_{\text{obs}} = \sum_i \mathbb{1}[t_{\text{on},i} \in W(R_i)], \qquad N_{\text{null}} \sim \sum_i \operatorname{Bernoulli}(q_i)
   $$
 
-  $R$ 為震源距離（震央距離與深度合成），$V_P = 6$ km/s、$V_S = 3.5$ km/s。$q_i$ 是同一站在 200 個隨機參考時刻的雜訊觸發中，落在同一個 $W(R_i)$ 內的比例。另對「事件內置中後的起始時間 vs $R$」做 Theil–Sen 斜率；p 值來自只在同一事件的測站間打亂起始時間，共 2000 次。
+  $R$ 為震源距離（震央距離與深度合成），$V_P = 6$ km/s、$V_S = 3.5$ km/s。$q_i$ 是同一站在 200 個隨機參考時刻的雜訊觸發中，落在同一個 $W(R_i)$ 內的比例。另對「事件內置中後的起始時間 vs $R$」做 Theil–Sen 斜率；p 值來自只在同一事件的測站間打亂起始時間，共 2000 次。搜尋窗上限 180 s 會被 `_effective_half_sec` 截短到與相鄰登錄事件間隔的一半（目前只影響 G10 2024-04-23a/b，約 178 s）。
 - **虛無假說 H₀**：起始時間和震波到時無關：落在到時窗內的比例不高於測站自身雜訊的比例，斜率 ≤ 0。
 - **對立假說 H₁**：起始時間跟著震波走：落在到時窗內的比例較高，斜率約為 $1/V_S$～$1/V_P$（單尾）。支持「儀器被震動干擾」的解釋；若是外部磁擾，斜率應約為 0。
 - **敏感度分析（前一事件震動干擾）**：若同一資料夾內另一起登錄事件發生在本事件前 900 s 內（`PRIOR_EVENT_EXCLUSION_SEC`，涵蓋 −660 s 背景期加上前一事件的震動時間），本事件的背景期與搜尋窗都還在前一事件的震動中，標為 `prior_event_shaking`。主要檢定照原樣保留這些事件（主要檢定在發現這個問題前就已指定）；`m6_no_prior_shaking`／`m5_no_prior_shaking` 另外排除它們、用獨立亂數流重算全部統計量。目前排除 4 起：G8 2022-03-23c（主震後 106 s）、G10 2024-04-23b（356 s）、G10 2024-04-03b（797 s）、G11 2025-01-21b（539 s，M5）。只能檢查已登錄事件：M5 只登錄 2024-09 以後，GDMS json 目錄只有 M≥6，較小的餘震無法排除。

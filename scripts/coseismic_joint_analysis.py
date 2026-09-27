@@ -76,7 +76,7 @@ stronger), none surviving Bonferroni. M>=6 only: none below 0.05, min 0.062.)
      - `delta_peak` = peak_abs_z(signal_arm) - peak_abs_z(noise_arm)
      - `delta_tail` = mean(|stack_mean| for lag>0)(signal_arm) - same(noise_arm)
 3. Null distribution: label-permutation test -- shuffle the noise/signal
-   arm labels across the same 23 events (keeping arm sizes fixed at 12/11)
+   arm labels across the same events (keeping both arm sizes fixed)
    N_PERM=2000 times, recomputing both deltas each time via a lightweight
    stack-mean-only helper (`_lightweight_stack_delta`) that skips
    `stack_series()`'s own bootstrap CI + null band (2000+1000 resamples --
@@ -91,8 +91,8 @@ stronger), none surviving Bonferroni. M>=6 only: none below 0.05, min 0.062.)
 
 ## Honest caveat (stated up front, not after the fact)
 
-N=23 events split 12/11 is an exploratory sample size, not a
-high-power one. Results here should be reported as suggestive at most,
+N=94 events split 48/46 (noise/signal, 2026-09-28; fewer at M>=6) is an
+exploratory sample size, not a high-power one. Results here should be reported as suggestive at most,
 never as a confirmatory finding on their own.
 
 Usage:

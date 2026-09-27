@@ -124,7 +124,7 @@ methods:
       - MAD 接近 0 時 z 值會爆炸或無定義。
       - 仍是單變量、逐點的統計量，沒有考慮序列自相關（因此顯著性推論才需要 D 類替代資料法補強）。
     code:
-      - {file: scripts/stat_utils.py, lines: "27-37", symbol: mad_zscore}
+      - {file: scripts/stat_utils.py, lines: "29-39", symbol: mad_zscore}
       - {file: scripts/compute_indices.py, lines: "84-99", symbol: mad_zscore}
 
   B2:
@@ -135,7 +135,7 @@ methods:
       用「遠測站指標」回歸「近測站指標」，殘差即為扣除共模後的局部異常指標（local anomaly index）。只用乾淨日（非磁暴日）擬合。
     formula:
       - |-
-        \hat{\beta} = \operatorname{median}_{i<j}\left(\frac{y_j-y_i}{x_j-x_i}\right), \qquad \hat{\alpha} = \operatorname{median}(y_t - \hat{\beta} x_t)
+        \hat{\beta} = \operatorname{median}_{i<j}\left(\frac{y_j-y_i}{x_j-x_i}\right), \qquad \hat{\alpha} = \operatorname{median}(y_t) - \hat{\beta}\,\operatorname{median}(x_t)
       - |-
         \text{local\_anomaly}_t = y_t - (\hat{\beta} x_t + \hat{\alpha})
       - |-
@@ -198,10 +198,10 @@ methods:
       - 與 B2 用的測站、場分量（F vs H）都不同，兩者比較的是兩套完整方法。
       - 最近站離震央超過 100 km 的群組（G17、G18、G23、G24）可信度低。
     code:
-      - {file: scripts/method_comparison.py, lines: "101-118", symbol: pick_station_pair}
-      - {file: scripts/method_comparison.py, lines: "121-139", symbol: range_ratio_series}
-      - {file: scripts/method_comparison.py, lines: "158-210", symbol: surrogate_test}
-      - {file: scripts/method_comparison.py, lines: "243-261", symbol: placebo_counts}
+      - {file: scripts/method_comparison.py, lines: "102-119", symbol: pick_station_pair}
+      - {file: scripts/method_comparison.py, lines: "133-140", symbol: range_ratio_series}
+      - {file: scripts/method_comparison.py, lines: "165-223", symbol: surrogate_test}
+      - {file: scripts/method_comparison.py, lines: "256-274", symbol: placebo_counts}
 
   C1:
     name: Butterworth 零相位帶通濾波
@@ -335,7 +335,7 @@ methods:
       - 只保留二階統計量，真實序列的非線性結構（高階矩、局部突發特徵）不會被重現，可能低估某些非線性訊號的顯著性。
       - 相位完全隨機化也會破壞合理但非隨機的局部相位耦合。
     code:
-      - {file: scripts/stat_utils.py, lines: "81-101", symbol: phase_randomize_surrogate}
+      - {file: scripts/stat_utils.py, lines: "83-103", symbol: phase_randomize_surrogate}
 
   D3:
     name: 循環區塊拔靴法（Circular Block Bootstrap）
@@ -348,7 +348,7 @@ methods:
         \ell = \min\{k : |\rho(k)| < e^{-1}\}
     notes:
       - >-
-        區塊長度 $\ell$ 取 ACF 首次降到 $1/e$ 以下的落後期，下限 3、上限 $n/5$。
+        區塊長度 $\ell$ 取 ACF 首次降到 $1/e$ 以下的落後期，下限 3、上限 $n/5$；最多找到 lag 30，找不到就用 $\max(3, \min(30, n/5))$。
         替代序列由隨機起點的長度-$\ell$ 連續區塊（首尾循環相接）拼接到補滿原長度。
     hypotheses:
       h0: >-
@@ -362,8 +362,8 @@ methods:
       - 區塊間仍視為可交換，更長程的相依（如季節性）無法保留。
       - 用來檢定「觀測序列自身的極值」時有循環問題：被檢定的極值本身會被抽進替代序列，p 值有結構下限（本專案序列長度下約 0.2–0.4），無法拒絕 $H_0$。要避免，虛無分布需只用被檢定區段以外的資料建構。
     code:
-      - {file: scripts/stat_utils.py, lines: "40-59", symbol: estimate_block_length}
-      - {file: scripts/stat_utils.py, lines: "62-78", symbol: block_bootstrap_surrogate}
+      - {file: scripts/stat_utils.py, lines: "42-61", symbol: estimate_block_length}
+      - {file: scripts/stat_utils.py, lines: "64-80", symbol: block_bootstrap_surrogate}
 
   D4:
     name: 重抽樣式 p-value（觀測極值 vs. 虛無分布）
@@ -453,7 +453,7 @@ methods:
       - 兩組事件數都很少（雙方各約十餘件），置換檢定可達到的最小 p-value 受限。
       - 分組本身依賴前一步 alignment_verdict 的規則式分類，並非統計上獨立產生。
     code:
-      - {file: scripts/coseismic_joint_analysis.py, lines: "200-262", symbol: permutation_test}
+      - {file: scripts/coseismic_joint_analysis.py, lines: "240-279", symbol: permutation_test}
 
   D7:
     name: 震時階躍/尖峰統計量與隨機參考時刻 p-value
@@ -559,8 +559,8 @@ methods:
       - 小樣本下點估計變異大，應搭配信賴區間或至少報告樣本數。
       - 共用資料夾的兄弟組不是獨立樣本；sliding_baseline_rate 的基線窗口目前仍可能含到兄弟事件附近的日期。
     code:
-      - {file: scripts/backtest_rule.py, lines: "48-64", symbol: flagged_dates}
-      - {file: scripts/backtest_rule.py, lines: "70-150", symbol: run_band}
+      - {file: scripts/backtest_rule.py, lines: "48-63", symbol: flagged_dates}
+      - {file: scripts/backtest_rule.py, lines: "70-148", symbol: run_band}
 
   E3:
     name: 三層規模門檻敏感度分析（M≥6.0／M≥5.5／M≥5.0）
@@ -585,7 +585,7 @@ methods:
       - Hattori 距離-規模公式目前只是文件記載的理論背景，尚未實作成程式裡的距離篩選條件。
     code:
       - {file: scripts/fetch_earthquake_catalog.py, lines: "127-155", symbol: fetch_cwa}
-      - {file: scripts/prepare_validation_report_data.py, lines: "27-77", symbol: main}
+      - {file: scripts/prepare_validation_report_data.py, lines: "27-90", symbol: main}
 
   F1:
     name: STA/LTA 地震觸發偵測
@@ -667,8 +667,8 @@ methods:
       - 雜訊放大倍數用 RMS，震前窗口有突跳時會低估比值。
       - 多個反應變數與子集同時檢定，未做多重比較校正。
     code:
-      - {file: scripts/seismometer_comparison.py, lines: "449-500", symbol: peak_ground_acceleration}
-      - {file: scripts/seismometer_comparison.py, lines: "684-700", symbol: geomag_noise_ratio}
+      - {file: scripts/seismometer_comparison.py, lines: "449-494", symbol: peak_ground_acceleration}
+      - {file: scripts/seismometer_comparison.py, lines: "684-699", symbol: geomag_noise_ratio}
       - {file: scripts/coseismic_dose_response.py, lines: "78-94", symbol: within_group_permutation_test}
 
   F4:
@@ -679,7 +679,7 @@ methods:
       看它是否跟著震源距離變化；不需要地震儀，也不需要標籤。
     formula:
       - |-
-        \sigma = 1.4826\,\operatorname{MAD}\bigl(\Delta B_{[-660,\,-60]\,\text{s}}\bigr), \qquad t_{\text{on}} = \min\bigl\{t \in [-60,\,180]\,\text{s} : |\Delta B_t| > 4\sigma,\ \textstyle\sum_{k=0}^{4} \mathbb{1}[|\Delta B_{t+k}| > 4\sigma] \ge 3\bigr\}
+        \sigma = 1.4826\,\operatorname{median}\bigl(|\Delta B - \operatorname{median}(\Delta B)|\bigr)_{[-660,\,-60]\,\text{s}}, \qquad t_{\text{on}} = \min\bigl\{t \in [-60,\,180]\,\text{s} : |\Delta B_t| > 4\sigma,\ \textstyle\sum_{k=0}^{4} \mathbb{1}[|\Delta B_{t+k}| > 4\sigma] \ge 3\bigr\}
       - |-
         W(R) = \bigl[R/V_P - 5,\ R/V_S + 30\bigr]\,\text{s}, \qquad N_{\text{obs}} = \sum_i \mathbb{1}[t_{\text{on},i} \in W(R_i)] \ \text{vs.}\ \sum_i \operatorname{Bernoulli}(q_i)
     where: >-
