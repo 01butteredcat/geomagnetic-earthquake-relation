@@ -695,14 +695,16 @@ methods:
       - {name: SEARCH_LAGS, file: scripts/coseismic_onset_moveout.py}
       - {name: ARRIVAL_PAD_SEC, file: scripts/coseismic_onset_moveout.py}
       - {name: N_NULL, file: scripts/coseismic_onset_moveout.py}
+      - {name: PRIOR_EVENT_EXCLUSION_SEC, file: scripts/coseismic_onset_moveout.py}
     pros:
       - 全部事件、全部測站都能用；每站用自己的空值觸發分布校正，雜訊站不會製造假的到時一致。
     cons:
       - 起始時間偵測約有 5 s 延遲；xcg 等雜訊站在隨機時刻約 80% 會觸發；多數事件只有 1–2 站觸發，逐事件斜率常無法估計。
     code:
-      - {file: scripts/coseismic_onset_moveout.py, lines: "118-148", symbol: detect_onset}
-      - {file: scripts/coseismic_onset_moveout.py, lines: "281-303", symbol: pooled_moveout}
-      - {file: scripts/coseismic_onset_moveout.py, lines: "306-317", symbol: arrival_window_test}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "133-163", symbol: detect_onset}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "307-329", symbol: pooled_moveout}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "332-343", symbol: arrival_window_test}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "170-174", symbol: prior_event_gap}
 
 # ---------------------------------------------------------------------------
 # Pipeline 步驟
@@ -986,6 +988,7 @@ steps:
     summary: >-
       每起事件、每個測站偵測地磁 1 Hz 雜訊的起始時間，並以同站 200 個隨機參考時刻校正誤觸發；檢定起始時間是否落在
       P～S 波到時窗內、是否隨震源距離延遲。M≥6 與 M<6 分開報告，另與共站地震儀的震動起始時間比對。
+      敏感度分析：排除前 900 s 內有其他登錄事件（背景期仍在前一事件震動中）的 4 起事件後重算。
     inputs: [原始 1Hz 地磁日檔, comparison_summary.csv]
     outputs: [data/interim/coseismic_onset_moveout/onsets.csv, moveout_per_event.csv, summary.json, travel_time.png]
     methods: [F4]
