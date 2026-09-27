@@ -64,6 +64,20 @@ Hypocentral distance R = sqrt(epicentral^2 + depth^2).
     (`shaking_onset_lag_sec`): geomagnetic onset minus seismic onset, for the
     one station per event that script compared.
 
+## Prior-event shaking (sensitivity only)
+
+An event that follows another registered event in the same raw-data folder by
+<= PRIOR_EVENT_EXCLUSION_SEC (900 s: the -660 s noise reference plus a few
+minutes of the earlier event's shaking) has its noise reference and search
+window inside that earlier shaking, so its onsets are not timed against a
+quiet baseline. Such events get `prior_event_shaking` = True. The main subsets
+(`m6`, `m5`) keep them -- the main test was fixed before this was noticed --
+and `m6_no_prior_shaking` / `m5_no_prior_shaking` repeat every statistic
+without them, each on its own keyed rng stream so the main numbers do not
+move. Only registered events are checked: M5 events are registered only from
+2024-09 on and the GDMS json export is M>=6 only, so smaller aftershocks
+(e.g. inside G10 2024-04-03c, 2 h after the M7.2) cannot be ruled out.
+
 Usage:
   coseismic_onset_moveout.py --self-test
   coseismic_onset_moveout.py --all [--min-mag 6] [--group G10 ...]
@@ -102,6 +116,7 @@ MIN_STATIONS_FOR_FIT = 3
 CI_ALPHA = 0.90
 CLEAN_FALSE_RATE = 0.05
 CROSSCHECK_FALSE_RATE = 0.2
+PRIOR_EVENT_EXCLUSION_SEC = 900  # -660 s noise reference + the earlier event's shaking
 ARRIVAL_PAD_SEC = (-5, 30)  # "arrival window" = [R/V_P - 5, R/V_S + 30] s after origin
 N_SIM = 20000
 N_PERM = 2000
@@ -152,6 +167,13 @@ def arrival_window(hypocentral_km: float) -> tuple[float, float]:
     return hypocentral_km / V_P_KMS + ARRIVAL_PAD_SEC[0], hypocentral_km / V_S_KMS + ARRIVAL_PAD_SEC[1]
 
 
+def prior_event_gap(event_utc: pd.Timestamp, others: list[pd.Timestamp]) -> float | None:
+    """Seconds since the nearest earlier registered event (None if there is none)."""
+    gaps = [(event_utc - t).total_seconds() for t in others]
+    gaps = [g for g in gaps if g > 0]
+    return min(gaps) if gaps else None
+
+
 def _grid(series: pd.Series) -> pd.Series:
     return series.reindex(pd.date_range(series.index[0], series.index[-1], freq="s"))
 
@@ -192,12 +214,15 @@ def process_group(group_id: str, min_mag: float | None = None) -> list[dict]:
             continue
         event_utc = pd.Timestamp(event.time_utc)
         search_hi = _effective_half_sec(SEARCH_LAGS[1], event_utc, exclude)
+        prior = prior_event_gap(event_utc, exclude)
         for station, meta in sorted(cfg.stations.items()):
             if meta["reported"] not in ("F", "XYZF"):
                 continue
             epi = common.haversine_km(meta["lat"], meta["lon"], event.lat, event.lon)
             base = {"group": group_id, "event_date": event.date, "event_time_utc": event.time_utc,
                     "magnitude": event.magnitude, "anchor": event.anchor, "depth_km": event.depth_km,
+                    "prior_event_sec": prior,
+                    "prior_event_shaking": prior is not None and prior <= PRIOR_EVENT_EXCLUSION_SEC,
                     "station": station, "channel": "F" if meta["reported"] == "F" else "H",
                     "epicentral_km": round(epi, 1),
                     "hypocentral_km": round(float(np.hypot(epi, event.depth_km)), 1)}
@@ -259,6 +284,7 @@ def per_event_moveout(onsets: pd.DataFrame) -> pd.DataFrame:
     for (g, d), ev in onsets.groupby(["group", "event_date"], sort=False):
         trig = ev[ev.status == "onset"]
         row = {"group": g, "event_date": d, "magnitude": ev.magnitude.iloc[0],
+               "prior_event_shaking": bool(ev.prior_event_shaking.iloc[0]),
                "n_stations_tested": int(ev.status.isin(["onset", "no_onset"]).sum()),
                "n_triggered": int(len(trig)),
                "nearest_triggered_km": None if trig.empty else float(trig.hypocentral_km.min()),
@@ -357,16 +383,24 @@ def _crosscheck_stats(m: pd.DataFrame) -> dict:
 
 def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame) -> dict:
     trig = onsets[onsets.status == "onset"]
-    subsets = {"m6": onsets.magnitude >= 6, "m5": onsets.magnitude < 6}
+    m6, clean_prior = onsets.magnitude >= 6, ~onsets.prior_event_shaking.astype(bool)
+    subsets = {"m6": m6, "m5": ~m6,
+               "m6_no_prior_shaking": m6 & clean_prior, "m5_no_prior_shaking": ~m6 & clean_prior}
+    excluded = onsets[~clean_prior].drop_duplicates(["group", "event_date"])
     out = {"seed": SEED, "k_sigma": K_SIGMA, "search_lags_sec": list(SEARCH_LAGS),
            "v_p_kms": V_P_KMS, "v_s_kms": V_S_KMS, "n_perm": N_PERM,
+           "prior_event_exclusion_sec": PRIOR_EVENT_EXCLUSION_SEC,
+           "prior_event_shaking_events": [f"{r.group} {r.event_date} M{r.magnitude:g} ({r.prior_event_sec:.0f} s)"
+                                          for r in excluded.itertuples()],
            "n_station_tests": int(onsets.status.isin(["onset", "no_onset"]).sum()),
            "n_onsets": int(len(trig)),
            "overall_null_false_rate": round(float(onsets.null_false_rate.mean()), 4),
            "subsets": {}}
     for name, mask in subsets.items():
         t = trig[mask[trig.index]]
-        pe = per_event[(per_event.magnitude >= 6) if name == "m6" else (per_event.magnitude < 6)]
+        pe = per_event[(per_event.magnitude >= 6) if name.startswith("m6") else (per_event.magnitude < 6)]
+        if name.endswith("no_prior_shaking"):
+            pe = pe[~pe.prior_event_shaking]
         out["subsets"][name] = {
             "n_events": int(len(pe)),
             "event_verdicts": pe.verdict.value_counts().to_dict(),
@@ -464,6 +498,13 @@ def self_test() -> bool:
     fr = np.mean([q["status"] == "onset" for q in quiet])
     print(f"[self-test] pure-noise false trigger rate {fr:.3f}  {'PASS' if fr < 0.02 else 'FAIL'}", file=sys.stderr)
     ok &= fr < 0.02
+    t0 = pd.Timestamp("2024-04-03 00:00:00")
+    gaps = [prior_event_gap(t0 + pd.Timedelta(seconds=d), [t0]) for d in (PRIOR_EVENT_EXCLUSION_SEC,
+                                                                        PRIOR_EVENT_EXCLUSION_SEC + 1, 0)]
+    flags = [g is not None and g <= PRIOR_EVENT_EXCLUSION_SEC for g in gaps]
+    good = flags == [True, False, False]
+    print(f"[self-test] prior-event flag at 900/901/0 s: {flags}  {'PASS' if good else 'FAIL'}", file=sys.stderr)
+    ok &= good
     return bool(ok)
 
 
