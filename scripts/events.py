@@ -802,9 +802,11 @@ GROUPS: dict[str, Group] = {
                    "so low-priority unless a future analysis starts testing non-anchor events "
                    "individually). Pre-fetch data-availability confidence per candidate_groups_G14_G20.md: "
                    "unconfirmed; confirmed present in G14.tgz as of 2026-08-07."),
-        Event("2010-03-04", "2010-03-04 08:18:51", 22.97, 120.71, 22.6, 6.4, "ML", "CWA",
+        Event("2010-03-04", "2010-03-04 08:18:52", 22.97, 120.71, 22.6, 6.4, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
-              note="Kaohsiung Jiaxian (高雄甲仙), inland collision-zone earthquake -- NOT the G14 anchor "
+              note="Origin time corrected 2026-09-28 from 08:18:51 to 08:18:52 local (GDMScatalog.json "
+                   "00:18:52.14 UTC, fraction dropped). "
+                   "Kaohsiung Jiaxian (高雄甲仙), inland collision-zone earthquake -- NOT the G14 anchor "
                    "despite being tied on magnitude with 2009-12-19 in USGS-scale terms (both ~M6.4); "
                    "CWA's ML6.9 for the 2009-12-19 event makes that one the group's actual largest "
                    "magnitude event (see its note). This event caused real, documented damage (96 "
@@ -928,10 +930,11 @@ GROUPS: dict[str, Group] = {
                    "as of 2026-08-07. Updated 2026-08-20: ML6.6 is now confirmed lower than 2016-05-31's "
                    "ML6.91 (per the user-supplied CWA GDMS regional catalog export) -- this event is **no "
                    "longer G18's anchor** (was anchor=True before 2026-08-20; see 2016-05-31's note)."),
-        Event("2016-05-31", "2016-05-31 13:23:47", 25.4920, 122.6827, 256.89, 6.91, "ML", "CWA",
+        Event("2016-05-31", "2016-05-31 13:23:46", 25.4920, 122.6827, 256.89, 6.91, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="Updated 2026-08-20 from the user-supplied CWA GDMS regional catalog export "
-                   "(GDMScatalog.json, quality C, 99 stations, exact origin-time match to the second) -- "
+                   "(GDMScatalog.json, quality C, 99 stations; origin time corrected 2026-09-28 from 13:23:47 "
+                   "to 13:23:46 local, catalog 05:23:46.39 UTC with the fraction dropped) -- "
                    "supersedes the previous USGS Mww6.4 (us20005zay) substitute magnitude/coordinates. "
                    "Very deep event offshore NE Taiwan, roughly 'offshore Yilan' per candidate doc's "
                    "characterization. ML6.91 makes this G18's largest-magnitude event, so `anchor` moved "
