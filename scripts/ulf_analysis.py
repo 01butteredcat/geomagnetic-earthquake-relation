@@ -13,8 +13,22 @@ For each station-day:
      local-night window (UTC hour in {17,18,19} == local 01:00-03:59) RMS.
   5. Z/H polarization ratio = RMS(envZ_night) / RMS(envH_night).
 
+Near/far index (`ulf_near_far_index.csv`), station-normalized since 2026-09-28:
+each station's nightly Z/H is first divided by that station's own median over
+non-storm days, then the near and far pools take the median of those
+normalized ratios, and diff = near - far. Before that the pools took the
+median of the raw ratios over whichever stations had data that day, so a
+station joining or leaving the pool shifted the index: G11's near station zbn
+sat at Z/H 15-45 (the others 0.1-1.5) and stopped on 2024-12-23, which dropped
+the near index ~20x on 12-24, right at the start of G11's pre-event window.
+The raw-median version is kept as `<band>_*_zh_raw` for comparison, and
+`<band>_n_near` / `<band>_n_far` record how many stations had data each day.
+The reference median uses the whole series (one number per station), so it
+sees future days too; that shifts a station's level, not its day-to-day shape.
+
 Outputs (under the group's own data/interim/<group>/):
   ulf_daily.csv               -- full-window daily series
+  ulf_near_far_index.csv      -- near-minus-far index (see above)
   ulf_spectrogram_<window>.json -- zoomed 1Hz spectrograms around the anchor event
 """
 from __future__ import annotations
@@ -150,30 +164,80 @@ def build_zoom_spectrogram(cfg, station: str, start_date: str, end_date: str, la
     print(f"wrote {out_path.name}", file=sys.stderr)
 
 
-def build_near_far_differential(cfg, daily: pd.DataFrame, near_stations, far_stations):
-    """Near-minus-far differential of the nightly Z/H polarization ratio,
-    per band, as the main ULF-based candidate precursor time series."""
+def near_far_table(daily: pd.DataFrame, near_stations, far_stations, storm_dates: set[str]) -> pd.DataFrame:
+    """Near-minus-far differential of the nightly Z/H polarization ratio, per
+    band: station-normalized (see module docstring) plus the old raw-median
+    version as *_raw."""
+    daily = daily.copy()
+    quiet = ~daily["date"].astype(str).isin(storm_dates)
+    for band in BANDS:
+        col = f"{band}_zh_ratio"
+        ref = daily[quiet].groupby("station")[col].median()
+        ref = ref.where(ref > 1e-9)
+        daily[f"{band}_zh_norm"] = daily[col] / daily["station"].map(ref)
     rows = []
     for date, g in daily.groupby("date"):
         row = {"date": date}
+        near, far = g[g.station.isin(near_stations)], g[g.station.isin(far_stations)]
         for band in BANDS:
-            col = f"{band}_zh_ratio"
-            near_vals = g.loc[g.station.isin(near_stations), col]
-            far_vals = g.loc[g.station.isin(far_stations), col]
-            row[f"{band}_near_zh"] = near_vals.median() if len(near_vals) else np.nan
-            row[f"{band}_far_zh"] = far_vals.median() if len(far_vals) else np.nan
-            row[f"{band}_diff_zh"] = row[f"{band}_near_zh"] - row[f"{band}_far_zh"]
+            for kind, col in (("", f"{band}_zh_norm"), ("_raw", f"{band}_zh_ratio")):
+                nv, fv = near[col].dropna(), far[col].dropna()
+                row[f"{band}_near_zh{kind}"] = nv.median() if len(nv) else np.nan
+                row[f"{band}_far_zh{kind}"] = fv.median() if len(fv) else np.nan
+                row[f"{band}_diff_zh{kind}"] = row[f"{band}_near_zh{kind}"] - row[f"{band}_far_zh{kind}"]
+            row[f"{band}_n_near"] = int(near[f"{band}_zh_ratio"].notna().sum())
+            row[f"{band}_n_far"] = int(far[f"{band}_zh_ratio"].notna().sum())
         rows.append(row)
-    out = pd.DataFrame(rows).sort_values("date")
+    return pd.DataFrame(rows).sort_values("date")
+
+
+def build_near_far_differential(cfg, daily: pd.DataFrame, near_stations, far_stations):
+    storm_path = cfg.interim_dir / "storm_days.csv"
+    storm = set(pd.read_csv(storm_path, dtype={"date": str})["date"]) if storm_path.exists() else set()
+    out = near_far_table(daily, near_stations, far_stations, storm)
     out.to_csv(cfg.interim_dir / "ulf_near_far_index.csv", index=False)
     print(f"wrote ulf_near_far_index.csv ({len(out)} rows)", file=sys.stderr)
     return out
 
 
+def self_test() -> bool:
+    """A high-level near station leaves the pool halfway: the raw-median near
+    index jumps, the station-normalized one doesn't; raw columns keep the old
+    formula."""
+    rng = np.random.default_rng(0)
+    dates = [f"202401{d:02d}" for d in range(1, 31)]
+    levels = {"n1": 0.5, "n2": 20.0, "f1": 0.3, "f2": 0.4}
+    rows = []
+    for i, d in enumerate(dates):
+        for st, lvl in levels.items():
+            if st == "n2" and i >= 15:
+                continue
+            r = lvl * np.exp(rng.normal(0, 0.05))
+            rows.append({"station": st, "date": d, "pc3_zh_ratio": r, "pc4_zh_ratio": r})
+    daily = pd.DataFrame(rows)
+    t = near_far_table(daily, ["n1", "n2"], ["f1", "f2"], set()).set_index("date")
+    raw_jump = t.pc3_near_zh_raw.iloc[:15].median() / t.pc3_near_zh_raw.iloc[15:].median()
+    norm_jump = t.pc3_near_zh.iloc[:15].median() / t.pc3_near_zh.iloc[15:].median()
+    old = daily.groupby("date").apply(lambda g: g[g.station.isin(["n1", "n2"])].pc3_zh_ratio.median()
+                                      - g[g.station.isin(["f1", "f2"])].pc3_zh_ratio.median())
+    raw_same = np.allclose(t.pc3_diff_zh_raw.to_numpy(), old.reindex(t.index).to_numpy())
+    ok = raw_jump > 5 and abs(norm_jump - 1) < 0.2 and raw_same and set(t.pc3_n_near) == {1, 2}
+    print(f"[self-test] near index before/after dropout: raw {raw_jump:.1f}x, normalized {norm_jump:.2f}x; "
+          f"raw columns = old formula: {raw_same}  {'PASS' if ok else 'FAIL'}", file=sys.stderr)
+    return bool(ok)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--group", required=True)
+    ap.add_argument("--group")
+    ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--from-daily", action="store_true",
+                    help="rebuild only ulf_near_far_index.csv from the existing ulf_daily.csv")
     args = ap.parse_args()
+    if args.self_test:
+        sys.exit(0 if self_test() else 1)
+    if not args.group:
+        ap.error("--group is required")
     cfg = load_group_config(args.group)
 
     if not cfg.xyz_pool.sufficient:
@@ -184,6 +248,10 @@ def main():
     near, far = cfg.xyz_pool.near, cfg.xyz_pool.far
     stations = list(near) + list(far)
 
+    if args.from_daily:
+        daily = pd.read_csv(cfg.interim_dir / "ulf_daily.csv", dtype={"date": str})
+        build_near_far_differential(cfg, daily, near, far)
+        return
     daily = build_daily_series(cfg, stations)
     build_near_far_differential(cfg, daily, near, far)
 
