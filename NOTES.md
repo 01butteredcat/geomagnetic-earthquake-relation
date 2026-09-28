@@ -24,6 +24,7 @@ A Python analysis pipeline testing whether Taiwan's CWA (Central Weather Adminis
 
 - There are 24 station/event groups (G1–G24, after the G23/G24 split). Update this count whenever groups are split or merged. Pipeline-wide tasks such as storm cancellation or reruns apply to ALL groups unless stated otherwise.
 - Full rerun: `bash scripts/run_all_groups.sh`, then run verify (`scripts/verify_pipeline.py`). Report which verify failures existed before the rerun and which are new.
+- Tests: `.venv/bin/python3 -m pytest tests` (regression tests for past statistical fixes plus property tests that no null distribution sees the tested window/event). Run them after touching any null/baseline/test code.
 - Magnitude tiers for validation: M≥6.0 / M≥5.5 / M≥5.0.
 - Analyses are either "daily" or "second-scale (coseismic)". State which line a task belongs to before starting.
 
