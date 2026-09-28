@@ -34,7 +34,13 @@ step30 peak, which can sit anywhere inside the burst.
 
 The same detector is run at N_NULL random reference times in the same loaded
 data (every real event in the raw-data folder kept NULL_EXCLUSION_SEC away, so
-the whole -660..+180 s window stays clear). The fraction that trigger is the
+the whole -660..+180 s window stays clear). Since 2026-09-28 the reference
+times are **shared by every station of an event** (one draw per event, kept
+only where every station tested at the origin also gets a valid result there;
+with fewer than MIN_SHARED_NULL such times the event falls back to counting
+invalid draws as "no trigger" and is flagged `shared_null_fallback`). Before
+that each station drew its own times, which hides the fact that an external
+disturbance hits the whole network at once. The fraction that trigger is the
 station's false-trigger rate for this detector; `trigger_p` = (1 + #null
 triggers at least as early) / (N_NULL + 1) is not used for anything below, but
 lets a trigger be read against its own station's noise.
@@ -55,11 +61,17 @@ Hypocentral distance R = sqrt(epicentral^2 + depth^2).
     separately for M >= 6 and M < 6 (the 68 backfilled M5 events), and for
     all triggers vs. only stations whose own false-trigger rate is below
     CLEAN_FALSE_RATE.
-  - Arrival-window test: does an onset land in [R/V_P - 5 s, R/V_S + 30 s]
-    more often than that station's own null triggers land in the same window?
-    Observed count vs. Poisson-binomial expectation from the per-trigger null
-    fractions. This is the direct "tied to the seismic waves" test; the slope
-    fits are easily dragged by a single noisy station.
+  - Arrival-window test (primary, event-level null since 2026-09-28): T = the
+    number of stations whose onset lands in [R/V_P - 5 s, R/V_S + 30 s]. The
+    null evaluates the whole event at one shared random reference time: each
+    simulation draws one shared index per event and counts that event's
+    stations whose null trigger lands in their own window, summed over events.
+    This keeps the correlation between stations of the same event (a substorm
+    triggers them all at once), which the older per-trigger Poisson-binomial
+    (observed count vs. the sum of each trigger's null in-window fraction, kept
+    as `arrival_window_all_triggers` for reference) treats as independent.
+    This is the direct "tied to the seismic waves" test; the slope fits are
+    easily dragged by a single noisy station.
   - Cross-check against seismometer_comparison.py's co-located seismic onset
     (`shaking_onset_lag_sec`): geomagnetic onset minus seismic onset, for the
     one station per event that script compared.
@@ -92,7 +104,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import theilslopes
+from scipy.stats import norm, theilslopes
 
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
@@ -110,6 +122,7 @@ MIN_PRE_SAMPLES = 300
 MAX_SEARCH_MISSING = 0.2
 LOAD_BUFFER_SEC = 6 * 3600
 N_NULL = 200
+MIN_SHARED_NULL = 50  # below this many all-valid shared null times, fall back (see docstring)
 NULL_EXCLUSION_SEC = -NOISE_PRE_LAGS[0] + 600
 V_P_KMS, V_S_KMS = 6.0, 3.5
 MIN_STATIONS_FOR_FIT = 3
@@ -178,43 +191,62 @@ def _grid(series: pd.Series) -> pd.Series:
     return series.reindex(pd.date_range(series.index[0], series.index[-1], freq="s"))
 
 
-def null_triggers(values: np.ndarray, index: pd.DatetimeIndex, exclude: list[pd.Timestamp],
-                  rng: np.random.Generator, search_hi: int) -> list[int | None]:
-    """Detector outcome at N_NULL random reference times; None = no trigger.
-    Invalid draws (gaps) are skipped, so the list can be shorter than N_NULL."""
-    ex_pos = np.array([(e - index[0]).total_seconds() for e in exclude])
-    lo = -NOISE_PRE_LAGS[0] + 1
-    hi = len(values) - SEARCH_LAGS[1] - MIN_EXCEED_WINDOW - 2
-    out: list[int | None] = []
-    attempts = 0
-    while len(out) < N_NULL and attempts < N_NULL * 5 and hi > lo:
+def shared_null_outcomes(stations: dict[str, tuple[np.ndarray, pd.Timestamp]], event_utc: pd.Timestamp,
+                         exclude: list[pd.Timestamp], rng: np.random.Generator,
+                         search_hi: int) -> tuple[dict[str, list[int | None]], bool]:
+    """Detector outcome of every station at the same N_NULL random reference
+    times (None = no trigger). stations: name -> (gridded values, first
+    timestamp). A time is kept only if every station gets a valid result there;
+    with fewer than MIN_SHARED_NULL such times, the first N_NULL candidates are
+    used with invalid results counted as no trigger (fallback = True)."""
+    lo = -LOAD_BUFFER_SEC - NOISE_PRE_LAGS[0] + 1
+    hi = LOAD_BUFFER_SEC - SEARCH_LAGS[1] - MIN_EXCEED_WINDOW - 2
+    ex = np.array([(e - event_utc).total_seconds() for e in exclude])
+    kept: dict[str, list] = {st: [] for st in stations}
+    loose: dict[str, list] = {st: [] for st in stations}
+    n_kept = n_loose = attempts = 0
+    while n_kept < N_NULL and attempts < N_NULL * 5:
         attempts += 1
-        p = int(rng.integers(lo, hi))
-        if len(ex_pos) and np.min(np.abs(ex_pos - p)) < NULL_EXCLUSION_SEC:
+        off = int(rng.integers(lo, hi))
+        if len(ex) and np.min(np.abs(ex - off)) < NULL_EXCLUSION_SEC:
             continue
-        r = detect_onset(values, p, search_hi)
-        if r["status"] == "onset":
-            out.append(r["onset_lag_sec"])
-        elif r["status"] == "no_onset":
-            out.append(None)
-    return out
+        t = event_utc + pd.Timedelta(seconds=off)
+        res = {}
+        for st, (values, t0) in stations.items():
+            r = detect_onset(values, int(round((t - t0).total_seconds())), search_hi)
+            res[st] = r["onset_lag_sec"] if r["status"] == "onset" else (None if r["status"] == "no_onset" else "invalid")
+        if n_loose < N_NULL:
+            n_loose += 1
+            for st, v in res.items():
+                loose[st].append(None if v == "invalid" else v)
+        if all(v != "invalid" for v in res.values()):
+            n_kept += 1
+            for st, v in res.items():
+                kept[st].append(v)
+    return (kept, False) if n_kept >= MIN_SHARED_NULL else (loose, True)
 
 
 # ---------------------------------------------------------------------------
 # Per event / per group
 # ---------------------------------------------------------------------------
 
-def process_group(group_id: str, min_mag: float | None = None) -> list[dict]:
+def process_group(group_id: str, min_mag: float | None = None) -> tuple[list[dict], dict]:
+    """Rows (one per event x station) plus, per event, each tested station's
+    null in-window indicator at the shared reference times (for the
+    event-level arrival-window test)."""
     cfg = common.load_group_config(group_id)
     group = GROUPS[group_id]
     exclude = [pd.Timestamp(e.time_utc) for e in folder_events(group_id)]
     rows: list[dict] = []
+    nulls: dict[tuple[str, str], dict[str, np.ndarray]] = {}
     for event in group.events:
         if min_mag is not None and event.magnitude < min_mag:
             continue
         event_utc = pd.Timestamp(event.time_utc)
         search_hi = _effective_half_sec(SEARCH_LAGS[1], event_utc, exclude)
         prior = prior_event_gap(event_utc, exclude)
+        ev_rows: list[dict] = []
+        loaded: dict[str, tuple[np.ndarray, pd.Timestamp]] = {}
         for station, meta in sorted(cfg.stations.items()):
             if meta["reported"] not in ("F", "XYZF"):
                 continue
@@ -228,43 +260,56 @@ def process_group(group_id: str, min_mag: float | None = None) -> list[dict]:
                     "hypocentral_km": round(float(np.hypot(epi, event.depth_km)), 1)}
             df, _, _ = _load_station_days(cfg.gdms_dir, station, event_utc, LOAD_BUFFER_SEC)
             if df is None:
-                rows.append({**base, "status": "no_data"})
+                ev_rows.append({**base, "status": "no_data"})
                 continue
             channels = _build_channels(df)
             if base["channel"] not in channels:  # header says F but the day file carries XYZ, or vice versa
                 base["channel"] = next(iter(channels)) if len(channels) == 1 else "H"
             series = _grid(channels[base["channel"]])
             if not (series.index[0] <= event_utc <= series.index[-1]):
-                rows.append({**base, "status": "no_data"})
+                ev_rows.append({**base, "status": "no_data"})
                 continue
             values = series.to_numpy(dtype=float)
             p0 = int(round((event_utc - series.index[0]).total_seconds()))
             res = detect_onset(values, p0, search_hi)
-            null = null_triggers(values, series.index, exclude,
-                                 keyed_rng("onset", group_id, event.date, station), search_hi)
+            if res["status"] in ("onset", "no_onset"):
+                loaded[station] = (values, series.index[0])
+            ev_rows.append({**base, **res})
+
+        outcomes, fallback = shared_null_outcomes(loaded, event_utc, exclude,
+                                                  keyed_rng("onset", group_id, event.date, "shared"), search_hi) \
+            if loaded else ({}, False)
+        ev_null: dict[str, np.ndarray] = {}
+        for row in ev_rows:
+            null = outcomes.get(row["station"])
+            if null is None:
+                continue
             n_trig = sum(v is not None for v in null)
-            row = {**base, **res, "n_null": len(null),
-                   "null_false_rate": round(n_trig / len(null), 4) if null else None}
-            if res["status"] == "onset":
-                lo_a, hi_a = arrival_window(base["hypocentral_km"])
+            lo_a, hi_a = arrival_window(row["hypocentral_km"])
+            row.update({"n_null": len(null), "shared_null_fallback": fallback,
+                        "null_false_rate": round(n_trig / len(null), 4) if null else None})
+            ev_null[row["station"]] = np.array([v is not None and lo_a <= v <= hi_a for v in null])
+            if row["status"] == "onset":
                 null_on = [v for v in null if v is not None]
-                row["in_arrival_window"] = bool(lo_a <= res["onset_lag_sec"] <= hi_a)
+                row["in_arrival_window"] = bool(lo_a <= row["onset_lag_sec"] <= hi_a)
                 # chance of landing in the same window for a trigger of this station's own noise;
                 # uniform over the search window if the null never triggered
                 row["null_q_arrival"] = round(float(np.mean([lo_a <= v <= hi_a for v in null_on])) if null_on else
                                               max(0.0, min(hi_a, search_hi) - max(lo_a, SEARCH_LAGS[0]) + 1)
                                               / (search_hi - SEARCH_LAGS[0] + 1), 4)
-            if res["status"] == "onset" and null:
-                row["trigger_p"] = round((1 + sum(v is not None and v <= res["onset_lag_sec"] for v in null))
-                                         / (len(null) + 1), 4)
+                if null:
+                    row["trigger_p"] = round((1 + sum(v is not None and v <= row["onset_lag_sec"] for v in null))
+                                             / (len(null) + 1), 4)
+        for row in ev_rows:
             for k in ("sigma_nt", "peak_ratio", "burst_peak_ratio"):
                 if row.get(k) is not None:
                     row[k] = round(row[k], 4)
-            rows.append(row)
+        rows.extend(ev_rows)
+        nulls[(group_id, event.date)] = ev_null
         print(f"[{group_id}] {event.date} M{event.magnitude}: "
-              f"{sum(r.get('status') == 'onset' for r in rows if r['event_date'] == event.date)} onsets",
-              file=sys.stderr)
-    return rows
+              f"{sum(r.get('status') == 'onset' for r in ev_rows)} onsets"
+              f"{' (shared-null fallback)' if fallback else ''}", file=sys.stderr)
+    return rows, nulls
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +388,55 @@ def arrival_window_test(trig: pd.DataFrame, rng: np.random.Generator) -> dict:
             "median_resid_s_sec": round(float(np.median(trig.onset_lag_sec - trig.hypocentral_km / V_S_KMS)), 2)}
 
 
+def arrival_window_event_level(tested: pd.DataFrame, nulls: dict, rng: np.random.Generator) -> dict:
+    """Primary arrival-window test. tested: rows with status onset/no_onset.
+    T = onsets inside their own arrival window. Null: per simulation, one shared
+    reference time per event; count that event's stations whose null trigger
+    lands in their own window, sum over events (one-sided)."""
+    if tested.empty:
+        return {"n_events": 0}
+    obs = int((tested.status.eq("onset") & tested.get("in_arrival_window", pd.Series(False, index=tested.index))
+               .fillna(False).astype(bool)).sum())
+    counts, indep_var = [], 0.0
+    for (g, d), ev in tested.groupby(["group", "event_date"], sort=False):
+        nl = nulls.get((g, d), {})
+        arr = [nl[st] for st in ev.station if st in nl and len(nl[st])]
+        if arr and len({len(a) for a in arr}) == 1:
+            counts.append(np.sum(arr, axis=0))
+            q = np.mean(arr, axis=1)
+            indep_var += float(np.sum(q * (1 - q)))
+    if not counts:
+        return {"n_events": 0}
+    sims = np.zeros(N_SIM)
+    for c in counts:
+        sims += c[rng.integers(0, len(c), N_SIM)]
+    event_var = float(sum(c.var() for c in counts))
+    return {"n_events": len(counts), "n_stations_tested": int(len(tested)), "n_in_window": obs,
+            "expected_by_chance": round(float(sum(c.mean() for c in counts)), 2),
+            "null_sd": round(float(sims.std()), 2),
+            # null variance of the event sums over what independent stations would give:
+            # > 1 means stations of an event fire together (external disturbances)
+            "dispersion_ratio": round(event_var / indep_var, 3) if indep_var > 0 else None,
+            "p_one_sided": round(float((1 + np.sum(sims >= obs)) / (N_SIM + 1)), 5)}
+
+
+def timing_test_dispersion_adjusted(trig: pd.DataFrame, dispersion: float | None) -> dict:
+    """The per-trigger timing question (given that a station triggered, does
+    the onset land in its arrival window more often than its own null
+    triggers?) with the Poisson-binomial variance inflated by the event-level
+    dispersion ratio, so that stations of one event firing together are not
+    counted as independent evidence. Normal approximation, one-sided."""
+    if trig.empty or not dispersion:
+        return {"n_onsets": int(len(trig))}
+    q = trig.null_q_arrival.to_numpy(dtype=float)
+    obs = int(trig.in_arrival_window.astype(bool).sum())
+    sd = float(np.sqrt(max(dispersion, 1.0) * np.sum(q * (1 - q))))
+    z = (obs - q.sum()) / sd if sd > 0 else float("nan")
+    return {"n_onsets": int(len(trig)), "n_in_window": obs, "expected_by_chance": round(float(q.sum()), 2),
+            "variance_inflation": round(max(dispersion, 1.0), 3), "z": round(z, 2),
+            "p_one_sided_normal": float(f"{norm.sf(z):.3g}") if z == z else None}
+
+
 def trigger_rate_by_distance(onsets: pd.DataFrame) -> list[dict]:
     tested = onsets[onsets.status.isin(["onset", "no_onset"])]
     out = []
@@ -381,7 +475,7 @@ def _crosscheck_stats(m: pd.DataFrame) -> dict:
             "frac_geomag_earlier_by_gt5s": round(float((dt < -5).mean()), 4)}
 
 
-def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame) -> dict:
+def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame, nulls: dict) -> dict:
     trig = onsets[onsets.status == "onset"]
     m6, clean_prior = onsets.magnitude >= 6, ~onsets.prior_event_shaking.astype(bool)
     subsets = {"m6": m6, "m5": ~m6,
@@ -398,12 +492,26 @@ def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame) -> dict:
            "subsets": {}}
     for name, mask in subsets.items():
         t = trig[mask[trig.index]]
+        tested = onsets[mask & onsets.status.isin(["onset", "no_onset"])]
+        ev_all = arrival_window_event_level(tested, nulls, keyed_rng("onset", name, "window_event_all"))
+        ev_clean = arrival_window_event_level(tested[tested.null_false_rate < CLEAN_FALSE_RATE], nulls,
+                                              keyed_rng("onset", name, "window_event_clean"))
         pe = per_event[(per_event.magnitude >= 6) if name.startswith("m6") else (per_event.magnitude < 6)]
         if name.endswith("no_prior_shaking"):
             pe = pe[~pe.prior_event_shaking]
         out["subsets"][name] = {
             "n_events": int(len(pe)),
             "event_verdicts": pe.verdict.value_counts().to_dict(),
+            # primary: event-level null (stations of an event share reference times)
+            "arrival_window_event_level_all": ev_all,
+            "arrival_window_event_level_clean": ev_clean,
+            # timing only (conditional on triggering), variance inflated by the event-level dispersion
+            "timing_dispersion_adjusted_all": timing_test_dispersion_adjusted(t, ev_all.get("dispersion_ratio")),
+            "timing_dispersion_adjusted_clean": timing_test_dispersion_adjusted(
+                t[t.null_false_rate < CLEAN_FALSE_RATE], ev_clean.get("dispersion_ratio")),
+            "n_events_shared_null_fallback": int(onsets[mask & onsets.shared_null_fallback.eq(True)]
+                                                 .drop_duplicates(["group", "event_date"]).shape[0]),
+            # reference: per-trigger Poisson-binomial (treats stations as independent)
             "arrival_window_all_triggers": arrival_window_test(t, keyed_rng("onset", name, "window_all")),
             "arrival_window_clean_stations": arrival_window_test(t[t.null_false_rate < CLEAN_FALSE_RATE],
                                                                  keyed_rng("onset", name, "window_clean")),
@@ -444,10 +552,11 @@ def plot(onsets: pd.DataFrame, path: Path) -> None:
 def run_all(group_ids: list[str] | None, min_mag: float | None) -> dict:
     group_ids = group_ids or list(GROUPS)
     with ProcessPoolExecutor(max_workers=N_WORKERS) as ex:
-        rows = [r for rs in ex.map(process_group, group_ids, [min_mag] * len(group_ids)) for r in rs]
-    onsets = pd.DataFrame(rows)
+        results = list(ex.map(process_group, group_ids, [min_mag] * len(group_ids)))
+    onsets = pd.DataFrame([r for rs, _ in results for r in rs])
+    nulls = {k: v for _, ns in results for k, v in ns.items()}
     per_event = per_event_moveout(onsets)
-    summary = summarize(onsets, per_event)
+    summary = summarize(onsets, per_event, nulls)
     summary.update({"groups": group_ids, "min_mag": min_mag})
     out_dir = OUT_DIR if group_ids == list(GROUPS) and min_mag is None else \
         OUT_DIR / ("subset_" + "_".join(group_ids) + (f"_m{min_mag:g}" if min_mag is not None else ""))
@@ -476,6 +585,32 @@ def _synthetic(delays: list[float], rng: np.random.Generator) -> list[int | None
     return out
 
 
+def _correlated_null_trial(rng: np.random.Generator, n_ev: int = 30, n_st: int = 6, k: int = N_NULL):
+    """One H0 dataset where half of all reference times carry a network-wide
+    disturbance (every station triggers at the same lag) and otherwise each
+    station triggers alone 10 % of the time -- the origin is just another
+    reference time. Returns (rows, nulls) shaped like process_group's."""
+    rows, nulls = [], {}
+    for e in range(n_ev):
+        R = rng.uniform(20, 300, n_st)
+        lo, hi = R / V_P_KMS + ARRIVAL_PAD_SEC[0], R / V_S_KMS + ARRIVAL_PAD_SEC[1]
+        lag = np.full((n_st, k + 1), np.nan)
+        common_t = rng.random(k + 1) < 0.5
+        lag[:, common_t] = rng.uniform(SEARCH_LAGS[0], SEARCH_LAGS[1], common_t.sum())
+        own = (rng.random((n_st, k + 1)) < 0.1) & ~common_t
+        lag[own] = rng.uniform(SEARCH_LAGS[0], SEARCH_LAGS[1], own.sum())
+        inw = (lag >= lo[:, None]) & (lag <= hi[:, None])
+        nulls[("S", str(e))] = {f"s{i}": inw[i, 1:] for i in range(n_st)}
+        for i in range(n_st):
+            on = lag[i, 1:][~np.isnan(lag[i, 1:])]
+            trig = not np.isnan(lag[i, 0])
+            rows.append({"group": "S", "event_date": str(e), "station": f"s{i}",
+                         "status": "onset" if trig else "no_onset", "hypocentral_km": R[i],
+                         "onset_lag_sec": lag[i, 0], "in_arrival_window": bool(inw[i, 0]) if trig else None,
+                         "null_q_arrival": float(np.mean((on >= lo[i]) & (on <= hi[i]))) if len(on) else 0.0})
+    return pd.DataFrame(rows), nulls
+
+
 def self_test() -> bool:
     rng = np.random.default_rng(SEED)
     R = np.array([20, 45, 80, 120, 160, 210, 260], dtype=float)
@@ -498,6 +633,17 @@ def self_test() -> bool:
     fr = np.mean([q["status"] == "onset" for q in quiet])
     print(f"[self-test] pure-noise false trigger rate {fr:.3f}  {'PASS' if fr < 0.02 else 'FAIL'}", file=sys.stderr)
     ok &= fr < 0.02
+    fp_event = fp_station = 0
+    n_rep = 200
+    for _ in range(n_rep):
+        df, nulls = _correlated_null_trial(rng)
+        fp_event += arrival_window_event_level(df, nulls, rng)["p_one_sided"] < 0.05
+        fp_station += arrival_window_test(df[df.status == "onset"], rng)["p_one_sided"] < 0.05
+    good = fp_event / n_rep <= 0.08 and fp_station > fp_event
+    print(f"[self-test] correlated H0 (network-wide disturbances), false positives at 5 %: "
+          f"event-level {fp_event / n_rep:.3f}, per-station {fp_station / n_rep:.3f}  "
+          f"{'PASS' if good else 'FAIL'}", file=sys.stderr)
+    ok &= good
     t0 = pd.Timestamp("2024-04-03 00:00:00")
     gaps = [prior_event_gap(t0 + pd.Timedelta(seconds=d), [t0]) for d in (PRIOR_EVENT_EXCLUSION_SEC,
                                                                         PRIOR_EVENT_EXCLUSION_SEC + 1, 0)]
