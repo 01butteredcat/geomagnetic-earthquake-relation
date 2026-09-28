@@ -426,8 +426,8 @@ methods:
       - $p_0$ 由滑動窗方法估計，偏誤會直接傳導到檢定結果。
       - 3 個視窗大小 × 多種方法同時檢定，沒有多重比較校正，只能視為探索性再現性訊號。
     code:
-      - {file: scripts/cross_group_analysis.py, lines: "92-107", symbol: sliding_baseline_rate}
-      - {file: scripts/cross_group_analysis.py, lines: "159-201", symbol: aggregate}
+      - {file: scripts/cross_group_analysis.py, lines: "92-109", symbol: sliding_baseline_rate}
+      - {file: scripts/cross_group_analysis.py, lines: "161-203", symbol: aggregate}
 
   D6:
     name: 標籤置換檢定（Label-Permutation Test）

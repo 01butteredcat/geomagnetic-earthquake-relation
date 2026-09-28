@@ -91,15 +91,17 @@ def pre_event_window(anchor_date: pd.Timestamp, window_days: int) -> list[str]:
 
 def sliding_baseline_rate(all_dates: list[str], candidate_dates: set[str], window_days: int, exclude_window: set[str]) -> tuple[float, int]:
     """Fraction of every possible window_days-long sliding window within
-    all_dates (excluding the actual test window) that contains >= 1
-    candidate date. Returns (rate, n_windows_checked)."""
+    all_dates (excluding every window that shares a day with the actual test
+    window -- skipping only the identical window let the tested window's own
+    candidates raise its baseline) that contains >= 1 candidate date. Returns
+    (rate, n_windows_checked)."""
     if len(all_dates) < window_days + 1:
         return float("nan"), 0
     hits = 0
     n = 0
     for i in range(len(all_dates) - window_days + 1):
         w = all_dates[i:i + window_days]
-        if set(w) == exclude_window:
+        if exclude_window.intersection(w):
             continue
         n += 1
         if candidate_dates.intersection(w):
