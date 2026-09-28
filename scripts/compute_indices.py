@@ -82,12 +82,17 @@ def night_features_for_station(cfg, station: str, channel: str) -> pd.DataFrame:
 
 
 def mad_zscore(series: pd.Series, clean_mask: pd.Series) -> pd.Series:
-    """Rolling trailing-window MAD z-score, baseline built from clean days only."""
+    """Rolling trailing-window MAD z-score, baseline built from clean days only.
+    The window is the TRAILING_WINDOW_DAYS calendar days before each day, not the
+    previous TRAILING_WINDOW_DAYS rows: a folder with missing day files (G6_G7_G8
+    lacks 2021-12-30 and 2022-01-01) would otherwise reach further back."""
     z = pd.Series(index=series.index, dtype="float64")
     vals = series.values
     clean = clean_mask.values
+    days = pd.to_datetime(series.index, format="%Y%m%d")
+    starts = np.searchsorted(days, days - pd.Timedelta(days=TRAILING_WINDOW_DAYS))
     for i in range(len(series)):
-        lo = max(0, i - TRAILING_WINDOW_DAYS)
+        lo = int(starts[i])
         window_vals = vals[lo:i][clean[lo:i]] if i > lo else np.array([])
         window_vals = window_vals[~np.isnan(window_vals)]
         if len(window_vals) < MIN_CLEAN_POINTS:

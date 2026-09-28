@@ -125,7 +125,7 @@ methods:
       - 仍是單變量、逐點的統計量，沒有考慮序列自相關（因此顯著性推論才需要 D 類替代資料法補強）。
     code:
       - {file: scripts/stat_utils.py, lines: "29-39", symbol: mad_zscore}
-      - {file: scripts/compute_indices.py, lines: "84-99", symbol: mad_zscore}
+      - {file: scripts/compute_indices.py, lines: "84-104", symbol: mad_zscore}
 
   B2:
     name: Theil–Sen 穩健回歸（近-遠測站共模訊號校正）
@@ -154,7 +154,7 @@ methods:
       - 乾淨日少於 10 天時退化為零斜率（不校正），可能失真。
       - 僅雙變量迴歸，未考慮測站間的空間相關結構。
     code:
-      - {file: scripts/compute_indices.py, lines: "102-175", symbol: build_field_index}
+      - {file: scripts/compute_indices.py, lines: "107-180", symbol: build_field_index}
 
   B3:
     name: 全天日變幅比值（Diurnal Range Ratio，Liu et al., 2006）

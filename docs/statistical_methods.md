@@ -61,7 +61,7 @@
 
 ### B1. 中位數/MAD 穩健 z-score
 - **用途**：本專案幾乎所有異常判定的共同基礎統計量——將夜間平均 H/Z/F 值、ULF near−far 差值序列等標準化，用來偵測偏離「正常」範圍的日子。
-- **程式碼**：`scripts/stat_utils.py:29-39`（全序列版，各腳本共用）；`scripts/compute_indices.py:84-99`（21 天滾動窗版，`TRAILING_WINDOW_DAYS=21`、`MIN_CLEAN_POINTS=5`）
+- **程式碼**：`scripts/stat_utils.py:29-39`（全序列版，各腳本共用）；`scripts/compute_indices.py:84-104`（21 天滾動窗版，`TRAILING_WINDOW_DAYS=21`、`MIN_CLEAN_POINTS=5`；2026-09-28 起窗口按日曆日計算，之前按資料列數，缺檔日會讓窗口多往前延伸，G6_G7_G8 缺 2021-12-30 與 2022-01-01）
 - **數學式**：
 
   $$
@@ -78,7 +78,7 @@
 
 ### B2. Theil–Sen 穩健回歸（近-遠測站共模訊號校正）
 - **用途**：地磁日變化中很大一部分是全網共有的太陽風/磁暴訊號（共模雜訊），而非局部異常。此法用「遠測站指標」回歸「近測站指標」，殘差即為扣除共模訊號後的「局部異常指標」（local anomaly index）。
-- **程式碼**：`scripts/compute_indices.py:102-175`，呼叫 `scipy.stats.theilslopes`
+- **程式碼**：`scripts/compute_indices.py:107-180`，呼叫 `scipy.stats.theilslopes`
 - **數學式**：
 
   設 $y_t=$ 近測站群 MAD-z 中位數（near_index）、$x_t=$ 遠測站群 MAD-z 中位數（far_index），僅用「乾淨日」擬合：
