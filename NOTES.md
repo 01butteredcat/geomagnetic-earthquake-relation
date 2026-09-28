@@ -114,6 +114,10 @@ Working hypothesis: the `ttn` station went offline/was decommissioned around **2
 
 `ttn` is present with full coverage in the newly-added historical groups **G14** (2009–2010) through **G18** (2015–2016) and, consistent with the same permanent gap, **absent from G20** (2025-09~2026-01). **G19** (2024-05-15~2024-09-07) is a separate case: `ttn` stops after **2024-07-22** (69/116 files), leaving it unavailable for G19's 2024-08-16 anchor event and its ~47-day aftermath. This is a *distinct, temporary* outage, not an early start of the permanent one — G11's data shows `ttn` back online 2024-10-20 through 2024-12-18, i.e. after G19's window and before the permanent gap. See `G19/CLAUDE.md` for details.
 
+### Known data issue: G12 has only 16 days of data before its anchor
+
+G12's folder starts 2025-05-26 (fetched ~93 days before the old 2025-08-27 anchor); the anchor moved to 2025-06-11 on 2026-08-20. The 28-day trailing baseline has < 5 clean days just before the anchor, so those days' H/Z index is NaN and verify's `baseline_window_excludes_storms` fails for G12. Accepted as a known failure (2026-09-28) rather than fixed -- it would need data from ~2025-04 onward. See `G12/CLAUDE.md`.
+
 ### Known data issue: G14–G18 predate the vector-station network
 
 Empirically checking each new group's station pool (`common.py`'s XYZ/F pool discovery) found **G14, G15, G16, G17, and G18 all have zero usable vector (X/Y/Z) stations** — every station in these groups' `.sec` files reports only the scalar `F` channel as real data (`Reported`/`Sensor Orientation` header fields say `F`, not `XYZF`), the same situation as `G1`/`G2_G3`. This isn't a parsing bug: it reflects that Taiwan's CWA geomagnetic network was largely proton-magnetometer-based (scalar-only) before a vector-magnetometer upgrade that appears to have been substantially complete by the time of **G19** (2024) and **G20** (2025-2026), both of which have full 12-13-station vector pools like G4 onward. Concretely:
