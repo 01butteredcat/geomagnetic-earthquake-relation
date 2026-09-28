@@ -19,3 +19,7 @@ obspy==1.5.0
 
 # docs/flowchart/ (pipeline flowchart build/check tooling only; not needed by scripts/)
 PyYAML>=6.0
+
+# tests/ (regression and property tests: .venv/bin/python3 -m pytest tests)
+pytest>=9.1
+hypothesis>=6.168.3
