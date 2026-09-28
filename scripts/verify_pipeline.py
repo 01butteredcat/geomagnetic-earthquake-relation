@@ -426,7 +426,8 @@ def check_baseline_window_excludes_storms(cfg):
     -- matching compute_indices.py's clean_overall definition (a median
     across 3 near stations tolerates one of them being down; it only really
     goes NaN when all of them are). A day with just one out of three near
-    stations down is not an outage for this purpose. This check does not
+    stations down is not an outage for this purpose. Days outside the data
+    (before its first file) are never clean. This check does not
     call into compute_indices.py itself (that would be tautological), it
     independently rebuilds the same all-of-a-pool-down condition from
     daily_features.csv."""
@@ -441,6 +442,7 @@ def check_baseline_window_excludes_storms(cfg):
 
     pool = cfg.xyz_pool if cfg.xyz_pool.sufficient else cfg.f_pool
     all_days = sorted(daily["date"].unique())
+    data_days = set(all_days)
     near_out = {d: all(d in outage_by_station.get(s, set()) for s in pool.near) for d in all_days}
     far_out = {d: all(d in outage_by_station.get(s, set()) for s in pool.far) for d in all_days}
     outage_dates = {d for d in all_days if near_out[d] or far_out[d]}
@@ -457,7 +459,9 @@ def check_baseline_window_excludes_storms(cfg):
             d - pd.Timedelta(days=TRAILING_WINDOW_DAYS), d - pd.Timedelta(days=1)
         ).strftime("%Y%m%d").tolist()
         storm_in_window = sorted(set(window) & storm_dates)
-        clean_days = [w for w in window if w not in storm_dates and w not in outage_dates]
+        # only days that exist in the data can be baseline days (G12's data starts 16 days
+        # before its anchor; the days before that used to count as clean)
+        clean_days = [w for w in window if w in data_days and w not in storm_dates and w not in outage_dates]
         results.append(
             {
                 "probe_date": date_str,
