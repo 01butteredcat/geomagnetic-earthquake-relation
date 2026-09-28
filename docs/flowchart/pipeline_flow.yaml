@@ -93,7 +93,7 @@ methods:
     group: B. 穩健標準化與異常偵測
     purpose: >-
       本專案幾乎所有異常判定的共同基礎：將夜間平均 H/Z/F、ULF near−far 差值序列等標準化，偵測偏離「正常」範圍的日子。
-      有兩種用法：整段序列一次標準化（stat_utils，供替代資料、疊加分析、回測共用），以及只用「前 21 個乾淨日」的滾動視窗版本（compute_indices，因果式）。
+      有兩種用法：整段序列一次標準化（stat_utils，供替代資料、疊加分析、回測共用），以及只用「前 28 天中的乾淨日」的滾動視窗版本（compute_indices，因果式）。
     formula:
       - |-
         \begin{aligned}
@@ -103,11 +103,11 @@ methods:
         \end{aligned}
       - |-
         \begin{aligned}
-        W_i &= \{\, j : i-21 \le j < i,\ j\ \text{為乾淨日} \,\}, \quad |W_i| \ge 5 \\
+        W_i &= \{\, j : i-28 \le j < i,\ j\ \text{為乾淨日} \,\}, \quad |W_i| \ge 5 \\
         z_i &= \frac{x_i - \operatorname{med}(x_{W_i})}{\text{MAD}(x_{W_i})}
         \end{aligned}
     where: >-
-      第一組為整段序列版；第二組為滾動版（compute_indices）：每天只用「前 21 天中的乾淨日」估計 med 與 MAD（至少 5 點），
+      第一組為整段序列版；第二組為滾動版（compute_indices）：每天只用「前 28 天中的乾淨日」估計 med 與 MAD（至少 5 點），
       不看當天與未來，因此是因果式。
     notes:
       - >-
@@ -125,7 +125,7 @@ methods:
       - 仍是單變量、逐點的統計量，沒有考慮序列自相關（因此顯著性推論才需要 D 類替代資料法補強）。
     code:
       - {file: scripts/stat_utils.py, lines: "29-39", symbol: mad_zscore}
-      - {file: scripts/compute_indices.py, lines: "84-104", symbol: mad_zscore}
+      - {file: scripts/compute_indices.py, lines: "88-108", symbol: mad_zscore}
 
   B2:
     name: Theil–Sen 穩健回歸（近-遠測站共模訊號校正）
@@ -154,7 +154,7 @@ methods:
       - 乾淨日少於 10 天時退化為零斜率（不校正），可能失真。
       - 僅雙變量迴歸，未考慮測站間的空間相關結構。
     code:
-      - {file: scripts/compute_indices.py, lines: "107-180", symbol: build_field_index}
+      - {file: scripts/compute_indices.py, lines: "111-184", symbol: build_field_index}
 
   B3:
     name: 全天日變幅比值（Diurnal Range Ratio，Liu et al., 2006）
@@ -183,7 +183,7 @@ methods:
       - >-
         重抽樣改用留一窗：若像 D4 那樣由整條觀測序列重抽樣，被檢定的極值會混進自己的虛無分布，區塊拔靴的 p 值會有約 0.2–0.4 的結構下限。
       - >-
-        以不與真實窗口重疊的假主震日（每 7 天一個）做安慰劑校準：留一窗虛無分布在本專案資料上偏寬鬆（p<0.05 比例約 13–15%／22–25%），
+        以不與真實窗口重疊的假主震日（每 7 天一個）做安慰劑校準：留一窗虛無分布在本專案資料上偏寬鬆（p<0.05 比例約 16–19%／25–26%，2026-09-28），
         因此跨組二項檢定以安慰劑比例、而非 5% 為基準。
     consts:
       - {name: PAIR_MAX_KM, file: scripts/method_comparison.py}

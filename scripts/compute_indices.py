@@ -54,9 +54,13 @@ MIN_NIGHT_MINUTES = 90
 # 2-day recovery consumed the entire trailing window for dates through early
 # April, leaving the most important pre-quake days (03-26..04-04) with no
 # baseline at all. 21 days reaches back past that storm into a clean stretch.
+# 21 -> 28 on 2026-09-28: storm-dense stretches (G6 2021-10, G11 2025-01, G19
+# 2024-08) still left the days around those anchors with 2-4 clean days (< 5)
+# in 21, so the anchor-day index was NaN; 28 is the shortest window that gives
+# all three >= 8 (30/35 rescue nothing more).
 # Kept as one dataset-wide constant (not per-group) since it's a property of
 # "how long a storm+recovery can plausibly run", not of any one group's data.
-TRAILING_WINDOW_DAYS = 21
+TRAILING_WINDOW_DAYS = 28
 MIN_CLEAN_POINTS = 5
 CANDIDATE_Z_THRESHOLD = 2.5
 
