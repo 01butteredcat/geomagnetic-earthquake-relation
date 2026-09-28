@@ -315,7 +315,7 @@ if (!DATA) {
     ].map(([l,c,cls]) => `<div class="gm-legend-item"><span class="gm-legend-swatch ${cls||''}" style="background:${c};"></span>${l}</div>`).join('');
 
     document.getElementById('surrogate-caption').innerHTML =
-      `x 軸：代理序列的 min(z)（MAD 單位）；y 軸：機率密度。以 G10/Pc3 為例——這是原始報告文字宣稱 「z≈-4.1」 的那組序列，用同一套公式重新獨立計算得到觀測 min(z)=${d.observed.min_z}（${d.observed.min_z_date}，與原文的 3/30 相符，數值略有出入見下方説明）。`;
+      `x 軸：代理序列的 min(z)（MAD 單位）；y 軸：機率密度。以 G10/Pc3 為例——這是原始報告文字宣稱 「z≈-4.1」 的那組序列，用同一套公式重新獨立計算得到觀測 min(z)=${d.observed.min_z}（${d.observed.min_z_date}，${d.observed.min_z_date === '20240330' ? '與原文的 3/30 相符，數值略有出入見下方説明' : '已不是原文的 3/30：2026-09-28 近遠站指標改為各站先標準化後，3/30 不再是序列最低的一天'}）。`;
 
     document.getElementById('surrogate-narrative').innerHTML = `
       <p><b>block bootstrap：</b>p(代理序列 min(z) ≤ 觀測值) = ${fmtNum(d.block_bootstrap.p_value_vs_observed_extreme)}，

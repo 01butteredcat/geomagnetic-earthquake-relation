@@ -85,7 +85,7 @@ methods:
       - 資料頭尾視窗不完整（min_periods=1），邊界平滑效果較弱。
       - 相較真正的高通濾波器，滾動平均頻率響應較差（旁瓣大），並非嚴謹的頻域設計。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "52-54", symbol: _detrend}
+      - {file: scripts/ulf_analysis.py, lines: "66-68", symbol: _detrend}
       - {file: scripts/coseismic_step_analysis.py, lines: "241-245", symbol: _detrend}
 
   B1:
@@ -227,8 +227,8 @@ methods:
       - 資料有缺值（gap）會破壞 filtfilt 的連續性假設，程式直接跳過該日而非插值，可能造成選擇性缺失。
       - 4 階濾波器過渡帶仍有一定寬度，頻帶邊緣能量會互相滲漏。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "46-49", symbol: _bandpass}
-      - {file: scripts/ulf_analysis.py, lines: "37-40", symbol: BANDS}
+      - {file: scripts/ulf_analysis.py, lines: "60-63", symbol: _bandpass}
+      - {file: scripts/ulf_analysis.py, lines: "51-54", symbol: BANDS}
 
   C2:
     name: Hilbert 包絡線與 Z/H 極化比
@@ -250,7 +250,8 @@ methods:
       - |-
         \begin{aligned}
         \text{ZH ratio} &= \frac{\text{RMS}_Z}{\text{RMS}_H} \\
-        \text{diff\_zh} &= \operatorname{median}(\text{near\_zh}) - \operatorname{median}(\text{far\_zh})
+        \tilde r_{s,t} &= r_{s,t} \,/\, \operatorname{median}_{\text{non-storm}}(r_s) \\
+        \text{diff\_zh}_t &= \operatorname{median}_{s\in\text{near}}\tilde r_{s,t} - \operatorname{median}_{s\in\text{far}}\tilde r_{s,t}
         \end{aligned}
     consts:
       - {name: NIGHT_HOURS_UTC, file: scripts/ulf_analysis.py}
@@ -260,10 +261,11 @@ methods:
     cons:
       - 只取夜間 3 小時，單日估計變異大。
       - 水平分量接近零時比值不穩定（雖有 1e-9 保護）。
+      - 2026-09-28 起各站先除以自己非磁暴日的中位數再取中位數：舊版直接取原始比值中位數，測站加入或退出會造成水位跳動（G11 的 zbn 在震前窗口開頭退出，近站指標掉約 20 倍）。參考中位數用整條序列。
       - 物理機制（地下電性/壓磁效應）在文獻中仍有爭議，這是觀測型指標而非嚴格物理模型。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "57-87", symbol: _process_day}
-      - {file: scripts/ulf_analysis.py, lines: "153-170", symbol: build_near_far_differential}
+      - {file: scripts/ulf_analysis.py, lines: "71-101", symbol: _process_day}
+      - {file: scripts/ulf_analysis.py, lines: "167-191", symbol: near_far_table}
 
   C3:
     name: 短時傅立葉頻譜圖（STFT Spectrogram）
@@ -283,7 +285,7 @@ methods:
       - 純視覺化/診斷，沒有產生量化統計檢定。
       - 時間與頻率解析度互相牽制（1 小時分段對應約 0.28 mHz）。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "118-150", symbol: build_zoom_spectrogram}
+      - {file: scripts/ulf_analysis.py, lines: "132-164", symbol: build_zoom_spectrogram}
 
   D1:
     name: Shapiro–Wilk 常態性檢定
@@ -387,6 +389,7 @@ methods:
       - 不依賴任何母數分布假設，p-value 直接由資料自身的重抽樣分布給出。
     cons:
       - 精度受 $N$ 限制（$N=2000$ 時最小可解析約 0.0005）。
+      - 排名檢定（主要檢定）2026-09-28 起另報敏感度：不含發現個案 G10、不含 G10 與 G11、逐一拿掉一組、真窗口前一個區塊當假真窗口（`surrogate_test.rank_sensitivity`）。G23／G24、G6／G7／G8 不獨立。
       - 「取序列中最負一日」是事後挑選極端值（look-elsewhere），此法有部分緩解但未完全校正；跨群組、跨頻帶的多重比較另在 D5 處理。
     notes:
       - >-
@@ -489,6 +492,7 @@ methods:
     cons:
       - 搜尋窗越寬，「窗內最大值」越容易偶然偏大（look-elsewhere）；換成更寬視窗時，非邊界事件的峰值也會被改變。
       - 單事件層級的 p-value 仍需謹慎解讀多重比較（秒級堆疊 E1 用虛無序列自身峰值分布緩解）。
+      - 逐事件 7/93 起 p<0.05，而 93 次檢定純靠機率預期約 4.7 起（≥7 起的機率約 0.2），本身不高於機率。
     code:
       - {file: scripts/coseismic_step_analysis.py, lines: "248-262", symbol: _step_statistic}
       - {file: scripts/coseismic_step_analysis.py, lines: "314-341", symbol: _extremum_in_window}
@@ -648,7 +652,7 @@ methods:
       h0: >-
         地磁異常大小與磁力儀附近的 PGA 無關（$\rho = 0$）。
       h1: >-
-        地磁異常隨 PGA 增加（$\rho > 0$，單尾），支持「儀器被震動干擾」的解釋。
+        地磁異常隨 PGA 增加（$\rho > 0$，單尾）。儀器被震動或地動耦合的真實磁場變化都符合，這個檢定本身分不出兩者。
     notes:
       - >-
         不使用 PoleZero 去除響應後的波形：其輸入單位為位移（M），去除後得到的是位移而非加速度。PGA 只在該事件自己的時間窗內取值，
@@ -681,30 +685,35 @@ methods:
       - |-
         \sigma = 1.4826\,\operatorname{median}\bigl(|\Delta B - \operatorname{median}(\Delta B)|\bigr)_{[-660,\,-60]\,\text{s}}, \qquad t_{\text{on}} = \min\bigl\{t \in [-60,\,180]\,\text{s} : |\Delta B_t| > 4\sigma,\ \textstyle\sum_{k=0}^{4} \mathbb{1}[|\Delta B_{t+k}| > 4\sigma] \ge 3\bigr\}
       - |-
-        W(R) = \bigl[R/V_P - 5,\ R/V_S + 30\bigr]\,\text{s}, \qquad N_{\text{obs}} = \sum_i \mathbb{1}[t_{\text{on},i} \in W(R_i)] \ \text{vs.}\ \sum_i \operatorname{Bernoulli}(q_i)
+        W(R) = \bigl[R/V_P - 5,\ R/V_S + 30\bigr]\,\text{s}, \qquad T = \sum_e \sum_{s\in e} \mathbb{1}[t_{\text{on},es} \in W(R_{es})] \ \text{vs.}\ \sum_e \sum_{s\in e} \mathbb{1}[t^{(k_e)}_{\text{on},es} \in W(R_{es})],\ k_e \sim \operatorname{U}\{1..K\}
     where: >-
-      $R$ 為震源距離，$V_P = 6$、$V_S = 3.5$ km/s；$q_i$ 為同一站在 200 個隨機參考時刻的雜訊觸發落在同一 $W(R_i)$ 內的比例。
+      $R$ 為震源距離，$V_P = 6$、$V_S = 3.5$ km/s。同一事件的所有測站共用同一組 200 個隨機參考時刻（2026-09-28 起），
+      主要 p 值每次模擬對每起事件抽一個共用時刻（事件層級虛無），保留外部磁擾讓全網同時觸發的相關（實測變異為獨立假設的 1.4–1.7 倍）。
+      另報只看時間的版本（以有觸發為條件，Poisson-二項，變異乘上該倍數）。
       另做事件內置中的 Theil–Sen 斜率，p 值由只在同一事件內打亂起始時間 2000 次得到。
     hypotheses:
       h0: >-
         起始時間和震波到時無關：落在到時窗內的比例不高於測站自身雜訊，斜率 ≤ 0。
       h1: >-
-        起始時間跟著震波走（單尾），斜率約 $1/V_S$～$1/V_P$；外部磁擾則應為斜率約 0。
+        起始時間跟著震波走（單尾），斜率約 $1/V_S$～$1/V_P$；外部磁擾則應為斜率約 0。拒絕 H₀ 只代表異常跟著震波走：磁力儀被震動或地動耦合的真實磁場變化都符合。
     consts:
       - {name: K_SIGMA, file: scripts/coseismic_onset_moveout.py}
       - {name: SEARCH_LAGS, file: scripts/coseismic_onset_moveout.py}
       - {name: ARRIVAL_PAD_SEC, file: scripts/coseismic_onset_moveout.py}
       - {name: N_NULL, file: scripts/coseismic_onset_moveout.py}
+      - {name: MIN_SHARED_NULL, file: scripts/coseismic_onset_moveout.py}
       - {name: PRIOR_EVENT_EXCLUSION_SEC, file: scripts/coseismic_onset_moveout.py}
     pros:
       - 全部事件、全部測站都能用；每站用自己的空值觸發分布校正，雜訊站不會製造假的到時一致。
     cons:
       - 起始時間偵測約有 5 s 延遲；xcg 等雜訊站在隨機時刻約 80% 會觸發；多數事件只有 1–2 站觸發，逐事件斜率常無法估計。
     code:
-      - {file: scripts/coseismic_onset_moveout.py, lines: "133-163", symbol: detect_onset}
-      - {file: scripts/coseismic_onset_moveout.py, lines: "307-329", symbol: pooled_moveout}
-      - {file: scripts/coseismic_onset_moveout.py, lines: "332-343", symbol: arrival_window_test}
-      - {file: scripts/coseismic_onset_moveout.py, lines: "170-174", symbol: prior_event_gap}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "146-176", symbol: detect_onset}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "352-374", symbol: pooled_moveout}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "391-420", symbol: arrival_window_event_level}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "377-388", symbol: arrival_window_test}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "194-226", symbol: shared_null_outcomes}
+      - {file: scripts/coseismic_onset_moveout.py, lines: "183-187", symbol: prior_event_gap}
 
 # ---------------------------------------------------------------------------
 # Pipeline 步驟
