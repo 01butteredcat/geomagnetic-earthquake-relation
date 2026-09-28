@@ -140,6 +140,12 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     pre_event = {k: v for k, v in win_res.items() if "whole" not in k}
     pre_event.update(mc.placebo_counts(series, window, rng_w, tail="lower"))
     pre_event.update(mc.rank_window_test(series, window, tail="lower"))
+    # placebo: the block right before the real window posing as the real one -- if the
+    # position just before the anchor were enough to rank lowest, this would be "significant" too
+    prev = mc.rank_window_test(series, set(pre_event_window(pd.to_datetime(cfg.anchor_event.date)
+                                                             - pd.Timedelta(days=mc.PRE_WINDOW_DAYS),
+                                                             mc.PRE_WINDOW_DAYS)), tail="lower")
+    pre_event["placebo_prev_block"] = {k: prev.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")}
     pre_event.update({"anchor": cfg.anchor_event.date, "window_days": mc.PRE_WINDOW_DAYS,
                       "storm_days_excluded": True,
                       "null": "leave-window-out (background days only)", "tail": "lower (most negative z)"})
@@ -231,7 +237,26 @@ def rank_summary(results: list[dict], rng: np.random.Generator) -> dict:
             entry[name] = {**mc.fisher_across_groups([pe["rank_p"] for _, pe in sel],
                                                      [pe["null_ps"] for _, pe in sel], rng),
                            "groups": [g for g, _ in sel]}
+        entry["sensitivity"] = rank_sensitivity(rows, np.random.default_rng([SEED, sum(map(ord, band)), 1]))
         out[band] = entry
+    return out
+
+
+def rank_sensitivity(rows: list[tuple[str, dict]], rng: np.random.Generator) -> dict:
+    """Checks on the primary Fisher combination (own rng, so the main numbers
+    don't move): G10 is the discovery case (band, direction, window and the
+    -4.1 threshold all came from its 2024-03-30 dip), so drop it; drop G10 and
+    G11 together; leave each group out in turn; and the placebo block just
+    before each real window, combined the same way."""
+    def fisher(sel):
+        return mc.fisher_across_groups([pe["rank_p"] for _, pe in sel], [pe["null_ps"] for _, pe in sel], rng)["p"]
+    out = {name: {"groups": [g for g, _ in sel], "p": fisher(sel)}
+           for name, sel in (("drop_discovery_G10", [(g, pe) for g, pe in rows if g != "G10"]),
+                             ("drop_G10_G11", [(g, pe) for g, pe in rows if g not in ("G10", "G11")]))}
+    out["leave_one_out"] = {g: fisher([(h, pe) for h, pe in rows if h != g]) for g, _ in rows}
+    prev = [(g, pe["placebo_prev_block"]) for g, pe in rows
+            if (pe.get("placebo_prev_block") or {}).get("rank_p") is not None]
+    out["placebo_prev_block"] = {"groups": [g for g, _ in prev], "p": fisher(prev) if prev else None}
     return out
 
 
@@ -277,10 +302,22 @@ def render_window_summary(results: list[dict], summ: dict) -> str:
          "| 頻帶 | 組別 | 組數 | 單組 p<0.05 | 單組 p<0.10 | Fisher X | 合併 p |", "|---|---|---|---|---|---|---|"]
     for band, e in summ["rank_test"].items():
         for name, v in e.items():
+            if name == "sensitivity":
+                continue
             label = "全部" if name == "all_groups" else "每家族一組"
             star = "（主要）" if band == summ["primary"]["band"] and name == "all_groups" else ""
             L.append(f"| {band}{star} | {label} | {v['n_groups']} | {v['n_rank_p_lt_05']} | {v['n_rank_p_lt_10']} "
                      f"| {v['fisher_x']} | {v['p']} |")
+    L += ["", "### 主要檢定的敏感度（2026-09-28）", "",
+          "G10 是發現個案：頻帶、下凹方向、30 天窗口和 −4.1 門檻都來自它 2024-03-30 的下凹，所以另外算不含 G10 的版本。"
+          "安慰劑區塊：把每組真窗口「前一個」30 天區塊當成真窗口，用同樣方法合併；若只靠「緊鄰主震前」這個位置就會顯著，這裡也會顯著。", "",
+          "| 頻帶 | 不含 G10 | 不含 G10、G11 | 安慰劑區塊 | 逐一拿掉一組時最大的 p |", "|---|---|---|---|---|"]
+    for band, e in summ["rank_test"].items():
+        sv = e["sensitivity"]
+        loo = sv["leave_one_out"]
+        worst = max(loo, key=loo.get) if loo else None
+        L.append(f"| {band} | {sv['drop_discovery_G10']['p']} | {sv['drop_G10_G11']['p']} | {sv['placebo_prev_block']['p']} "
+                 f"| {'—' if worst is None else f'{loo[worst]}（拿掉 {worst}）'} |")
     L += ["", "## 舊版（已被排名檢定取代，保留比較）：留一窗＋安慰劑校準", "",
          "留一窗的區塊拔靴只能重組背景期已有的數值：震前窗口最小值只要低於背景期最小值，p 就固定是下限 0.0005，"
          "不管低多少（例如 G11 Pc3 的 z = −1.2）。下表的 p 值因此偏小，不能當成證據。", "",
