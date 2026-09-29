@@ -61,6 +61,11 @@ def main():
     for station, g in spikes.groupby("station"):
         spike_by_station[station] = g.drop(columns="station").to_dict(orient="records")
 
+    # whole-day outages (e.g. G10's twu from 2024-04-24 on) -- the report's
+    # quality narrative quotes these instead of hard-coding dates
+    full_outage = daily[daily.pct_missing >= 0.99]
+    full_outage_by_station = {s: sorted(g["date"].tolist()) for s, g in full_outage.groupby("station")}
+
     coverage = daily.groupby("station").agg(
         n_days=("date", "count"),
         avg_pct_missing=("pct_missing", "mean"),
@@ -75,7 +80,14 @@ def main():
     # with report_template.html's existing table; other groups get a
     # generic auto-detected summary (station/date/pct_missing) instead.
     if args.group == "G10":
-        known_outage_windows = G10_KNOWN_OUTAGE_WINDOWS
+        # the hand-curated list predates the folder's extension to 2024-06-01;
+        # stretch its twu "fully missing" row to the end of the actual whole-day outage
+        known_outage_windows = [dict(w) for w in G10_KNOWN_OUTAGE_WINDOWS]
+        twu_out = full_outage_by_station.get("twu", [])
+        for w in known_outage_windows:
+            if w["station"] == "twu" and w["note"] == "fully missing" and twu_out:
+                last = pd.to_datetime(twu_out[-1], format="%Y%m%d").strftime("%Y-%m-%d")
+                w["end"] = f"{last} 23:59:59"
     else:
         auto = auto_outage_dates(daily)
         known_outage_windows = [
@@ -115,6 +127,7 @@ def main():
         "coverage": coverage,
         "known_outage_windows": known_outage_windows,
         "spike_glitches_by_station": spike_by_station,
+        "full_outage_days_by_station": full_outage_by_station,
         "timezone_check": tz,
         "storm_summary": storm_summary,
         "storm_dates": sorted(storm_days["date"].tolist()),

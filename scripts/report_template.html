@@ -119,13 +119,13 @@
 <div class="gm-page">
 
   <h1 class="gm-title">地磁資料與 2024/4/3 花蓮 M7.2 地震關聯分析</h1>
-  <p class="gm-subtitle">13 座台灣地磁測站、2024-01-01 至 2024-04-25、每秒取樣資料的探索性分析</p>
+  <p class="gm-subtitle" id="subtitle">台灣地磁測站每秒取樣資料的探索性分析</p>
 
   <div class="gm-callout">
     <b>研究框架與限制（請先讀這段）：</b>
-    地磁 ULF（超低頻）地震前兆訊號在地球物理學界仍存在爭議，尚無被普遍接受的物理機制或可重複驗證的預測能力。本報告是<b>探索性</b>分析單一地震事件（n=1 的案例研究），
-    目的是誠實呈現資料中「有沒有」統計上顯著的異常特徵，<b>不是</b>要證明地磁前兆的存在或提供地震預測方法。
-    報告中會明確標示每個發現的信心程度、可能的替代解釋（太陽磁暴、儀器缺測、儀器雜訊），以及方法本身的侷限。
+    地磁 ULF（超低頻）地震前兆在地球物理學界仍有爭議，目前沒有被普遍接受的物理機制，也沒有可重複驗證的預測能力。這份報告只分析一起地震（n=1 的案例研究），
+    目的是看資料中有沒有統計上突出的異常，並列出每個觀察可能的其他解釋（太陽磁暴、儀器缺測、儀器雜訊）和方法的限制；它無法用來證明前兆存在，也不是地震預測方法。
+    多起地震的跨組檢驗結果見專題研究成果文件。
   </div>
 
   <div class="gm-section" id="sec-event">
@@ -144,7 +144,7 @@
       <div class="gm-card">
         <div class="gm-h2" style="font-size:15px;">涵蓋率與已知缺測窗口</div>
         <div class="gm-table-wrap"><table class="gm-table" id="outage-table"></table></div>
-        <p class="gm-footnote">全部 13 站 × 116 天檔案齊全，每檔恆為 86400 列；上表為已知的資料缺失/斷訊窗口，分析時已排除。</p>
+        <p class="gm-footnote" id="coverage-footnote"></p>
       </div>
       <div class="gm-card">
         <div class="gm-h2" style="font-size:15px;">特例站與儀器雜訊事件</div>
@@ -182,7 +182,7 @@
 
   <div class="gm-section" id="sec-screening">
     <h2 class="gm-h2">基礎統計篩檢：近／遠站異常指數</h2>
-    <p class="gm-h2-note">近站組（xcg 主要 + cnu、csg）vs. 遠站組（mtu、kma）夜間基線，經穩健迴歸去除全球共同背景場後的殘差</p>
+    <p class="gm-h2-note" id="screening-note"></p>
     <div class="gm-card">
       <div class="gm-legend" id="legend-screening"></div>
       <div class="gm-chart-wrap">
@@ -196,7 +196,7 @@
 
   <div class="gm-section" id="sec-ulf">
     <h2 class="gm-h2">ULF 極化分析：Pc3 頻段 Z/H 近遠站差異</h2>
-    <p class="gm-h2-note">10-45 秒週期頻段，夜間窗口 Hilbert 包絡 RMS 之 Z/H 極化比，近站（xcg/cnu/csg 中位數）減遠站（mtu/kma 中位數）</p>
+    <p class="gm-h2-note" id="ulf-note"></p>
     <div class="gm-card">
       <div class="gm-legend" id="legend-ulf"></div>
       <div class="gm-chart-wrap">
@@ -230,12 +230,12 @@
   <div class="gm-section" id="sec-limits">
     <h2 class="gm-h2">限制與結論</h2>
     <ul class="gm-limits">
-      <li><b>ttn（卑南）僅為純量站</b>，X/Y/Z 結構性缺值，無法參與 H/D/極化比等向量分析，只能用 F（總磁場）做次要、信心較低的篩檢。</li>
-      <li><b>單一事件、n=1 的案例研究</b>：本報告只分析一次地震，任何「候選異常」都只是相關性觀察，不構成統計上可推論到其他地震的證據，也未做多重比較校正。</li>
-      <li><b>簡化的 Z/H 極化比</b> vs. 文獻中更嚴謹的三分量交叉頻譜矩陣 SVD 極化/橢圓度分析——本報告採用前者（Hayakawa 式方法）作為可行的第一階近似。</li>
-      <li><b>116 天的基線偏短</b>，不足以建立長期季節性或太陽週期背景的穩健常態分布，MAD z-score 的「常態」定義本身仍受限於這個短窗口。</li>
-      <li><b>twu 測站在地震當天（4/3）開始出現儀器脈衝雜訊，並在之後數週内逐漸惡化直至 4/24-25 完全斷訊</b>——這很可能是地震搖晃或後續餘震對儀器/傳輸造成的物理損壞，而非地磁前兆訊號本身；因 twu 距震央 126.7km（不在近站組），未被使用於前兆篩檢，但作為地震對監測設施造成實際影響的佐證，仍值得記錄。</li>
-      <li><b>ttn 測站在 3/26 起雜訊事件明顯增加</b>（約在地震前 8 天），且與 3/21-3/27 的太陽磁暴期部分重疊——由於兩者時間高度重疊，且 ttn 只有純量資料可用，此現象究竟是磁暴引起還是獨立的異常，本報告不下定論。</li>
+      <li>ttn（卑南）只有純量資料，X/Y/Z 都是佔位值，不能用在 H、Z 和極化比這些向量分析，只能用 F（總磁場）做信心較低的篩檢。</li>
+      <li>這是單一地震的案例研究。任何候選異常都只是相關性的觀察，不能推論到其他地震，也沒有做多重比較校正。</li>
+      <li>Z/H 極化比是簡化的做法。文獻中還有更完整的三分量交叉頻譜矩陣 SVD 極化／橢圓度分析，這裡用前者（Hayakawa 式方法）當第一步的近似。</li>
+      <li id="limit-baseline"></li>
+      <li id="limit-twu"></li>
+      <li id="limit-ttn"></li>
     </ul>
   </div>
 
@@ -262,6 +262,9 @@ const DATA = /*__REPORT_DATA__*/null;
     return new Date(Date.UTC(+yyyymmdd.slice(0,4), +yyyymmdd.slice(4,6)-1, +yyyymmdd.slice(6,8)));
   }
   const eqDate = new Date(DATA.meta.eq_time_utc.replace(' ','T')+'Z');
+  // local (UTC+8) calendar day of the mainshock, YYYYMMDD -- the daily files are keyed by UTC date,
+  // but G10's 2024-04-02 23:58 UTC origin is 04/03 local, which is how the narrative refers to it
+  const eqDayLocal = DATA.meta.eq_time_local.slice(0,10).replace(/-/g,'');
 
   // ---------- Event stats ----------
   const statsEl = document.getElementById('event-stats');
@@ -289,13 +292,48 @@ const DATA = /*__REPORT_DATA__*/null;
     '</tbody>';
 
   // ---------- Quality narrative ----------
+  // contiguous runs of YYYYMMDD dates -> [[start, end], ...]
+  function dateRuns(ds){
+    const out = [];
+    [...ds].sort().forEach(d => {
+      const last = out[out.length-1];
+      if(last && (parseDate(d) - parseDate(last[1])) === 86400000) last[1] = d; else out.push([d, d]);
+    });
+    return out;
+  }
+  const fmtRun = r => r[0] === r[1] ? fmtDate(r[0]) : `${fmtDate(r[0])}–${fmtDate(r[1])}`;
+  const stationKm = code => { const s = DATA.stations.find(s => s.code === code); return s ? s.distance_km.toFixed(1) + ' km' : ''; };
   const twu = DATA.spike_glitches_by_station.twu || [];
   const ttn = DATA.spike_glitches_by_station.ttn || [];
+  const twuOut = (DATA.full_outage_days_by_station || {}).twu || [];
+  const twuFirst = twu.length ? twu.map(r=>r.date).sort()[0] : null;
+  const ttnDates = ttn.map(r=>r.date).sort();
+  const ttnFrom0326 = ttnDates.filter(d => d >= '20240326').length;
+  const stormRunsNearEq = dateRuns(DATA.storm_dates.filter(d => d >= '20240315' && d <= '20240410'));
+  const stormText = stormRunsNearEq.map(fmtRun).join('、');
+  const twuOutText = twuOut.length ? `${fmtDate(twuOut[0])} 起全天斷訊（${twuOut.length} 天${twuOut[twuOut.length-1] === DATA.meta.data_end.replace(/-/g,'') ? '，一直到資料結束' : ''}）` : '沒有全天斷訊';
   document.getElementById('quality-narrative').innerHTML = `
-    <p><b>ttn（卑南）：</b> 純量磁力儀，X/Y/Z 恆為結構性佔位值，僅 F（總磁場）為真實資料；已從近/遠站向量分析中排除。</p>
-    <p><b>twu（萬丘，126.7 km）：</b> ${twu.length} 天偵測到儀器脈衝雜訊，<b>從地震當天（4/3）開始出現</b>並持續惡化，4/24、4/25 完全斷訊。研判為地震/餘震對站點設備造成的物理性損壞，而非地磁前兆。</p>
-    <p><b>ttn 雜訊事件：</b> ${ttn.length} 天偵測到雜訊尖峰，主要集中在 3/26-4/8（含地震前 8 天到震後 5 天），與 3/21-3/27 太陽磁暴期部分重疊，成因不明確。</p>
+    <p><b>ttn（卑南）：</b>純量磁力儀，X/Y/Z 都是佔位值，只有 F（總磁場）是真實資料，所以不參與近遠站向量分析。</p>
+    <p><b>twu（萬丘，${stationKm('twu')}）：</b>${twu.length} 天偵測到儀器脈衝雜訊，${twuFirst ? `從 ${fmtDate(twuFirst)}${twuFirst === eqDayLocal ? '（地震當天）' : ''}開始出現` : ''}，之後${twuOutText}。比較可能是地震或餘震損壞了站上設備或傳輸，和地磁前兆無關。</p>
+    <p><b>ttn 雜訊事件：</b>${ttn.length} 天偵測到雜訊尖峰，其中 ${ttnFrom0326} 天在 3/26（震前 8 天）之後，一直持續到震後數週；3/26 前後又和 ${stormText} 的磁暴期重疊，成因無法確定。</p>
   `;
+  document.getElementById('limit-twu').innerHTML = `twu 從${twuFirst === eqDayLocal ? '地震當天' : (twuFirst ? ' ' + fmtDate(twuFirst) + ' ' : '')}開始出現儀器脈衝雜訊，${twuOutText}。這比較可能是地震搖晃或餘震對儀器或傳輸造成的損壞。twu 距震央 ${stationKm('twu')}，不在近站組，沒有用在前兆篩檢，但可以當作地震影響監測設施的紀錄。`;
+  document.getElementById('limit-ttn').innerHTML = `ttn 從 3/26（震前約 8 天）起雜訊明顯增加，時間和 ${stormText} 的磁暴期部分重疊，加上 ttn 只有純量資料，無法判斷是磁暴造成還是獨立的異常。`;
+
+  // ---------- Dynamic headers / coverage ----------
+  const nDays = Math.max(...DATA.coverage.map(c => c.n_days));
+  const nPreDays = Math.round((parseDate(eqDayLocal) - parseDate(DATA.meta.data_start.replace(/-/g,''))) / 86400000);
+  document.getElementById('subtitle').textContent =
+    `${DATA.stations.length} 座台灣地磁測站、${DATA.meta.data_start} 至 ${DATA.meta.data_end}、每秒取樣資料的探索性分析`;
+  document.getElementById('coverage-footnote').textContent =
+    `${DATA.coverage.length} 站各有 ${nDays} 天的檔案；上表是已知的缺測或斷訊窗口，分析時已排除。`;
+  const nearH = DATA.candidate_windows.fit_H.near_stations, farH = DATA.candidate_windows.fit_H.far_stations;
+  document.getElementById('screening-note').textContent =
+    `近站組（${nearH.join('、')}）和遠站組（${farH.join('、')}）的夜間基線，用穩健迴歸扣掉全台共同背景後的殘差`;
+  document.getElementById('ulf-note').textContent =
+    `週期 10–45 秒頻段，夜間 Hilbert 包絡 RMS 的 Z/H 極化比；各站先除以自己非磁暴日的中位數，再取近站（${DATA.meta.near_stations.join('/')}）中位數減遠站（${DATA.meta.far_stations.join('/')}）中位數`;
+  document.getElementById('limit-baseline').textContent =
+    `資料共 ${nDays} 天，主震前約 ${nPreDays} 天，不足以建立季節或太陽週期尺度的背景分布；MAD z-score 的「正常範圍」也只由這段期間決定。`;
 
   // ---------- Timezone narrative + mini charts ----------
   const tz = DATA.timezone_check;
@@ -465,23 +503,37 @@ const DATA = /*__REPORT_DATA__*/null;
     candidateDates: DATA.candidate_windows.candidate_dates_H,
   });
   document.getElementById('legend-screening').innerHTML = [
-    ['遠站指數（mtu/kma 中位數 MAD z-score）', cvarRef('--series-far')],
-    ['近站指數（xcg/cnu/csg 中位數 MAD z-score）', cvarRef('--series-near')],
+    [`遠站指數（${DATA.candidate_windows.fit_H.far_stations.join('/')} 中位數 MAD z-score）`, cvarRef('--series-far')],
+    [`近站指數（${DATA.candidate_windows.fit_H.near_stations.join('/')} 中位數 MAD z-score）`, cvarRef('--series-near')],
     ['在地異常指數（近站經迴歸去除遠站共同背景後的殘差）', cvarRef('--series-local')],
   ].map(([l,c]) => `<div class="gm-legend-item"><span class="gm-legend-swatch" style="background:${c};"></span>${l}</div>`).join('');
 
   const candH = DATA.candidate_windows.candidate_dates_H;
+  const hResidMad = DATA.candidate_windows.fit_H.residual_mad;
+  const h330row = li.find(r => r.date === '20240330');
+  const h330 = (candH.includes('20240330') && h330row && hResidMad) ? {ratio: h330row.local_anomaly_index_H / hResidMad} : null;
   document.getElementById('screening-narrative').innerHTML = `
     <p>穩健迴歸（Theil-Sen）顯示近遠站 H 分量夜間基線共同背景係數約 ${DATA.candidate_windows.fit_H.slope.toFixed(2)}（${DATA.candidate_windows.fit_H.n_fit_days} 個乾淨日擬合），
     Z 分量係數僅 ${DATA.candidate_windows.fit_Z.slope.toFixed(2)}——符合 Z 分量較不受全球共同背景場（太陽磁暴/Sq）主導、較可能承載局部訊號的物理預期。</p>
     <p><b>候選異常日（H 分量）：</b>${candH.length ? candH.map(fmtDate).join('、') : '無'}。<b>候選異常日（Z 分量）：</b>${DATA.candidate_windows.candidate_dates_Z.length ? DATA.candidate_windows.candidate_dates_Z.map(fmtDate).join('、') : '無'}。
-    兩者同時標記的日期：${DATA.candidate_windows.candidate_dates_both_H_and_Z.length ? DATA.candidate_windows.candidate_dates_both_H_and_Z.join('、') : '<b>無</b>——本方法在震前數週未發現 H、Z 分量同時同步異常的日子。'}</p>
-    <p>值得注意的是 <b>3/30</b>（震前 4 天）在 H 分量被標記為候選異常日，強度中等（略超過 2.5×MAD 門檻），地震當天（4/3）及前後數日本身數值並不特別極端。</p>
+    兩者同時標記的日期：${DATA.candidate_windows.candidate_dates_both_H_and_Z.length ? DATA.candidate_windows.candidate_dates_both_H_and_Z.map(fmtDate).join('、') : '無'}。</p>
+    ${h330 ? `<p>震前最接近地震的 H 候選日是 3/30（震前 4 天），殘差約為殘差 MAD 的 ${h330.ratio.toFixed(1)} 倍（門檻 2.5 倍）。地震當天（4/3）和前後幾天的數值並不特別極端。</p>` : ''}
   `;
 
   // ---------- ULF chart ----------
   const un = DATA.ulf_near_far_index;
   const dates2 = un.map(r=>r.date);
+  // whole-series median/MAD z of pc3_diff_zh, same formula as stat_utils.mad_zscore
+  // (used by backtest_rule.py), so the ranking below matches the pipeline
+  const pc3Vals = un.map(r=>r.pc3_diff_zh).filter(v => v!=null && isFinite(v));
+  const median = a => { const b=[...a].sort((x,y)=>x-y), n=b.length; return n%2 ? b[(n-1)/2] : (b[n/2-1]+b[n/2])/2; };
+  const pc3Med = median(pc3Vals);
+  const pc3Mad = 1.4826 * median(pc3Vals.map(v => Math.abs(v-pc3Med)));
+  const pc3Ranked = un.filter(r => r.pc3_diff_zh!=null && isFinite(r.pc3_diff_zh))
+    .map(r => ({date: r.date, z: (r.pc3_diff_zh-pc3Med)/pc3Mad})).sort((a,b) => a.z-b.z);
+  const pc3Rank330 = pc3Ranked.findIndex(r => r.date === '20240330');
+  const relDay = d => Math.round((parseDate(d) - parseDate(eqDayLocal)) / 86400000);
+  const relLabel = d => { const k = relDay(d); return k < 0 ? `震前 ${-k} 天` : k > 0 ? `震後 ${k} 天` : '地震當天'; };
   buildLineChart(document.getElementById('chart-ulf'), document.getElementById('tooltip-ulf'), {
     dates: dates2,
     series: [
@@ -492,7 +544,7 @@ const DATA = /*__REPORT_DATA__*/null;
     storms: DATA.storm_dates,
     outages: [],
     eqDateStr: DATA.meta.eq_time_utc,
-    candidateDates: ['20240330'],
+    candidateDates: pc3Ranked.slice(0,2).map(r=>r.date),
   });
   document.getElementById('legend-ulf').innerHTML = [
     ['遠站 Pc3 Z/H 極化比', cvarRef('--series-ulf-far')],
@@ -500,11 +552,13 @@ const DATA = /*__REPORT_DATA__*/null;
     ['近站－遠站差異', cvarRef('--series-ulf-diff')],
   ].map(([l,c]) => `<div class="gm-legend-item"><span class="gm-legend-swatch" style="background:${c};"></span>${l}</div>`).join('');
 
+  const lo1 = pc3Ranked[0], lo2 = pc3Ranked[1];
   document.getElementById('ulf-narrative').innerHTML = `
-    <p><b>3/30（震前 4 天）的 Pc3 近遠站極化比差異，是整個 113 天可計算窗口中最極端的一天</b>（z ≈ -4.1 個 MAD 單位，第二極端為震後 11 天的 4/14）。
-    這與基礎統計篩檢法（上一節）獨立標記的候選日 <b>完全相同</b>，是兩個各自獨立的方法首次出現交叉印證的日子。</p>
-    <p><b>但務必謹慎解讀：</b>這是單一事件、單一候選窗口的巧合式交叉驗證，並未做多重比較校正；地磁時間序列本身具有自相關與非常態的厚尾分布，"z=4 很罕見" 的直覺並不嚴謹適用。
-    這個結果值得記錄與後續用更多地震事件驗證，但不足以構成前兆訊號存在的證據。</p>
+    <p>以整條序列的中位數／MAD 標準化後，${pc3Ranked.length} 個可計算的日子中，Pc3 近遠站差異最低的是 ${fmtDate(lo1.date)}（${relLabel(lo1.date)}，z = ${lo1.z.toFixed(2)}），
+    其次是 ${fmtDate(lo2.date)}（${relLabel(lo2.date)}，z = ${lo2.z.toFixed(2)}）。圖中紅點標的是這兩天。
+    ${pc3Rank330 >= 2 ? `3/30（震前 4 天）排第 ${pc3Rank330+1} 低，z = ${pc3Ranked[pc3Rank330].z.toFixed(2)}。` : ''}</p>
+    <p>2026-09-28 之前，近站指數是直接取當天有資料的測站中位數，那個版本的 3/30 是整條序列最低點（z 約 −4.6）。改成各站先除以自己非磁暴日的中位數之後，最低點移到震後，3/30 的下凹也變淺了。
+    地磁序列有自相關和厚尾，單看 z 值大小容易高估它有多罕見；這裡也沒有做多重比較校正。</p>
   `;
 
   // ---------- Spectrogram heatmaps ----------
@@ -512,7 +566,7 @@ const DATA = /*__REPORT_DATA__*/null;
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
-    const ML=40, MB=20, MT=6, MR=6;
+    const ML=52, MB=20, MT=6, MR=6;
     const nF = spec.freq_hz.length, nT = spec.time_hours_from_start.length;
     let vmin=Infinity, vmax=-Infinity;
     spec.power_db.forEach(row => row.forEach(v => { vmin=Math.min(vmin,v); vmax=Math.max(vmax,v); }));
@@ -594,12 +648,11 @@ const DATA = /*__REPORT_DATA__*/null;
 
   // ---------- Convergence ----------
   document.getElementById('convergence-card').innerHTML = `
-    <p class="gm-limits">基礎統計篩檢（夜間基線 MAD z-score）與 ULF 極化分析（Pc3 Z/H 比）是兩個資料處理路徑完全獨立的方法，
-    卻都把 <b>2024-03-30（震前 4 天）</b>標記為近遠站差異最突出的日子之一。
-    地震發生當天與前後 1-2 天，兩種方法都<b>沒有</b>看到特別極端的訊號。</p>
-    <p class="gm-limits">誠實的整體結論：<b>本次分析沒有找到強烈、明確的地磁前兆訊號</b>。3/30 的交叉印證是唯一值得記錄的候選觀察，
-    但其統計強度、缺乏第二次獨立地震事件佐證、以及地磁時間序列的非常態特性，都使它遠不足以構成「地磁前兆存在」的證據。
-    這與目前地球物理學界對地磁地震前兆的整體審慎立場一致。</p>
+    <p class="gm-limits">夜間基線的近遠站殘差（H 分量）和 ULF 極化（Pc3 Z/H）是兩條獨立的處理路徑。
+    ${h330 ? '3/30（震前 4 天）是 H 的候選異常日' : 'H 分量在 3/30 沒有被標記'}；在 Pc3 上，${pc3Rank330 >= 0 ? `3/30 排第 ${pc3Rank330+1} 低，` : ''}最低點則是${relLabel(lo1.date)}的 ${fmtDate(lo1.date)}。
+    兩個方法在 3/30 都偏離背景，Pc3 上還有比它更低的一天，出現在震後。地震當天和前後一兩天，兩個方法都沒有特別極端的數值。</p>
+    <p class="gm-limits">整體來說，這起地震沒有看到強而明確的地磁前兆。3/30 是最值得記錄的觀察，但它只有一起地震、統計強度有限，地磁序列又不是常態分布，不足以當成前兆存在的證據。
+    後來在 24 組地震序列上做的跨組檢定裡，G10 是 Pc3 線索的發現個案：頻帶、下凹方向和 30 天窗口都是從這裡來的。跨組主要檢定（12 組）合併 p = 0.049，拿掉 G10 後是 0.055。</p>
   `;
 
   // ---------- Verification table ----------
@@ -641,7 +694,7 @@ const DATA = /*__REPORT_DATA__*/null;
     （<b>${fmtDate(probe330.trailing_window[0])} ~ ${fmtDate(probe330.trailing_window[1])}</b>，圖中綠色虛線框），
     其中 <b>${probe330.storm_dates_in_window.length}</b> 天落在太陽磁暴期內（橘底）已被排除，
     扣除後仍有 <b>${probe330.n_clean_days_in_window}</b> 個乾淨日可用（門檻為 ${baselineCheck.min_clean_points_threshold} 個），
-    確認磁暴沒有污染 3/30 的判斷基準——這正是 <code>compute_indices.py</code> 選用 ${baselineCheck.trailing_window_days} 天（而非更短窗口）的原因。</p>
+    所以 3/30 的判斷基準沒有被磁暴污染。<code>compute_indices.py</code> 用 ${baselineCheck.trailing_window_days} 天的窗口，就是為了在磁暴期間仍留有足夠的乾淨日。</p>
   ` : '<p class="gm-limits">本次執行未計算出 3/30 的 baseline window 檢查結果（<code>verify_pipeline.py</code> 可能尚未針對此候選日執行檢查）。</p>';
 
 })();
