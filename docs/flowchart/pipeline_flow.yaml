@@ -824,7 +824,7 @@ steps:
     summary: >-
       只有加 --full-report 時執行：整理 G10 的敘事性資料並產生 HTML 報告。驗證未通過時不會產生。
     inputs: [驗證通過的 G10 中間檔]
-    outputs: [output/geomag_precursor_report.html]
+    outputs: [output/geomag_precursor_report_G10.html]
     after: [verify_pipeline]
 
   # ---- 跨群驗證 -------------------------------------------------------------

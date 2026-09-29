@@ -181,7 +181,7 @@ cd scripts
 - `data/interim/coseismic_step_analysis/`、`coseismic_stacking_analysis/`、`seismometer_comparison/`、`coseismic_joint_analysis/`——同震線四支腳本的輸出，各自有 `*_summary.csv`（總覽表）與逐事件/逐組合的 JSON 詳細檔。
 - `data/interim/cross_group_summary.{json,md}`、`all_groups_run_summary.json`、`validation_report_data.json`——跨組彙整與驗證報告用的中繼資料。
 - `output/`（**這個資料夾有被 git 追蹤**，其餘 `data/` 都沒有）：
-  - `geomag_precursor_report.html` / `geomag_precursor_report_G10.html` — 日尺度線 G10 單事件敘事報告（手寫敘事文字只對 G10 有意義，`--full-report` 只建議對 G10 跑）
+  - `geomag_precursor_report_G10.html` — 日尺度線 G10 單事件敘事報告（手寫敘事文字只對 G10 有意義，`--full-report` 只建議對 G10 跑）
   - `geomag_precursor_validation_report.html` — 跨組驗證方法論報告
 - **同震線目前沒有對應的 `output/` 報告產生腳本**：它的成果是手動整理成外部發布的網頁報告，不在這個 repo 裡（`data/interim/coseismic_*` 底下的 CSV/JSON 是完整可重現的原始數字/圖表資料，任何人都能拿這些資料自己重建報告）。
 
