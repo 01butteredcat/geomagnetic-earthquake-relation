@@ -167,3 +167,41 @@ def test_tier_filter_drops_lower_magnitudes(tmp_path):
     m6 = catalog_utils.load_extended_events(path, ("G11", "G12"), 6.0)
     registered_m6 = sum(e.magnitude >= 6.0 for g in ("G11", "G12") for e in get_group(g).events)
     assert sum(e["source"] == "events.py" for e in m6) == registered_m6
+
+
+# --- extended catalog is CWA for the whole period (2026-09-30) ----------------------
+
+_GDMS_HEADER = "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality\r\n"
+
+
+def _gdms(path, rows):
+    path.write_text(_GDMS_HEADER + "".join(
+        f"{d} {t} {lat} {lon} 10.00 {ml} 99 5.0 90 0.3 0.1 0.1 F 300 B\r\n" for d, t, lat, lon, ml in rows))
+    return path
+
+
+def test_cwa_window_straddling_two_exports_reads_both_and_applies_bbox(tmp_path):
+    early = _gdms(tmp_path / "a.txt", [("2024-08-20", "01:00:00.00", 24.0, 121.6, 5.3),
+                                       ("2024-08-21", "01:00:00.00", 24.0, 124.9, 6.1)])  # east of BBOX
+    late = _gdms(tmp_path / "b.txt", [("2024-09-05", "02:00:00.00", 23.5, 121.5, 5.8)])
+    evs = fec.fetch_cwa_all([early, late], "2024-08-15", "2024-09-10", 5.0)
+    assert [e["time_utc"] for e in evs] == ["2024-08-20 01:00:00", "2024-09-05 02:00:00"]
+
+
+def test_window_outside_cwa_range_never_falls_back_to_usgs(tmp_path, monkeypatch):
+    monkeypatch.setattr(fec, "group_date_window", lambda g: ("2008-01-01", "2008-03-01"))
+    monkeypatch.setattr(fec, "fetch_usgs", lambda *a, **k: pytest.fail("queried USGS without --allow-usgs"))
+    monkeypatch.setattr(sys, "argv", ["fetch_earthquake_catalog.py", "--groups", "G4",
+                                      "--output", str(tmp_path / "out.csv")])
+    with pytest.raises(SystemExit):
+        fec.main()
+
+
+def test_sea_same_day_events_stack_once():
+    import superposed_epoch_analysis as sea
+    d = pd.Timestamp("2022-03-22")
+    evs = [{"group": "G8", "date": d, "mag": m, "source": "events.py"} for m in (6.7, 6.04, 6.21)]
+    evs.append({"group": "G8", "date": pd.Timestamp("2022-03-18"), "mag": 6.47, "source": "events.py"})
+    merged = sea.merge_same_day(evs)
+    assert Counter((e["group"], e["date"]) for e in merged) == {("G8", d): 1, ("G8", pd.Timestamp("2022-03-18")): 1}
+    assert max(e["mag"] for e in merged if e["date"] == d) == 6.7

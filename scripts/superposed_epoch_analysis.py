@@ -127,6 +127,18 @@ def _event_windows(band: str, events: list[dict], group_series: dict) -> tuple[l
     return matrix, used
 
 
+def merge_same_day(events: list[dict]) -> list[dict]:
+    """One stack entry per (group, day): same-day events of a group (e.g. G8's three
+    2022-03-22 M6s) share the exact same daily window, so stacking each would count that
+    window 2-3 times. Keeps the largest event's row, like backtest_rule.py's per-date set."""
+    best: dict[tuple, dict] = {}
+    for ev in events:
+        key = (ev["group"], ev["date"])
+        if key not in best or ev["mag"] > best[key]["mag"]:
+            best[key] = ev
+    return list(best.values())
+
+
 def _r4(a) -> list:
     return [None if np.isnan(v) else round(float(v), 4) for v in a]
 
@@ -217,8 +229,10 @@ def main():
         if s is not None:
             group_series[g] = s
 
-    events = load_extended_events(args.catalog, ULF_GROUPS, args.min_mag)
-    print(f"{len(events)} candidate events across {len(group_series)} groups", file=sys.stderr)
+    raw = load_extended_events(args.catalog, ULF_GROUPS, args.min_mag)
+    events = merge_same_day(raw)
+    print(f"{len(raw)} candidate events -> {len(events)} group-days across {len(group_series)} groups",
+          file=sys.stderr)
 
     out_dir = PROJECT_DIR / "data" / "interim" / "superposed_epoch"
     out_dir.mkdir(parents=True, exist_ok=True)

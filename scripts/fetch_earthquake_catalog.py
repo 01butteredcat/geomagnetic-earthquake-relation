@@ -5,13 +5,13 @@ suggested methodology: `events.py` only has the 20 hand-picked M>=6.0 events
 used to define the 13 groups, which is not enough for a real superposed-epoch
 stack or a meaningful backtest population.
 
-Source: USGS FDSN event webservice (public, no auth, well-documented GeoJSON
-format) -- https://earthquake.usgs.gov/fdsnws/event/1/query. CWA's own open
-data API was not used here since no existing code in this repo already wraps
-it and USGS covers the same events (cross-referenced against events.py's
-USGS ids/magnitudes already for several entries), so reusing USGS keeps this
-consistent with what's already partially in the dataset's own provenance
-notes.
+Source: the user-supplied CWA GDMS catalog exports (ML, UTC) -- this project
+takes CWA as the authority for every event and magnitude. Two exports tile
+2009-01-01 ~ 2026-07-31 (CWA_CATALOGS); a group's window is read from both, so
+a window straddling the files (G19) is still pure CWA. The USGS FDSN query is
+kept only behind --allow-usgs for windows outside that range: before
+2026-09-30 it was the silent fallback for every group outside 2024-09~2026-07,
+which put Mw/mb magnitudes into the M>=5.0/5.5 tiers.
 
 Scope, per plan (`~/.claude/plans/block-bootstrap-shiny-pearl.md`):
   - Only the 8 groups that have `ulf_near_far_index.csv` (vector-sufficient
@@ -68,16 +68,19 @@ DECLUSTER_KM = 100
 KNOWN_EVENT_SEC = 60
 KNOWN_EVENT_KM = 50
 
-# User-supplied CWA GDMS regional magnitude-report export (space-delimited, header
-# "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality"; date/time
-# confirmed UTC by cross-checking G11's 2025-01-21 anchor against this file's
-# 2025-01-20 16:17 UTC row, which only lands on 2025-01-21 in Taiwan local time).
-# Only covers this fixed range -- a group whose window falls entirely inside it uses
-# this CWA source (matches this project's CWA-primary convention) instead of USGS;
-# every other group keeps using fetch_usgs() unchanged.
-CWA_CATALOG_DEFAULT = PROJECT_DIR.parent / "GDMScatalog.txt"
-CWA_CATALOG_START = "2024-09-01"
-CWA_CATALOG_END = "2026-07-31"
+# User-supplied CWA GDMS regional magnitude-report exports (space-delimited, header
+# "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality"), M>=5.0,
+# as (path, first day, last day) of each export's requested range. Both are UTC:
+# GDMScatalog.txt by G11's 2025-01-21 anchor (its 2025-01-20 16:17 UTC row only lands on
+# 01-21 in Taiwan local time); GDMScatalog_2009-2024.txt by all 62 events.py events before
+# 2024-09 matching a row within 2 s. The exports cover a wider area than BBOX (out to lon
+# 125.6), so fetch_cwa() applies BBOX itself.
+CWA_CATALOGS = (
+    (PROJECT_DIR.parent / "GDMScatalog_2009-2024.txt", "2009-01-01", "2024-08-31"),
+    (PROJECT_DIR.parent / "GDMScatalog.txt", "2024-09-01", "2026-07-31"),
+)
+CWA_CATALOG_START = CWA_CATALOGS[0][1]
+CWA_CATALOG_END = CWA_CATALOGS[-1][2]
 
 
 def group_date_window(group_id: str) -> tuple[str, str] | None:
@@ -124,10 +127,21 @@ def fetch_usgs(start: str, end: str, min_mag: float) -> list[dict]:
     return events
 
 
+def in_bbox(lat: float, lon: float) -> bool:
+    return (BBOX["minlatitude"] <= lat <= BBOX["maxlatitude"]
+            and BBOX["minlongitude"] <= lon <= BBOX["maxlongitude"])
+
+
+def fetch_cwa_all(paths: list[Path], start: str, end: str, min_mag: float) -> list[dict]:
+    """fetch_cwa() over every export, so a window straddling two of them is read whole."""
+    return [e for path in paths for e in fetch_cwa(path, start, end, min_mag)]
+
+
 def fetch_cwa(path: Path, start: str, end: str, min_mag: float) -> list[dict]:
-    """Parse the user-supplied CWA GDMS catalog export, filtered to [start, end]
-    (inclusive, YYYY-MM-DD) and mag >= min_mag. Returns the same dict shape as
-    fetch_usgs() so decluster()/flag_known_events() work unchanged."""
+    """Parse one user-supplied CWA GDMS catalog export, filtered to [start, end]
+    (inclusive, YYYY-MM-DD), mag >= min_mag and BBOX (the same box fetch_usgs() queries).
+    Returns the same dict shape as fetch_usgs() so decluster()/flag_known_events() work
+    unchanged."""
     start_dt = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     end_dt = datetime.strptime(end, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
     events = []
@@ -145,6 +159,8 @@ def fetch_cwa(path: Path, start: str, end: str, min_mag: float) -> list[dict]:
                 continue
             t = datetime.strptime(f"{date_s} {time_s}", "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
             if not (start_dt <= t < end_dt):
+                continue
+            if not in_bbox(float(lat_s), float(lon_s)):
                 continue
             events.append({
                 "time_utc": t.strftime("%Y-%m-%d %H:%M:%S"),
@@ -221,9 +237,10 @@ def main():
     ap.add_argument("--min-mag", type=float, default=5.5)
     ap.add_argument("--output", type=Path, default=None)
     ap.add_argument("--groups", nargs="*", default=list(ULF_GROUPS))
-    ap.add_argument("--cwa-catalog", type=Path, default=CWA_CATALOG_DEFAULT,
-                     help="CWA GDMS catalog export to prefer for groups whose window falls "
-                          "entirely inside it; pass a nonexistent path to force USGS for all groups.")
+    ap.add_argument("--allow-usgs", action="store_true",
+                    help="query USGS for a group whose window falls outside the CWA exports' "
+                         f"range ({CWA_CATALOG_START} ~ {CWA_CATALOG_END}); without it such a "
+                         "group is an error, never a silent fallback")
     ap.add_argument("--reflag", action="store_true",
                     help="only recompute is_known_event on the existing output CSV (no fetching)")
     args = ap.parse_args()
@@ -243,11 +260,17 @@ def main():
         start, end = window
         # USGS endtime is exclusive-ish at day boundary in practice; pad by 1 day
         end_padded = (datetime.strptime(end, "%Y-%m-%d")).strftime("%Y-%m-%d")
-        use_cwa = args.cwa_catalog.exists() and CWA_CATALOG_START <= start and end <= CWA_CATALOG_END
-        if use_cwa:
-            print(f"[{group_id}] reading CWA GDMS catalog {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
-            events = fetch_cwa(args.cwa_catalog, start, end_padded, args.min_mag)
+        if CWA_CATALOG_START <= start and end <= CWA_CATALOG_END:
+            paths = [p for p, _, _ in CWA_CATALOGS]
+            missing = [str(p) for p in paths if not p.exists()]
+            if missing:
+                sys.exit(f"missing CWA catalog export(s): {missing}")
+            print(f"[{group_id}] reading CWA GDMS catalogs {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
+            events = fetch_cwa_all(paths, start, end_padded, args.min_mag)
             source = "CWA_GDMS"
+        elif not args.allow_usgs:
+            sys.exit(f"[{group_id}] window {start} ~ {end} is outside the CWA exports "
+                     f"({CWA_CATALOG_START} ~ {CWA_CATALOG_END}); add a CWA export or pass --allow-usgs")
         else:
             print(f"[{group_id}] querying USGS {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
             events = fetch_usgs(start, end_padded, args.min_mag)
