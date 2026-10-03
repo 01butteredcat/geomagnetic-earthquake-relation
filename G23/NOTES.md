@@ -1,10 +1,10 @@
-# CLAUDE.md (G23)
+# NOTES.md (G23)
 
 **Update 2026-09-22:** this folder now holds two separate analysis groups, **G23** (2020-07-26 anchor) and **G24** (2020-06-14 anchor), which share this raw-data folder (`events.py::Group.folder`) but have their own `data/interim/G23/`, `data/interim/G24/` and their own near/far station pools chosen from each epicenter (in practice nearly identical here -- the two epicenters are only ~1.6km apart, far smaller than any inter-station distance). The folder was merged only because the two events' fetch windows overlapped (mechanical rule), not because they belong to one sequence -- confirmed no foreshock/mainshock/aftershock relationship. The text below predates the split and describes the folder's data as a whole.
 
 Combined-folder description (historical): covering event sequences G23 and G24
 
-Group covering event sequences G23 and G24 of the (now 24-group) geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_fetch_ranges_from_GDMScatalog.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-20). New standalone group added 2026-08-20 alongside G21 and G22, from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`) that surfaced M≥6 events the original per-event web search had missed.
+Group covering event sequences G23 and G24 of the (now 24-group) geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_fetch_ranges_from_GDMScatalog.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-20). New standalone group added 2026-08-20 alongside G21 and G22, from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`) that surfaced M≥6 events the original per-event web search had missed.
 
 ## Event(s)
 

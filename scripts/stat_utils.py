@@ -1,5 +1,5 @@
-"""Shared statistics helpers for the professor-suggested validation methods
-(`~/.claude/plans/block-bootstrap-shiny-pearl.md`): the robust median/MAD
+"""Shared statistics helpers for the professor-suggested validation methods:
+the robust median/MAD
 z-score formula (factored out so `surrogate_test.py`, `superposed_epoch_
 analysis.py` and `backtest_rule.py` all use the exact same definition
 `cross_group_analysis.py::ulf_candidate_dates` already established), plus

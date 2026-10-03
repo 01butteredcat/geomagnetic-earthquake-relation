@@ -13,7 +13,7 @@ kept only behind --allow-usgs for windows outside that range: before
 2026-09-30 it was the silent fallback for every group outside 2024-09~2026-07,
 which put Mw/mb magnitudes into the M>=5.0/5.5 tiers.
 
-Scope, per plan (`~/.claude/plans/block-bootstrap-shiny-pearl.md`):
+Scope:
   - Only the 8 groups that have `ulf_near_far_index.csv` (vector-sufficient
     XYZ pool; G1/G2/G3 are scalar-only and can't run the polarization method
     at all, so they're not part of the superposed-epoch/backtest population).

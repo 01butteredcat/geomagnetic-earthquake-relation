@@ -1,6 +1,6 @@
-# CLAUDE.md (G12)
+# NOTES.md (G12)
 
-Group G12 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+Group G12 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
 
 ## Event(s)
 
@@ -10,7 +10,7 @@ Anchor 2025-06-11 ML6.42 offshore Hualien (since 2026-08-20; the data window was
 
 - 1,392 `.sec` files, 2025-05-26 ~ 2025-09-18.
 - 12 stations, uniform 116 files each: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`.
-- **`ttn` (Beinan) is entirely absent** from this group (12 stations instead of the usual 13), consistent with it going offline in late 2024 — see G11's notes and root CLAUDE.md for the full timeline.
+- **`ttn` (Beinan) is entirely absent** from this group (12 stations instead of the usual 13), consistent with it going offline in late 2024 — see G11's notes and root NOTES.md for the full timeline.
 
 ## Known limitation: too little data before the anchor (accepted 2026-09-28)
 

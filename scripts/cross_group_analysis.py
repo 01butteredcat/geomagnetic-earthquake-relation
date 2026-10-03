@@ -3,8 +3,7 @@ precursor signal recur across the 13 independent earthquake event-groups
 more often than each group's own internal chance rate would predict?
 
 This is explicitly a REPRODUCIBILITY-RATE analysis, not a formal statistical
-validation. Per `~/.claude/plans/1999-9-21-2010-3-4-2015-2-14-2016-2-6-2-
-adaptive-tulip.md` (already-established guidance this project follows), a
+validation. Per this project's established guidance, a
 real statistically-conclusive test needs ~20-30 independent M>=6 events plus
 matched quiet-period controls; 13 groups is a meaningful expansion beyond
 the original n=1 case study but still falls short of that bar. Findings here

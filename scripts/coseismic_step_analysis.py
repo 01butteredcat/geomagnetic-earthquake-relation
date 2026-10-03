@@ -14,8 +14,7 @@ pilot run found" below).
 
 ## History / scope
 
-Phase 1 (single-flagship-event pilot, see `~/.claude/plans/recursive-
-seeking-nova.md`): only G10's anchor event (2024-04-03 07:58:11 Taiwan time
+Phase 1 (single-flagship-event pilot): only G10's anchor event (2024-04-03 07:58:11 Taiwan time
 / 2024-04-02 23:58:11 UTC, M7.2) against its two nearest XYZ stations.
 Phase 2 (current): extended to every event in `events.py`'s 117-event
 registry via `run_all()` / `--all` -- see "Extending to all 117 events"

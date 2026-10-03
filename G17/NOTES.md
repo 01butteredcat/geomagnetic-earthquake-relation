@@ -1,6 +1,6 @@
-# CLAUDE.md (G17)
+# NOTES.md (G17)
 
-Group G17 of the 20-group geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+Group G17 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
 
 ## Event(s)
 
@@ -10,5 +10,5 @@ Group G17 of the 20-group geomagnetic precursor dataset — see `../CLAUDE.md` f
 
 - 1,991 `.sec` files, 2014-09-09 ~ 2015-03-08.
 - 11 stations, uniform 181 files each: `csg, hcn, hln, kmn, lyn, ncg, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- `csg` reappears here — installed sometime between G16's end (2013-11) and this group's start (2014-09), per root CLAUDE.md's station-code notes. Retired codes `hln, kmn, slg, yli` still in use.
+- `csg` reappears here — installed sometime between G16's end (2013-11) and this group's start (2014-09), per root NOTES.md's station-code notes. Retired codes `hln, kmn, slg, yli` still in use.
 - Zero usable vector (X/Y/Z) stations — scalar `F`-only; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group.

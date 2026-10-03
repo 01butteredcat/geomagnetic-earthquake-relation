@@ -371,7 +371,7 @@ GROUPS: dict[str, Group] = {
                    "non-subduction-zone event of the original 13 groups (G1-G13) -- no longer the only "
                    "one registry-wide once G14-G20/G21-G23 were added: G14's 2010-03-04 Jiaxian event and "
                    "G18's 2016-02-06 Meinong event are also inland/collision-zone (see their notes and "
-                   "parent CLAUDE.md's 'Inland, non-subduction-zone events' section). Mw 6.0 (USGS)."),
+                   "parent NOTES.md's 'Inland, non-subduction-zone events' section). Mw 6.0 (USGS)."),
         Event("2025-04-08", "2025-04-08 23:26:35", 24.6573, 123.1025, 113.89, 6.15, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
               note="Added 2026-08-20 from raw .sec data the user fetched from GDMS covering the extended "

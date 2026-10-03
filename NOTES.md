@@ -1,6 +1,6 @@
-# CLAUDE.md — geomag_precursor
+# NOTES.md — geomag_precursor
 
-This file provides guidance to Claude Code when working inside `geomag_precursor/`. This is a **self-contained project**: both the raw `G1`...`G24` geomagnetic data folders and `seismometer/` (seismometer/accelerometer cross-check data) live directly inside this directory (moved here 2026-09-14 — `Gx` first, `seismometer/` shortly after — so this repo is fully self-contained and standalone).
+Developer notes for working inside `geomag_precursor/` (background, known data pitfalls, method history). This is a **self-contained project**: both the raw `G1`...`G24` geomagnetic data folders and `seismometer/` (seismometer/accelerometer cross-check data) live directly inside this directory (moved here 2026-09-14 — `Gx` first, `seismometer/` shortly after — so this repo is fully self-contained and standalone).
 
 ## What this project is
 
@@ -32,7 +32,7 @@ A Python analysis pipeline testing whether Taiwan's CWA (Central Weather Adminis
 
 69 CWA-catalog M≥6.0 earthquake records from 2009-07-14 through 2026-05-01 (49 original + 20 found missing by a reverse catalog check on 2026-09-27, 11 of them distant/deep offshore events that can never be an anchor; plus 68 M5 events backfilled 2026-09-23), grouped by proximity in time/location into **24 independent event sequences**, since several records are foreshock/mainshock/aftershock of the same sequence and treating them as independent samples would be pseudo-replication. Each group `Gx` is a data-fetch window of "~93 days before the (first) mainshock as baseline, ~22 days after the last event in the sequence." G1–G13 (2018–2026) were the original batch; G14–G20 (added 2026-08-08) extend the dataset backward to 2009 plus two more recent 2024/2025 events, crossing the lower edge of the 20–30-group threshold commonly cited in the literature for a statistically meaningful precursor test (still not sufficient on its own — see `data/interim/cross_group_summary.md`'s own caveats, e.g. no independent quiet-period control); G21–G23 (added 2026-08-20, alongside non-anchor events appended to G6_G7_G8, G11, G12, and G17's existing windows) came from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`, not included in this repo) that surfaced further M≥6 events missing from the original event list.
 
-Full event/date-range rationale and background: `docs/13_groups_fetch_ranges.md` (G1–G13), `docs/candidate_groups_G14_G20.md` (G14–G20's candidate research), and `docs/candidate_fetch_ranges_from_GDMScatalog.md` (G21–G23's candidate research) — all superseded by `scripts/events.py` once a group's data was actually fetched and registered. Group-specific details (actual file counts, stations, known gaps) live in each `Gx/CLAUDE.md`. Precise per-event epicenter coordinates/depth/magnitude, all from the CWA catalog / CWA GDMS (every event has `coord_source="CWA"`; USGS/JMA magnitudes appear only as reference values in some events' `note`), are in `scripts/events.py`.
+Full event/date-range rationale and background: `docs/13_groups_fetch_ranges.md` (G1–G13), `docs/candidate_groups_G14_G20.md` (G14–G20's candidate research), and `docs/candidate_fetch_ranges_from_GDMScatalog.md` (G21–G23's candidate research) — all superseded by `scripts/events.py` once a group's data was actually fetched and registered. Group-specific details (actual file counts, stations, known gaps) live in each `Gx/NOTES.md`. Precise per-event epicenter coordinates/depth/magnitude, all from the CWA catalog / CWA GDMS (every event has `coord_source="CWA"`; USGS/JMA magnitudes appear only as reference values in some events' `note`), are in `scripts/events.py`.
 
 ### Layout
 
@@ -94,7 +94,7 @@ The network's station codes changed over the years (older groups use retired cod
 | lnu  | Lanyu     | 22.037 | 121.558 | first appears G4 (2020-11-01) as a new station slot; not a confirmed rename of any earlier code (retired code `hln` stopped ~19 months earlier, in G2_G3). Also present G19–G20 |
 | lyn  | Liyutan   | 24.346 | 120.780 | present in every group, G1–G24 |
 | mtu  | Matsu     | 26.169 | 119.923 | first appears G4. Also present G19–G20 |
-| ncg  | Neicheng  | 24.718 | 121.683 | present in every group, G1–G20 (partial in G1–G4 windows, see per-group notes) and G21–G22; **absent from G23/G24** (which have only an 8-station pool, see `G23/CLAUDE.md`) |
+| ncg  | Neicheng  | 24.718 | 121.683 | present in every group, G1–G20 (partial in G1–G4 windows, see per-group notes) and G21–G22; **absent from G23/G24** (which have only an 8-station pool, see `G23/NOTES.md`) |
 | pta  | Majja     | 22.703 | 120.653 | scalar-only (F channel), retired before G1–G13/G19–G23's windows; appears in **G14, G21, and G22** (2009–2012-era data) — a historical station slot not documented anywhere in G1–G13, first discovered when G14 extended the dataset back to 2009, later also confirmed present in G21/G22 (added 2026-08-20). Absent from G15–G18 and G23/G24 |
 | ttn  | Beinan    | 22.818 | 121.080 | scalar-only (F channel); present G10, G14–G18, G19 (partial, through 2024-07-22 only — see gap note below), and **G21–G24** (full coverage, G23/G24 sharing the same raw files); absent G12–G13 and G20 (post-2024-12 permanent gap) |
 | twu  | Wanqiu    | 23.185 | 120.529 | present in every group, G1–G24 |
@@ -112,11 +112,11 @@ Retired codes seen only in early-network-era data and never in the modern (G10+ 
 
 Working hypothesis: the `ttn` station went offline/was decommissioned around **2024-12-19**, rather than this being a fetch-script bug — recommend confirming against the CWA GDMS portal (`gdmsn.cwb.gov.tw`, see `docs/13_groups_fetch_ranges.md`) before relying on this in the cross-group statistical analysis.
 
-`ttn` is present with full coverage in the newly-added historical groups **G14** (2009–2010) through **G18** (2015–2016) and, consistent with the same permanent gap, **absent from G20** (2025-09~2026-01). **G19** (2024-05-15~2024-09-07) is a separate case: `ttn` stops after **2024-07-22** (69/116 files), leaving it unavailable for G19's 2024-08-16 anchor event and its ~47-day aftermath. This is a *distinct, temporary* outage, not an early start of the permanent one — G11's data shows `ttn` back online 2024-10-20 through 2024-12-18, i.e. after G19's window and before the permanent gap. See `G19/CLAUDE.md` for details.
+`ttn` is present with full coverage in the newly-added historical groups **G14** (2009–2010) through **G18** (2015–2016) and, consistent with the same permanent gap, **absent from G20** (2025-09~2026-01). **G19** (2024-05-15~2024-09-07) is a separate case: `ttn` stops after **2024-07-22** (69/116 files), leaving it unavailable for G19's 2024-08-16 anchor event and its ~47-day aftermath. This is a *distinct, temporary* outage, not an early start of the permanent one — G11's data shows `ttn` back online 2024-10-20 through 2024-12-18, i.e. after G19's window and before the permanent gap. See `G19/NOTES.md` for details.
 
 ### Known data issue: G12 has only 16 days of data before its anchor
 
-G12's folder starts 2025-05-26 (fetched ~93 days before the old 2025-08-27 anchor); the anchor moved to 2025-06-11 on 2026-08-20. The 28-day trailing baseline has < 5 clean days just before the anchor, so those days' H/Z index is NaN and verify's `baseline_window_excludes_storms` fails for G12. Accepted as a known failure (2026-09-28) rather than fixed -- it would need data from ~2025-04 onward. See `G12/CLAUDE.md`.
+G12's folder starts 2025-05-26 (fetched ~93 days before the old 2025-08-27 anchor); the anchor moved to 2025-06-11 on 2026-08-20. The 28-day trailing baseline has < 5 clean days just before the anchor, so those days' H/Z index is NaN and verify's `baseline_window_excludes_storms` fails for G12. Accepted as a known failure (2026-09-28) rather than fixed -- it would need data from ~2025-04 onward. See `G12/NOTES.md`.
 
 ### Known data issue: G14–G18 predate the vector-station network
 
@@ -204,7 +204,7 @@ Other confirmed quirks handled in `seismometer_comparison.py` (see its module do
 
 ## Version control
 
-This project got a fresh `git init` on 2026-09-14 (its earlier 2026-08-14 history was dropped when `G1`..`G24` and, shortly after, `seismometer/` were moved in from the parent directory and it was re-established as a self-contained standalone repo — this is the only repo among the moved material that's published). `.gitignore` excludes `.venv/`, `__pycache__/`, `data/` (regenerable analysis intermediates/outputs, ~850MB, reproducible from `scripts/` + the raw data with the project's fixed seed `20260805` — not worth version-controlling), each `Gx/*` raw day-file/batch-archive (~18GB, too big for git; each `Gx/CLAUDE.md` is explicitly kept via a `!` negation), and all of `seismometer/` (~384MB, all binary, no docs to keep). Tracked: `scripts/`, `docs/`, `output/` (the built HTML reports), `requirements.txt`, each `Gx/CLAUDE.md`, this file, `README.md`.
+This project got a fresh `git init` on 2026-09-14 (its earlier 2026-08-14 history was dropped when `G1`..`G24` and, shortly after, `seismometer/` were moved in from the parent directory and it was re-established as a self-contained standalone repo — this is the only repo among the moved material that's published). `.gitignore` excludes `.venv/`, `__pycache__/`, `data/` (regenerable analysis intermediates/outputs, ~850MB, reproducible from `scripts/` + the raw data with the project's fixed seed `20260805` — not worth version-controlling), each `Gx/*` raw day-file/batch-archive (~18GB, too big for git; each `Gx/NOTES.md` is explicitly kept via a `!` negation), and all of `seismometer/` (~384MB, all binary, no docs to keep). Tracked: `scripts/`, `docs/`, `output/` (the built HTML reports), `requirements.txt`, each `Gx/NOTES.md`, this file, `README.md`.
 
 ## Documentation
 

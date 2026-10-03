@@ -67,7 +67,7 @@ def check_raw_vs_parsed_spotcheck(cfg):
         # (88888) too -- but only for vector (X/Y/Z) columns, which is where
         # parser.py's defensive fallback applies (a totally-dead day can
         # apparently still write 88888 into what should be a real vector
-        # column; ground truth per common.py's/CLAUDE.md's convention is
+        # column; ground truth per common.py's/NOTES.md's convention is
         # that shouldn't happen, but the pipeline treats it defensively as
         # invalid rather than a bogus real reading). The scalar (F) column
         # has no such defensive mapping in parser.py, so 88888 there is not

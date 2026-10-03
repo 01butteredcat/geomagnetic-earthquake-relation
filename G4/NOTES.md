@@ -1,6 +1,6 @@
-# CLAUDE.md (G4)
+# NOTES.md (G4)
 
-Group G4 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+Group G4 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
 
 ## Event(s)
 
@@ -22,4 +22,4 @@ Group G4 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` fo
   | lnu | 61 | 2020-11-01 ~ 2021-01-01 |
   | kma | 19 | 2020-12-11 ~ 2021-01-01 |
 
-  `kmn` stops 2020-11-22 while `kma` starts 2020-12-11 — a confirmed code replacement (19-day gap). `lnu`, `xcg`, `zbn` all come online mid-window as **new** station slots (not confirmed renames of any earlier retired code — see root CLAUDE.md); `ncg` already existed in G1/G2_G3 but has a partial-coverage gap here.
+  `kmn` stops 2020-11-22 while `kma` starts 2020-12-11 — a confirmed code replacement (19-day gap). `lnu`, `xcg`, `zbn` all come online mid-window as **new** station slots (not confirmed renames of any earlier retired code — see root NOTES.md); `ncg` already existed in G1/G2_G3 but has a partial-coverage gap here.

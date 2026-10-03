@@ -1,10 +1,10 @@
-# CLAUDE.md (G2_G3)
+# NOTES.md (G2_G3)
 
 **Update 2026-09-20:** this folder now holds two separate analysis groups, **G2** (2019-04-18 anchor) and **G3** (2019-08-08 anchor), which share this raw-data folder (`events.py::Group.folder`) but have their own `data/interim/G2/`, `data/interim/G3/` and their own near/far station pools chosen from each epicenter. The folder was merged only because the two were fetched together for convenience. The text below predates the split and describes the folder's data as a whole.
 
 Combined-folder description (historical): covering event sequences G2 and G3
 
-Combined group covering event sequences G2 and G3 of the 13-event geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+Combined group covering event sequences G2 and G3 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
 
 ## Event(s)
 
@@ -25,4 +25,4 @@ Combined group covering event sequences G2 and G3 of the 13-event geomagnetic pr
   | slg | 45 | 2019-01-15 ~ 2019-02-28 |
   | sme | 23 | 2019-10-08 ~ 2019-10-30 |
 
-  `hln` and `slg` both stop mid-window with no confirmed successor code in this dataset; `sme` starts late (2019-10-08) and continues through G9 before being replaced by `cnu` starting at G10 — see root CLAUDE.md's station-code table for what is and isn't a confirmed 1:1 transition.
+  `hln` and `slg` both stop mid-window with no confirmed successor code in this dataset; `sme` starts late (2019-10-08) and continues through G9 before being replaced by `cnu` starting at G10 — see root NOTES.md's station-code table for what is and isn't a confirmed 1:1 transition.

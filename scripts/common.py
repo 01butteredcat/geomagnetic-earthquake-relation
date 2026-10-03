@@ -56,7 +56,7 @@ OUTAGE_PCT_MISSING_THRESHOLD = 0.05
 # record of what was manually verified for the single-event 2024 pipeline --
 # no longer consulted by the general multi-group logic (auto_outage_dates
 # below covers G10 the same way it covers every other group), but retained
-# since G10/CLAUDE.md references it and the specific incident notes are
+# since G10/NOTES.md references it and the specific incident notes are
 # useful context that pct_missing alone doesn't carry.
 G10_KNOWN_OUTAGE_WINDOWS = [
     {"station": "ALL", "start": "2024-01-04 23:20:00", "end": "2024-01-04 23:59:59",

@@ -1,6 +1,6 @@
-# CLAUDE.md (G21)
+# NOTES.md (G21)
 
-Group G21 of the 23-group geomagnetic precursor dataset — see `../CLAUDE.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_fetch_ranges_from_GDMScatalog.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-20). New standalone group added 2026-08-20 alongside G22 and G23, from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`) that surfaced M≥6 events the original per-event web search had missed.
+Group G21 of the 23-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_fetch_ranges_from_GDMScatalog.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-20). New standalone group added 2026-08-20 alongside G22 and G23, from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`) that surfaced M≥6 events the original per-event web search had missed.
 
 ## Event(s)
 
@@ -10,5 +10,5 @@ Group G21 of the 23-group geomagnetic precursor dataset — see `../CLAUDE.md` f
 
 - 1,276 `.sec.gz` files, 2010-08-20 ~ 2010-12-13.
 - 11 stations, uniform 116 files each: `hcn, hln, kmn, lyn, ncg, pta, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- Uses the era's retired station codes (`hln, kmn, slg, yli` — no confirmed successor mapping, see root CLAUDE.md); `csg` not yet installed (same era as G14–G16). `pta` (Majja) is present here — confirmed via file header (`Station Name Majja`) — correcting the earlier (now-fixed) root CLAUDE.md claim that `pta` only appeared in G14; it's also present in G22.
+- Uses the era's retired station codes (`hln, kmn, slg, yli` — no confirmed successor mapping, see root NOTES.md); `csg` not yet installed (same era as G14–G16). `pta` (Majja) is present here — confirmed via file header (`Station Name Majja`) — correcting the earlier (now-fixed) root NOTES.md claim that `pta` only appeared in G14; it's also present in G22.
 - Zero usable vector (X/Y/Z) stations — scalar `F`-only, same situation as G14–G18; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group.
