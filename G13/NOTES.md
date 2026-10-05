@@ -1,13 +1,13 @@
 # NOTES.md (G13)
 
-Group G13 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中的 G13 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-2026-05-01 M6.1, NE offshore Yilan.
+2026-05-01 M6.1，宜蘭東北外海。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 1,380 `.sec` files, 2026-01-28 ~ 2026-05-23.
-- 12 stations, uniform 115 files each: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`. **2026-04-28 is missing network-wide** (all 12 stations) — a single-day gap, not a per-station issue.
-- **`ttn` (Beinan) is entirely absent** from this group, consistent with it going offline in late 2024 — see G11's notes and root NOTES.md for the full timeline.
+- 1,380 個 `.sec` 檔，2026-01-28 ~ 2026-05-23。
+- 12 站，每站一律 115 檔：`cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`。**2026-04-28 全網缺檔**（12 站都缺）——單日缺口，不是個別測站的問題。
+- 本組**完全沒有 `ttn`（Beinan）**，和它在 2024 年底離線一致——完整時間線見 G11 的筆記和根目錄 NOTES.md。

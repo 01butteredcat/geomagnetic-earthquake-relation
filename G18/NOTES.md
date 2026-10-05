@@ -1,14 +1,14 @@
 # NOTES.md (G18)
 
-Group G18 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+20 組地磁前兆資料集中的 G18 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_groups_G14_G20.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-07 原始資料下載後重新查證的）。
 
-## Event(s)
+## 事件
 
-2016-02-06 ML6.6 (CWA, revised upward from an initial ML6.4 rapid report; anchor), Kaohsiung Meinong, inland collision-zone event — caused 117 deaths (mostly the Weiguan Jinlong Building collapse in Tainan), Taiwan's deadliest earthquake since 1999 at the time + 2016-05-31 M6.4 (USGS Mww6.4; CWA report not located), very deep (246km) offshore NE Taiwan, roughly "offshore Yilan".
+2016-02-06 ML6.6（CWA，由最初速報的 ML6.4 往上修正；錨點），高雄美濃，內陸碰撞帶事件——造成 117 人死亡（大多在台南維冠金龍大樓倒塌），是當時台灣自 1999 年以來死傷最慘重的地震 + 2016-05-31 M6.4（USGS Mww6.4；找不到 CWA 報告），非常深（246km），台灣東北外海，大約是「宜蘭外海」。
 
-## Contents (verified against disk 2026-08-09)
+## 內容（2026-08-09 對照磁碟確認）
 
-- 2,772 `.sec` files, 2015-11-05 ~ 2016-06-22.
-- 12 stations, uniform 231 files each: `csg, hcn, hln, kmn, lyn, msi, ncg, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- `msi` (retired code, no confirmed successor — see root NOTES.md) appears here alongside `yhg`, consistent with the root doc's note that they coexisted in G14–G18's data.
-- Zero usable vector (X/Y/Z) stations — scalar `F`-only; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group. This is the last chronological group in the dataset without a vector pool — `G19` onward has full vector coverage.
+- 2,772 個 `.sec` 檔，2015-11-05 ~ 2016-06-22。
+- 12 站，每站一律 231 檔：`csg, hcn, hln, kmn, lyn, msi, ncg, slg, ttn, twu, yhg, yli`。組內沒有缺檔。
+- `msi`（停用代碼，沒有確認過的後繼代碼——見根目錄 NOTES.md）在這裡和 `yhg` 一起出現，符合根目錄文件說它們在 G14–G18 資料中並存的說法。
+- 沒有任何可用的向量（X/Y/Z）測站——只有純量 `F`；這組會跳過 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法。這是資料集中時間上最後一組沒有向量測站池的——`G19` 之後都有完整的向量涵蓋。

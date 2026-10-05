@@ -1,14 +1,14 @@
 # NOTES.md (G20)
 
-Group G20 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+20 組地磁前兆資料集中的 G20 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_groups_G14_G20.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-07 原始資料下載後重新查證的）。
 
-## Event(s)
+## 事件
 
-2025-12-24 ML6.1 (CWA; USGS Mww6.0), Taitung Beinan, extremely shallow (11.9km) + 2025-12-27 M7.0 (CWA; USGS Mww6.6 — one of the largest CWA/USGS magnitude gaps documented in this dataset, 0.4 units), offshore ESE Yilan (anchor) — CWA press statements called it Taiwan's largest earthquake since the 1999 921 earthquake and the 2024-04-03 Hualien earthquake (G10); the single largest-magnitude event in this entire 20-group registry.
+2025-12-24 ML6.1（CWA；USGS Mww6.0），台東卑南，極淺（11.9km）+ 2025-12-27 M7.0（CWA；USGS Mww6.6——這份資料記錄到的 CWA/USGS 規模差距最大的例子之一，0.4），宜蘭東南東外海（錨點）——CWA 新聞稿稱它是台灣自 1999 年 921 地震和 2024-04-03 花蓮地震（G10）以來最大的地震；也是這份 20 組登錄表中規模最大的單一事件。
 
-## Contents (verified against disk 2026-08-09)
+## 內容（2026-08-09 對照磁碟確認）
 
-- 1,428 `.sec` files, 2025-09-22 ~ 2026-01-18.
-- 12 stations, uniform 119 files each: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`. No gaps within the group.
-- `ttn` (Beinan) entirely absent, consistent with the permanent post-2024-12-19 outage documented in the root NOTES.md (same as G12/G13).
-- Full 12-station vector (X/Y/Z) pool, same as G19 — `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are available for this group.
+- 1,428 個 `.sec` 檔，2025-09-22 ~ 2026-01-18。
+- 12 站，每站一律 119 檔：`cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`。組內沒有缺檔。
+- 完全沒有 `ttn`（Beinan），和根目錄 NOTES.md 記錄的 2024-12-19 之後永久中斷一致（和 G12/G13 一樣）。
+- 完整的 12 站向量（X/Y/Z）測站池，和 G19 一樣——本組可以跑 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法。

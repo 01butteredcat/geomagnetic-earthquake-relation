@@ -1,14 +1,14 @@
 # NOTES.md (G14)
 
-Group G14 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+20 組地磁前兆資料集中的 G14 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_groups_G14_G20.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-07 原始資料下載後重新查證的）。
 
-## Event(s)
+## 事件
 
-2009-07-14 Mw6.3 + 2009-10-04 Mw6.1 (both offshore Hualien, USGS-sourced — CWA reports not located via web search) + 2009-12-19 ML6.9 (anchor, CWA, offshore Hualien) + 2010-03-04 ML6.4 Kaohsiung Jiaxian. The Jiaxian event is an inland collision-zone earthquake mixed into an otherwise offshore-Hualien group purely because its GDMS fetch window overlaps the anchor's on the calendar — see `events.py`'s note on this event for the full magnitude-tie/anchor-selection rationale.
+2009-07-14 Mw6.3 + 2009-10-04 Mw6.1（都在花蓮外海，來源 USGS——網路搜尋找不到 CWA 報告）+ 2009-12-19 ML6.9（錨點，CWA，花蓮外海）+ 2010-03-04 ML6.4 高雄甲仙。甲仙事件是內陸碰撞帶地震，會混進一個原本是花蓮外海的組別，純粹是因為它的 GDMS 下載窗口在日曆上和錨點的重疊——完整的規模同分／錨點選擇理由見 `events.py` 中這個事件的 note。
 
-## Contents (verified against disk 2026-08-09)
+## 內容（2026-08-09 對照磁碟確認）
 
-- 3,839 `.sec` files, 2009-04-12 ~ 2010-03-26.
-- 11 stations, uniform 349 files each: `hcn, hln, kmn, lyn, ncg, pta, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- Uses the era's retired station codes (`hln, kmn, slg, yli` — no confirmed successor mapping, see root NOTES.md); `csg` not yet installed (absent from G14–G16). `pta` (Majja) is a historical scalar-only station slot retired before G1–G13/G19–G23's windows — also confirmed present in **G21** and **G22** (added 2026-08-20), so it's not unique to this group as earlier documented here.
-- Zero usable vector (X/Y/Z) stations — scalar `F`-only, per root NOTES.md's "G14–G18 predate the vector-station network" note; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group.
+- 3,839 個 `.sec` 檔，2009-04-12 ~ 2010-03-26。
+- 11 站，每站一律 349 檔：`hcn, hln, kmn, lyn, ncg, pta, slg, ttn, twu, yhg, yli`。組內沒有缺檔。
+- 使用那個年代的停用測站代碼（`hln, kmn, slg, yli`——沒有確認過的後繼對應，見根目錄 NOTES.md）；`csg` 尚未設置（G14–G16 都沒有）。`pta`（Majja）是在 G1–G13/G19–G23 窗口之前就停用的歷史純量站位——後來也確認 **G21** 和 **G22**（2026-08-20 加入）有，所以它並不像這裡先前寫的只出現在本組。
+- 沒有任何可用的向量（X/Y/Z）測站——只有純量 `F`，見根目錄 NOTES.md 的「G14–G18 早於向量測站網」說明；這組會跳過 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法。

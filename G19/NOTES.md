@@ -1,14 +1,14 @@
 # NOTES.md (G19)
 
-Group G19 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+20 組地磁前兆資料集中的 G19 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_groups_G14_G20.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-07 原始資料下載後重新查證的）。
 
-## Event(s)
+## 事件
 
-2024-08-16 M6.3 (CWA; USGS Mww6.1 coordinates substituted, coord confidence low), SSE Hualien (anchor). Occurs amid the ongoing G10 (2024-04-03) aftershock sequence's broader activity but falls outside G10's fetch window (which ends 2024-06-01); CWA/press treat it as a distinct notable event rather than merely an aftershock label.
+2024-08-16 M6.3（CWA；以 USGS Mww6.1 座標替代，座標信心低），花蓮南南東（錨點）。發生在 G10（2024-04-03）餘震序列仍持續活躍的期間，但落在 G10 的下載窗口之外（G10 到 2024-06-01 為止）；CWA 和媒體把它當成一起獨立的重要事件，而不只是貼上餘震標籤。
 
-## Contents (verified against disk 2026-08-09)
+## 內容（2026-08-09 對照磁碟確認）
 
-- 1,461 `.sec` files, 2024-05-15 ~ 2024-09-07.
-- 13 stations: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, ttn, twu, xcg, yhg, zbn`, all uniform at 116 files **except `ttn` (69/116)**.
-- **`ttn` (Beinan) stops after 2024-07-22** — a previously-undocumented gap, discovered while writing this file, that leaves `ttn` unavailable for this group's 2024-08-16 anchor event and its ~47-day aftermath. This is a **separate, temporary outage** from the permanent post-2024-12-19 `ttn` gap documented in the root NOTES.md: G11's data shows `ttn` back online 2024-10-20 through 2024-12-18, so `ttn` clearly came back up between this group's end (2024-09-07) and G11's start — it is not evidence the permanent outage started earlier. (This also corrects the root NOTES.md's previous "`ttn` full coverage ... through G19" framing, updated alongside this file.)
-- First group in the newly-added G14–G20 batch with a full 13-station vector (X/Y/Z) pool, matching G4-onward's modern network — `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are available for this group (subject to the `ttn` caveat above, since `ttn` is scalar-only/`F` anyway and not part of the vector pool).
+- 1,461 個 `.sec` 檔，2024-05-15 ~ 2024-09-07。
+- 13 站：`cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, ttn, twu, xcg, yhg, zbn`，**除了 `ttn`（69/116）**，其餘一律 116 檔。
+- **`ttn`（Beinan）在 2024-07-22 之後就停了**——寫這個檔案時才發現的、先前沒記錄過的缺口，導致本組 2024-08-16 錨點事件和之後約 47 天都沒有 `ttn`。這和根目錄 NOTES.md 記錄的、2024-12-19 之後的永久 `ttn` 缺口是**兩次不同、暫時性的中斷**：G11 的資料顯示 `ttn` 在 2024-10-20 到 2024-12-18 恢復上線，所以 `ttn` 顯然在本組結束（2024-09-07）到 G11 開始之間恢復了——這不代表永久中斷開始得更早。（這也更正了根目錄 NOTES.md 之前「`ttn` 完整涵蓋……到 G19」的說法，已和本檔一起更新。）
+- 新加入的 G14–G20 這批中第一組有完整 13 站向量（X/Y/Z）測站池的，和 G4 之後的現代觀測網一致——本組可以跑 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法（受上述 `ttn` 注意事項影響，不過 `ttn` 本來就只有純量 `F`，不在向量測站池裡）。

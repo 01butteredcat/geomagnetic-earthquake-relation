@@ -1,12 +1,12 @@
 # NOTES.md (G9)
 
-Group G9 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中的 G9 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-2022-09-17 M6.4 (foreshock, 21:41) + 2022-09-18 M6.8 (mainshock), Chishang/Guanshan.
+2022-09-17 M6.4（前震，21:41）+ 2022-09-18 M6.8（主震），池上／關山。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 1,508 `.sec` files, 2022-06-17 ~ 2022-10-10.
-- 13 stations, uniform 116 files each: `csg, hcn, kma, lnu, lyn, mtu, ncg, sme, ttn, twu, xcg, yhg, zbn`. No gaps within the group. This is the last group to use the retired code `sme` (replaced by `cnu` starting G10).
+- 1,508 個 `.sec` 檔，2022-06-17 ~ 2022-10-10。
+- 13 站，每站一律 116 檔：`csg, hcn, kma, lnu, lyn, mtu, ncg, sme, ttn, twu, xcg, yhg, zbn`。組內沒有缺檔。這是最後一組使用停用代碼 `sme` 的（從 G10 起被 `cnu` 取代）。

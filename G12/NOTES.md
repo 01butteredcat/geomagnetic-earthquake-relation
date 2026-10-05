@@ -1,18 +1,17 @@
 # NOTES.md (G12)
 
-Group G12 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中的 G12 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-Anchor 2025-06-11 ML6.42 offshore Hualien (since 2026-08-20; the data window was fetched around the earlier anchor, 2025-08-27 ML6.05 offshore Yilan). See `../scripts/events.py` for the full event list (incl. the M5 backfill).
+錨點 2025-06-11 ML6.42 花蓮外海（2026-08-20 起；資料窗口是依較早的錨點 2025-08-27 ML6.05 宜蘭外海下載的）。完整事件清單（含補登的 M5）見 `../scripts/events.py`。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 1,392 `.sec` files, 2025-05-26 ~ 2025-09-18.
-- 12 stations, uniform 116 files each: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`.
-- **`ttn` (Beinan) is entirely absent** from this group (12 stations instead of the usual 13), consistent with it going offline in late 2024 — see G11's notes and root NOTES.md for the full timeline.
+- 1,392 個 `.sec` 檔，2025-05-26 ~ 2025-09-18。
+- 12 站，每站一律 116 檔：`cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`。
+- 本組**完全沒有 `ttn`（Beinan）**（12 站而不是一般的 13 站），和它在 2024 年底離線一致——完整時間線見 G11 的筆記和根目錄 NOTES.md。
 
-## Known limitation: too little data before the anchor (accepted 2026-09-28)
+## 已知限制：錨點前資料太少（2026-09-28 接受）
 
-The folder starts 2025-05-26 -- ~93 days before the old 2025-08-27 anchor, but only **16 days before the current 2025-06-11 anchor**. The daily index's 28-day trailing baseline (`compute_indices.TRAILING_WINDOW_DAYS`) therefore has fewer than 5 clean days (`MIN_CLEAN_POINTS`) for the days just before the anchor, so their H/Z index is NaN, and `verify_pipeline.py`'s `baseline_window_excludes_storms` check fails for G12. This is a data limitation, not a bug: no window length fixes it; only fetching data from ~2025-04 onward would. Accepted as-is -- G12's daily-scale pre-anchor result should be read as "no baseline", not as "no anomaly". The ULF Pc3 pre-event rank test cannot run for G12 either (1 non-storm day in its 30-day pre-event window; `rank_p` is None), so G12 does not enter the primary Pc3 test.
-
+資料夾從 2025-05-26 開始——是舊錨點 2025-08-27 前約 93 天，但只在**目前的錨點 2025-06-11 前 16 天**。因此日尺度指標的 28 天滑動基準期（`compute_indices.TRAILING_WINDOW_DAYS`）在錨點前幾天的乾淨日少於 5 天（`MIN_CLEAN_POINTS`），那幾天的 H/Z 指標是 NaN，`verify_pipeline.py` 的 `baseline_window_excludes_storms` 檢查對 G12 會失敗。這是資料限制，不是 bug：改窗口長度都修不好，只有下載 2025-04 起的資料才行。照現況接受——G12 錨點前的日尺度結果應該解讀為「沒有基準」，而不是「沒有異常」。ULF Pc3 震前排名檢定對 G12 也跑不了（30 天震前窗口中只有 1 個非磁暴日；`rank_p` 是 None），所以 G12 不進入 Pc3 主要檢定。

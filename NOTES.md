@@ -1,149 +1,149 @@
 # NOTES.md — geomag_precursor
 
-Developer notes for working inside `geomag_precursor/` (background, known data pitfalls, method history). This is a **self-contained project**: both the raw `G1`...`G24` geomagnetic data folders and `seismometer/` (seismometer/accelerometer cross-check data) live directly inside this directory (moved here 2026-09-14 — `Gx` first, `seismometer/` shortly after — so this repo is fully self-contained and standalone).
+在 `geomag_precursor/` 裡工作的開發筆記（背景、已知的資料陷阱、方法沿革）。這是一個**自成一體的專案**：原始的 `G1`...`G24` 地磁資料夾和 `seismometer/`（地震儀／加速度儀交叉比對資料）都直接放在這個目錄底下（2026-09-14 搬進來——先搬 `Gx`，`seismometer/` 隨後——所以這個 repo 可以完全獨立運作）。
 
-## What this project is
+## 這個專案是什麼
 
-A Python analysis pipeline testing whether Taiwan's CWA (Central Weather Administration) geomagnetic network shows statistically detectable earthquake-precursor or coseismic signals, across a 24-group/137-event multi-earthquake dataset (69 M≥6, 68 M5) (2009–2026, Taiwan M≥6.0 events). Two independent lines of analysis exist:
+一套 Python 分析流程，檢驗台灣 CWA（中央氣象署）地磁觀測網是否有統計上可偵測的地震前兆或同震訊號，資料涵蓋 24 組／137 起地震（69 起 M≥6、68 起 M5）（2009–2026，台灣 M≥6.0 事件）。有兩條互相獨立的分析線：
 
-- **Daily-scale precursor screening** (`build_daily_features.py` → `compute_indices.py`/`ulf_analysis.py` → `cross_group_analysis.py`/`superposed_epoch_analysis.py`): looks for candidate anomalies in the days-to-weeks before each mainshock. Results: `data/interim/cross_group_summary.md`, `output/geomag_precursor_validation_report.html`.
-- **Coseismic (at-origin-second) analysis** (`coseismic_step_analysis.py` → `coseismic_stacking_analysis.py` → `seismometer_comparison.py`): looks for a step/spike right at each earthquake's origin second in the raw 1Hz data, then asks whether that's a real field change or shaking-induced instrument noise. This is the newer, still-active line of work — see "Coseismic pipeline" below.
+- **日尺度前兆篩檢**（`build_daily_features.py` → `compute_indices.py`/`ulf_analysis.py` → `cross_group_analysis.py`/`superposed_epoch_analysis.py`）：在每個主震前幾天到幾週內找候選異常。結果：`data/interim/cross_group_summary.md`、`output/geomag_precursor_validation_report.html`。
+- **同震（發震那一秒）分析**（`coseismic_step_analysis.py` → `coseismic_stacking_analysis.py` → `seismometer_comparison.py`）：在原始 1Hz 資料中找每起地震發震秒的階躍／突波，再判斷那是真實的磁場變化，還是震動造成的儀器雜訊。這是比較新、仍在進行中的分析線——見下方「同震流程」。
 
-## Data Provenance
+## 資料來源
 
-- All earthquake event parameters (time, location, magnitude) come from the CWA catalog / CWA GDMS. Never describe them as coming from web searches, news, or press releases in reports or docs.
-- The event registry (`scripts/events.py`) must match the CWA catalog. When editing magnitudes or event lists, cross-check against the catalog and report any discrepancies.
+- 所有地震事件參數（時間、位置、規模）都來自 CWA 目錄／CWA GDMS。報告或文件中絕不能說這些來自網路搜尋、新聞或新聞稿。
+- 事件登錄表（`scripts/events.py`）必須和 CWA 目錄一致。修改規模或事件清單時，要和目錄交叉比對，並回報任何不一致之處。
 
-## Git & Publishing
+## Git 與發布
 
-- Only `geomag_precursor/` is published to the public GitHub remote. Never push the container/parent repo (`precursor/`) to it.
-- Use the repo-local git email (already configured). Do not change the global git config.
-- Before committing, make sure no absolute local machine paths (e.g. `C:\Users\...`, `/home/...`) appear in code or docs. Use `PROJECT_DIR` in `scripts/common.py`, resolved relative to the repo.
+- 只有 `geomag_precursor/` 發布到公開的 GitHub remote。絕不能把外層容器 repo（`precursor/`）推上去。
+- 使用 repo 本地的 git email（已設定好）。不要改全域 git 設定。
+- commit 前確認程式碼和文件裡沒有本機絕對路徑（例如 `C:\Users\...`、`/home/...`）。改用 `scripts/common.py` 的 `PROJECT_DIR`，它是相對於 repo 解析的。
 
-## Project Facts (keep current)
+## 專案事實（隨時保持最新）
 
-- There are 24 station/event groups (G1–G24, after the G23/G24 split). Update this count whenever groups are split or merged. Pipeline-wide tasks such as storm cancellation or reruns apply to ALL groups unless stated otherwise.
-- Full rerun: `bash scripts/run_all_groups.sh`, then run verify (`scripts/verify_pipeline.py`). Report which verify failures existed before the rerun and which are new.
-- Tests: `.venv/bin/python3 -m pytest tests` (regression tests for past statistical fixes plus property tests that no null distribution sees the tested window/event). Run them after touching any null/baseline/test code.
-- Magnitude tiers for validation: M≥6.0 / M≥5.5 / M≥5.0.
-- Analyses are either "daily" or "second-scale (coseismic)". State which line a task belongs to before starting.
+- 共有 24 個測站／事件組（G1–G24，G23/G24 拆分後）。每次組別拆分或合併都要更新這個數字。磁暴消除、重跑這類全流程工作，除非另外說明，都套用到**所有**組別。
+- 完整重跑：`bash scripts/run_all_groups.sh`，然後跑 verify（`scripts/verify_pipeline.py`）。回報哪些 verify 失敗是重跑前就有的、哪些是新的。
+- 測試：`.venv/bin/python3 -m pytest tests`（過去修過的統計 bug 的回歸測試，加上「沒有任何虛無分布看得到被檢定的窗口／事件」的性質測試）。改到任何虛無分布／基準／檢定相關程式碼後都要跑。
+- 驗證用的規模級距：M≥6.0 / M≥5.5 / M≥5.0。
+- 分析分成「日尺度」和「秒尺度（同震）」兩種。開始一項工作前，先說清楚它屬於哪一條線。
 
-## The raw data (G1..G24)
+## 原始資料（G1..G24）
 
-69 CWA-catalog M≥6.0 earthquake records from 2009-07-14 through 2026-05-01 (49 original + 20 found missing by a reverse catalog check on 2026-09-27, 11 of them distant/deep offshore events that can never be an anchor; plus 68 M5 events backfilled 2026-09-23), grouped by proximity in time/location into **24 independent event sequences**, since several records are foreshock/mainshock/aftershock of the same sequence and treating them as independent samples would be pseudo-replication. Each group `Gx` is a data-fetch window of "~93 days before the (first) mainshock as baseline, ~22 days after the last event in the sequence." G1–G13 (2018–2026) were the original batch; G14–G20 (added 2026-08-08) extend the dataset backward to 2009 plus two more recent 2024/2025 events, crossing the lower edge of the 20–30-group threshold commonly cited in the literature for a statistically meaningful precursor test (still not sufficient on its own — see `data/interim/cross_group_summary.md`'s own caveats, e.g. no independent quiet-period control); G21–G23 (added 2026-08-20, alongside non-anchor events appended to G6_G7_G8, G11, G12, and G17's existing windows) came from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`, not included in this repo) that surfaced further M≥6 events missing from the original event list.
+69 筆 CWA 目錄 M≥6.0 地震紀錄，從 2009-07-14 到 2026-05-01（原本 49 筆，加上 2026-09-27 反向比對目錄時找到的 20 筆漏登事件，其中 11 筆是遠距或深的外海事件，永遠不會當錨點；另外 2026-09-23 補登了 68 起 M5 事件），依時間／位置相近程度分成 **24 個獨立事件序列**，因為有好幾筆其實是同一序列的前震／主震／餘震，把它們當成獨立樣本會造成偽重複（pseudo-replication）。每一組 `Gx` 是一段資料下載窗口：「（第一個）主震前約 93 天作為基準期，序列最後一個事件後約 22 天」。G1–G13（2018–2026）是最早的一批；G14–G20（2026-08-08 加入）把資料往前延伸到 2009，另外加了兩起較近的 2024/2025 事件，讓組數跨過文獻常引用的、做有統計意義前兆檢定所需的 20–30 組門檻下緣（光這樣仍然不夠——見 `data/interim/cross_group_summary.md` 自己列的注意事項，例如沒有獨立的平靜期對照組）；G21–G23（2026-08-20 加入，同時在 G6_G7_G8、G11、G12、G17 原有窗口中補上非錨點事件）來自使用者提供的 CWA GDMS 區域目錄匯出檔（`GDMScatalog.json`，不在這個 repo 裡），它揭露了原本事件清單漏掉的更多 M≥6 事件。
 
-Full event/date-range rationale and background: `docs/13_groups_fetch_ranges.md` (G1–G13), `docs/candidate_groups_G14_G20.md` (G14–G20's candidate research), and `docs/candidate_fetch_ranges_from_GDMScatalog.md` (G21–G23's candidate research) — all superseded by `scripts/events.py` once a group's data was actually fetched and registered. Group-specific details (actual file counts, stations, known gaps) live in each `Gx/NOTES.md`. Precise per-event epicenter coordinates/depth/magnitude, all from the CWA catalog / CWA GDMS (every event has `coord_source="CWA"`; USGS/JMA magnitudes appear only as reference values in some events' `note`), are in `scripts/events.py`.
+完整的事件／日期範圍理由與背景：`docs/13_groups_fetch_ranges.md`（G1–G13）、`docs/candidate_groups_G14_G20.md`（G14–G20 的候選研究）、`docs/candidate_fetch_ranges_from_GDMScatalog.md`（G21–G23 的候選研究）——一旦某組資料實際下載並登錄，這些都以 `scripts/events.py` 為準。各組細節（實際檔案數、測站、已知缺口）記在各自的 `Gx/NOTES.md`。每個事件精確的震央座標／深度／規模都在 `scripts/events.py`，全部來自 CWA 目錄／CWA GDMS（每個事件都是 `coord_source="CWA"`；USGS/JMA 規模只在部分事件的 `note` 裡當參考值出現）。
 
-### Layout
+### 目錄配置
 
-All 24 groups live in 20 flat directories of `.sec` files (no nested subfolders). **Three directories hold more than one group**, because those events were fetched together for convenience, not because they belong to one sequence: `G2_G3/` holds groups **G2** and **G3**, `G6_G7_G8/` holds **G6**, **G7** and **G8**, `G23/` holds groups **G23** and **G24**. Until 2026-09-20 each of the first two was registered as a single merged group (`G2_G3`, `G6_G7_G8`) with a single anchor, which left G3, G6 and G7 out of every cross-group test; `G23` was similarly a single merged group (its only anchor being the 2020-07-26 event) until the 2026-09-22 split that gave 2020-06-14 its own group, `G24`. All three are now separate groups (own anchor, own `data/interim/<group>/`, own near/far station pools chosen from their own epicenter) that share a raw-data `folder` (`events.py::Group.folder`). Anything that needs "every real event in this data" -- null/random reference draws, catalog `is_known_event` flagging, search-window caps -- uses `events.py::folder_events()` rather than `Group.events`; extra (unregistered) catalog events are attributed to one sibling by `assign_group_for_time()` so they are not counted once per group. Table rows below are per directory:
+24 組資料放在 20 個扁平的 `.sec` 檔目錄裡（沒有巢狀子資料夾）。**有三個目錄裝了不只一組**，因為那些事件是為了方便一起下載的，不是因為它們屬於同一序列：`G2_G3/` 裝 **G2** 和 **G3**，`G6_G7_G8/` 裝 **G6**、**G7**、**G8**，`G23/` 裝 **G23** 和 **G24**。直到 2026-09-20 前，前兩個目錄各自被登錄成單一合併組（`G2_G3`、`G6_G7_G8`），只有一個錨點，導致 G3、G6、G7 被排除在所有跨組檢定之外；`G23` 原本也是單一合併組（唯一錨點是 2020-07-26 事件），直到 2026-09-22 拆分，讓 2020-06-14 有了自己的組 `G24`。現在三者都是獨立組別（有自己的錨點、自己的 `data/interim/<group>/`、從自己的震央挑選的近站／遠站池），只是共用一個原始資料 `folder`（`events.py::Group.folder`）。任何需要「這份資料裡所有真實事件」的地方——虛無分布／隨機參考時間抽樣、目錄的 `is_known_event` 標記、搜尋窗口上限——都用 `events.py::folder_events()` 而不是 `Group.events`；額外（未登錄的）目錄事件由 `assign_group_for_time()` 歸給其中一個兄弟組，避免每組各算一次。下表一列對應一個目錄：
 
-| Group | Date range (actual) | Event(s) |
+| 組別 | 日期範圍（實際） | 事件 |
 |---|---|---|
-| G1 | 2017-11-03 ~ 2018-02-28 | 2018-02-04 ML5.8 (CWA; Mww6.1 USGS) + 02-06 ML6.2 (anchor) Hualien |
-| G2_G3 (groups G2, G3) | 2019-01-15 ~ 2019-10-30 | G2: 2019-04-18 ML6.3 (anchor) Hualien Xiulin; G3: 2019-08-08 ML6.2 offshore Yilan |
-| G4 | 2020-09-08 ~ 2021-01-01 | 2020-12-10 M6.7 offshore Yilan |
-| G5 | 2021-01-15 ~ 2021-05-10 | 2021-02-07 ML6.21 (non-anchor, added 2026-08-20) + 04-18 ML6.26 (anchor, corrected 2026-09-14 from a stale ML6.2 -- see events.py's note) Hualien Shoufeng |
-| G6_G7_G8 (groups G6, G7, G8) | 2021-07-23 ~ 2022-05-31 | G6: 2021-10-24 M6.5 Nan'ao Township, Yilan; G7: 2022-01-03 ML6.06 offshore Yilan; G8: 2022-03-23 ML6.7 (CWA-revised from an initial ML6.6 rapid report, anchor) offshore Hualien + 03-23b ML6.04 (non-anchor, added 2026-08-20, aftershock ~2h48m after the anchor) + 05-09 ML6.27 (non-anchor, added 2026-08-20; ~24.0N,122.5E, coordinate-derived direction, no confirmed CWA place name) |
-| G9 | 2022-06-17 ~ 2022-10-10 | 2022-09-17 ML6.6 foreshock + 09-18a ML6.15 (non-anchor, added 2026-08-20, foreshock ~1h25m before the mainshock) + 09-18 ML6.8 (anchor) Chishang/Guanshan mainshock + 09-19 ML6.02 (non-anchor, added 2026-08-20, aftershock the next day) |
-| G10 | 2024-01-01 ~ 2024-06-01 | 2024-04-03 M7.2 mainshock (anchor) + 04-23a ML6.16 + 04-23b ML6.3 (Shoufeng Township) + 04-23c ML6.14 (non-anchor, added 2026-08-20) + 04-27a ML6.31 + 04-27b ML6.0 (both non-anchor, added 2026-08-20) + 05-06 ML6.05 (non-anchor, added 2026-08-20) + 05-10 ML6.01 (corrected 2026-08-20 from a stale ML5.8) Hualien -- 8 events total |
-| G11 | 2024-10-20 ~ 2025-04-30 | 2025-01-21 M6.4 Chiayi Dapu (anchor) + 04-08 ML6.15 (non-anchor, added 2026-08-20; ~24.7N,123.1E, far NE offshore near the Ryukyu arc, coordinate-derived direction, no confirmed CWA place name) |
-| G12 | 2025-05-26 ~ 2025-09-18 | 2025-06-11 ML6.42 offshore Hualien (anchor, added 2026-08-20, supersedes 2025-08-27 as largest-magnitude event in window) + 08-27 ML6.05 offshore Yilan |
-| G13 | 2026-01-28 ~ 2026-05-23 | 2026-05-01 M6.1 NE offshore Yilan |
-| G14 | 2009-04-12 ~ 2010-03-26 | 2009-07-14 ML6.0 (CWA; Mwc6.3 USGS) + 10-04 ML6.09 (CWA; Mww6.1 USGS) offshore Hualien + 11-05 ML6.15 (non-anchor, added 2026-08-20; Nantou Lugu (南投鹿谷), inland, web-verified 2026-09-14) + 12-19 ML6.9 (anchor) offshore Hualien + 2010-03-04 ML6.4 Kaohsiung Jiaxian (inland) -- G14 has **two** inland events, see note below |
-| G15 | 2013-03-01 ~ 2013-06-24 | 2013-03-27 ML6.24 (non-anchor, added 2026-08-20; 23.9022N,121.0527E, coordinate-derived direction, no confirmed CWA place name) + 06-02 ML6.48 (anchor) Nantou Puli/Yuchi |
-| G16 | 2013-07-30 ~ 2013-11-22 | 2013-10-31 ML6.42 (CWA, resolves a prior ML6.3-vs-6.4 ambiguity) SSW Hualien |
-| G17 | 2014-09-09 ~ 2015-04-14 | 2014-12-11 ML6.7 (CWA, corrected 2026-08-20 from a stale USGS-substitute Mww6.1, anchor) offshore Yilan + 2015-02-14 ML6.28 offshore Taitung + 03-23 ML6.19 (non-anchor, added 2026-08-20; ~23.7N,121.7E, offshore Hualien, coordinate-derived direction, no confirmed CWA place name) |
-| G18 | 2015-11-05 ~ 2016-06-22 | 2016-02-06 ML6.6 Kaohsiung Meinong + 2016-05-31 ML6.91 (CWA, corrected 2026-08-20 from a stale USGS-substitute Mww6.4, anchor) offshore Yilan |
-| G19 | 2024-05-15 ~ 2024-09-07 | 2024-08-16 ML6.37 SSE Hualien |
-| G20 | 2025-09-22 ~ 2026-01-18 | 2025-12-24 ML6.1 Taitung Beinan + 2025-12-27 M7.0 (CWA; Mww6.6 USGS) offshore ESE Yilan |
-| G21 | 2010-08-20 ~ 2010-12-13 | 2010-11-21 ML6.14 (~23.9N,121.7E, offshore Hualien, coordinate-derived direction, no confirmed CWA place name) |
-| G22 | 2012-03-09 ~ 2012-07-02 | 2012-06-10 ML6.62 (~24.5N,122.3E, far offshore NE Taiwan, coordinate-derived direction, no confirmed CWA place name) |
-| G23 (groups G23, G24) | 2020-03-13 ~ 2020-08-17 | G23: 2020-07-26 ML6.24 (anchor), offshore NE Taiwan, coordinate-derived direction, no confirmed CWA place name; G24: 2020-06-14 ML6.09 (anchor of its own group since the 2026-09-22 split), same area, coordinate-derived direction, no confirmed CWA place name |
+| G1 | 2017-11-03 ~ 2018-02-28 | 2018-02-04 ML5.8（CWA；USGS Mww6.1）+ 02-06 ML6.2（錨點）花蓮 |
+| G2_G3（G2、G3 兩組） | 2019-01-15 ~ 2019-10-30 | G2：2019-04-18 ML6.3（錨點）花蓮秀林；G3：2019-08-08 ML6.2 宜蘭外海 |
+| G4 | 2020-09-08 ~ 2021-01-01 | 2020-12-10 M6.7 宜蘭外海 |
+| G5 | 2021-01-15 ~ 2021-05-10 | 2021-02-07 ML6.21（非錨點，2026-08-20 加入）+ 04-18 ML6.26（錨點，2026-09-14 從過時的 ML6.2 更正——見 events.py 的 note）花蓮壽豐 |
+| G6_G7_G8（G6、G7、G8 三組） | 2021-07-23 ~ 2022-05-31 | G6：2021-10-24 M6.5 宜蘭南澳鄉；G7：2022-01-03 ML6.06 宜蘭外海；G8：2022-03-23 ML6.7（CWA 由最初速報 ML6.6 修正，錨點）花蓮外海 + 03-23b ML6.04（非錨點，2026-08-20 加入，錨點後約 2 小時 48 分的餘震）+ 05-09 ML6.27（非錨點，2026-08-20 加入；約 24.0N,122.5E，方位由座標推得，沒有確認過的 CWA 地名） |
+| G9 | 2022-06-17 ~ 2022-10-10 | 2022-09-17 ML6.6 前震 + 09-18a ML6.15（非錨點，2026-08-20 加入，主震前約 1 小時 25 分的前震）+ 09-18 ML6.8（錨點）池上／關山主震 + 09-19 ML6.02（非錨點，2026-08-20 加入，隔天的餘震） |
+| G10 | 2024-01-01 ~ 2024-06-01 | 2024-04-03 M7.2 主震（錨點）+ 04-23a ML6.16 + 04-23b ML6.3（壽豐鄉）+ 04-23c ML6.14（非錨點，2026-08-20 加入）+ 04-27a ML6.31 + 04-27b ML6.0（皆非錨點，2026-08-20 加入）+ 05-06 ML6.05（非錨點，2026-08-20 加入）+ 05-10 ML6.01（2026-08-20 從過時的 ML5.8 更正）花蓮——共 8 個事件 |
+| G11 | 2024-10-20 ~ 2025-04-30 | 2025-01-21 M6.4 嘉義大埔（錨點）+ 04-08 ML6.15（非錨點，2026-08-20 加入；約 24.7N,123.1E，東北方遠海、靠近琉球島弧，方位由座標推得，沒有確認過的 CWA 地名） |
+| G12 | 2025-05-26 ~ 2025-09-18 | 2025-06-11 ML6.42 花蓮外海（錨點，2026-08-20 加入，取代 2025-08-27 成為窗口內規模最大的事件）+ 08-27 ML6.05 宜蘭外海 |
+| G13 | 2026-01-28 ~ 2026-05-23 | 2026-05-01 M6.1 宜蘭東北外海 |
+| G14 | 2009-04-12 ~ 2010-03-26 | 2009-07-14 ML6.0（CWA；USGS Mwc6.3）+ 10-04 ML6.09（CWA；USGS Mww6.1）花蓮外海 + 11-05 ML6.15（非錨點，2026-08-20 加入；南投鹿谷，內陸，2026-09-14 經網路查證）+ 12-19 ML6.9（錨點）花蓮外海 + 2010-03-04 ML6.4 高雄甲仙（內陸）——G14 有**兩起**內陸事件，見下方說明 |
+| G15 | 2013-03-01 ~ 2013-06-24 | 2013-03-27 ML6.24（非錨點，2026-08-20 加入；23.9022N,121.0527E，方位由座標推得，沒有確認過的 CWA 地名）+ 06-02 ML6.48（錨點）南投埔里／魚池 |
+| G16 | 2013-07-30 ~ 2013-11-22 | 2013-10-31 ML6.42（CWA，解決了先前 ML6.3 或 6.4 的疑義）花蓮西南西 |
+| G17 | 2014-09-09 ~ 2015-04-14 | 2014-12-11 ML6.7（CWA，2026-08-20 從過時的 USGS 替代值 Mww6.1 更正，錨點）宜蘭外海 + 2015-02-14 ML6.28 台東外海 + 03-23 ML6.19（非錨點，2026-08-20 加入；約 23.7N,121.7E，花蓮外海，方位由座標推得，沒有確認過的 CWA 地名） |
+| G18 | 2015-11-05 ~ 2016-06-22 | 2016-02-06 ML6.6 高雄美濃 + 2016-05-31 ML6.91（CWA，2026-08-20 從過時的 USGS 替代值 Mww6.4 更正，錨點）宜蘭外海 |
+| G19 | 2024-05-15 ~ 2024-09-07 | 2024-08-16 ML6.37 花蓮南南東 |
+| G20 | 2025-09-22 ~ 2026-01-18 | 2025-12-24 ML6.1 台東卑南 + 2025-12-27 M7.0（CWA；USGS Mww6.6）宜蘭東南東外海 |
+| G21 | 2010-08-20 ~ 2010-12-13 | 2010-11-21 ML6.14（約 23.9N,121.7E，花蓮外海，方位由座標推得，沒有確認過的 CWA 地名） |
+| G22 | 2012-03-09 ~ 2012-07-02 | 2012-06-10 ML6.62（約 24.5N,122.3E，台灣東北方遠海，方位由座標推得，沒有確認過的 CWA 地名） |
+| G23（G23、G24 兩組） | 2020-03-13 ~ 2020-08-17 | G23：2020-07-26 ML6.24（錨點），台灣東北外海，方位由座標推得，沒有確認過的 CWA 地名；G24：2020-06-14 ML6.09（2026-09-22 拆分後成為自己那組的錨點），同一區域，方位由座標推得，沒有確認過的 CWA 地名 |
 
-**Inland, non-subduction-zone events**: G11 (Chiayi Dapu, 2025), G14's 2009-11-05 (Nantou Lugu, added/web-verified 2026-08-20/21) and 2010-03-04 (Jiaxian) events, and G18's 2016-02-06 Meinong event are inland collision-zone earthquakes — 4 events across 3 groups (G11, G14, G18); the other 21 groups cluster around the Yilan-Hualien offshore subduction/plate-boundary zone (this now includes G21–G24, whose anchors are all offshore NE Taiwan, not inland). Statistically these may need separate/stratified treatment. Note G14 mixes **two** inland events (Nantou Lugu, Jiaxian) into an otherwise offshore-Hualien group purely because their GDMS fetch windows overlap on the calendar — see `scripts/events.py`'s notes on those two events for details.
+**內陸、非隱沒帶事件**：G11（嘉義大埔，2025）、G14 的 2009-11-05（南投鹿谷，2026-08-20/21 加入並經網路查證）和 2010-03-04（甲仙）事件，以及 G18 的 2016-02-06 美濃事件，是內陸碰撞帶地震——共 4 起、分布在 3 組（G11、G14、G18）；其餘 21 組集中在宜蘭–花蓮外海的隱沒帶／板塊邊界（現在也包括 G21–G24，它們的錨點都在台灣東北外海，不在內陸）。統計上這些可能需要分開或分層處理。注意 G14 在一個原本是花蓮外海的組別裡混了**兩起**內陸事件（鹿谷、甲仙），純粹是因為它們的 GDMS 下載窗口在日曆上重疊——細節見 `scripts/events.py` 中這兩個事件的 note。
 
-### Seismometer/accelerometer data — not geomagnetic, don't confuse with `Gx`
+### 地震儀／加速度儀資料——不是地磁資料，別和 `Gx` 搞混
 
-`seismometer/` (moved here from the parent directory 2026-09-14, alongside `Gx`) holds 29 `GXX_MMDD` folders (e.g. `G10_0403`, `G9_0918`), each containing both its SAC PoleZero instrument-response files *and* its matching `GXX_MMDD_w.mseed` miniSEED waveform file together. **These are a different data type from everything else on this page**: instrument-response files + waveforms from nearby/co-located *seismometers/accelerometers* (not the CWA geomagnetic network), fetched manually to cross-check whether coseismic geomagnetic anomalies are real field changes or shaking-induced instrument noise. See "Seismometer comparison data" further below for the full data-quirks writeup. None of the "Data format"/"Station codes" sections below apply to these folders — they're not IAGA-2002 files at all.
+`seismometer/`（2026-09-14 和 `Gx` 一起從上層目錄搬過來）有 29 個 `GXX_MMDD` 資料夾（例如 `G10_0403`、`G9_0918`），每個同時放著 SAC PoleZero 儀器響應檔*和*對應的 `GXX_MMDD_w.mseed` miniSEED 波形檔。**這和本頁其他資料是不同的資料型態**：是附近或同址*地震儀／加速度儀*（不是 CWA 地磁網）的儀器響應檔和波形，手動下載來交叉比對同震地磁異常究竟是真實磁場變化，還是震動造成的儀器雜訊。完整的資料怪癖說明見下方「地震儀比對資料」。下面「資料格式」「測站代碼」兩節都不適用於這些資料夾——它們根本不是 IAGA-2002 檔案。
 
-### Data format
+### 資料格式
 
-Each `.sec` file is an **IAGA-2002** format ASCII text file (CRLF line endings) containing one calendar day of 1-second geomagnetic field measurements from a single station.
+每個 `.sec` 檔都是 **IAGA-2002** 格式的 ASCII 文字檔（CRLF 換行），內容是單一測站一個日曆天的 1 秒地磁場量測。
 
-- **Header** (12 fixed lines, pipe-terminated): source (Taiwan CWA), station name, geodetic lat/lon, elevation, reported/sensor-orientation channels (`XYZF`), sampling rate (1 second), data type (`Definitive`).
-- **Column header**: `DATE TIME DOY <STA>X <STA>Y <STA>Z <STA>F`
-- **Data rows**: one per second, 86400 per file (86413 lines including header), e.g.:
+- **檔頭**（固定 12 行，以 `|` 結尾）：來源（Taiwan CWA）、測站名稱、大地經緯度、高程、回報／感測器方位通道（`XYZF`）、取樣率（1 秒）、資料類型（`Definitive`）。
+- **欄位標題**：`DATE TIME DOY <STA>X <STA>Y <STA>Z <STA>F`
+- **資料列**：每秒一列，每檔 86400 列（含檔頭共 86413 行），例如：
   ```
   2024-01-01 00:00:00.000 001     36390.46  -3023.81  26379.67  88888.00
   ```
-  X/Y/Z are the magnetic field components in nT. For all stations except `ttn`, F is a placeholder (`88888.00`, IAGA-2002's "not reported" value) — real data is in X/Y/Z. **`ttn` (Beinan) is scalar-only**: F holds the real reading, X/Y/Z are always the placeholder. `99999.00` is a distinct sentinel meaning genuine data outage (as opposed to `88888.00`'s "channel not reported"). See `scripts/parser.py` and `common.py` for the reference implementation of this convention.
+  X/Y/Z 是磁場分量，單位 nT。除了 `ttn` 以外的所有測站，F 都是佔位值（`88888.00`，IAGA-2002 的「未回報」值）——真正的資料在 X/Y/Z。**`ttn`（卑南）只有純量**：F 是真實讀值，X/Y/Z 永遠是佔位值。`99999.00` 是另一個哨兵值，代表真的資料中斷（和 `88888.00` 的「通道未回報」不同）。這個慣例的參考實作見 `scripts/parser.py` 和 `common.py`。
 
-File naming: `<station><YYYYMMDD>dsec.sec`, e.g. `cnu20240101dsec.sec` = Chinan station, 2024-01-01. `:Zone.Identifier` sidecars are Windows browser download markers with no data value — ignore them when iterating over `.sec` files (glob `*.sec`, not all files).
+檔名規則：`<station><YYYYMMDD>dsec.sec`，例如 `cnu20240101dsec.sec` = Chinan 站，2024-01-01。`:Zone.Identifier` 附屬檔是 Windows 瀏覽器的下載標記，沒有資料價值——走訪 `.sec` 檔時忽略它們（glob 用 `*.sec`，不要抓全部檔案）。
 
-### Station codes
+### 測站代碼
 
-The network's station codes changed over the years (older groups use retired codes; from ~G10 onward the current set is used):
+觀測網的測站代碼這些年改過（較早的組別用已停用的代碼；大約從 G10 起用的是現行代碼）：
 
-| Code | Station   | Lat    | Lon     | Notes |
+| 代碼 | 測站 | 緯度 | 經度 | 備註 |
 |------|-----------|--------|---------|---|
-| cnu  | Chinan    | 23.957 | 120.928 | first appears G10; replaces retired code `sme` in the 13-station slot count (`sme` present G2_G3–G9 and, chronologically earlier, G23/G24; `cnu` present from G10 on, never overlapping). Also present G19–G20 |
-| csg  | Chihshang | 23.111 | 121.226 | present in every group, G1–G13 and G17–G20; **absent from G14–G16, G21, G22** (2009–2013-era data, before this station slot's installation) — the slot appears to have been installed sometime between G16's end (2013-11) and G17's start (2014-09). Present in **G23/G24** (2020 data, chronologically after installation despite the high group numbers) |
-| hcn  | Hengchun  | 21.940 | 120.814 | present in every group, G1–G24 |
-| kma  | Kinmen    | 24.443 | 118.353 | replaces `kmn` — contiguous transition inside G4's window (`kmn` last file 2020-11-22, `kma` first file 2020-12-11). Also present G19–G20 |
-| lnu  | Lanyu     | 22.037 | 121.558 | first appears G4 (2020-11-01) as a new station slot; not a confirmed rename of any earlier code (retired code `hln` stopped ~19 months earlier, in G2_G3). Also present G19–G20 |
-| lyn  | Liyutan   | 24.346 | 120.780 | present in every group, G1–G24 |
-| mtu  | Matsu     | 26.169 | 119.923 | first appears G4. Also present G19–G20 |
-| ncg  | Neicheng  | 24.718 | 121.683 | present in every group, G1–G20 (partial in G1–G4 windows, see per-group notes) and G21–G22; **absent from G23/G24** (which have only an 8-station pool, see `G23/NOTES.md`) |
-| pta  | Majja     | 22.703 | 120.653 | scalar-only (F channel), retired before G1–G13/G19–G23's windows; appears in **G14, G21, and G22** (2009–2012-era data) — a historical station slot not documented anywhere in G1–G13, first discovered when G14 extended the dataset back to 2009, later also confirmed present in G21/G22 (added 2026-08-20). Absent from G15–G18 and G23/G24 |
-| ttn  | Beinan    | 22.818 | 121.080 | scalar-only (F channel); present G10, G14–G18, G19 (partial, through 2024-07-22 only — see gap note below), and **G21–G24** (full coverage, G23/G24 sharing the same raw files); absent G12–G13 and G20 (post-2024-12 permanent gap) |
-| twu  | Wanqiu    | 23.185 | 120.529 | present in every group, G1–G24 |
-| xcg  | Xincheng  | 24.038 | 121.609 | first appears G4 (2020-10-09) as a new station slot, not a rename — coexists with `sme` through G5–G9. Also present G19–G20 |
-| yhg  | Yeheng    | 24.670 | 121.376 | present in every group, G1–G24 — **not** a rename of `yli`/`msi` (those coexisted with `yhg` in G1, and again in G14–G18's 2009–2016 data) |
-| zbn  | Zhiben    | 22.739 | 121.064 | first appears G4. Also present G19–G20 |
+| cnu  | Chinan | 23.957 | 120.928 | 從 G10 開始出現；在 13 站名額中取代已停用的 `sme`（`sme` 出現在 G2_G3–G9，以及時間上更早的 G23/G24；`cnu` 從 G10 起出現，兩者從不重疊）。G19–G20 也有 |
+| csg  | Chihshang | 23.111 | 121.226 | G1–G13 和 G17–G20 每組都有；**G14–G16、G21、G22 沒有**（2009–2013 年代的資料，該站位尚未設置）——這個站位應是在 G16 結束（2013-11）到 G17 開始（2014-09）之間設置的。**G23/G24** 有（2020 資料，雖然組號大，時間上在設置之後） |
+| hcn  | Hengchun | 21.940 | 120.814 | G1–G24 每組都有 |
+| kma  | Kinmen | 24.443 | 118.353 | 取代 `kmn`——在 G4 窗口內連續交接（`kmn` 最後一檔 2020-11-22，`kma` 第一檔 2020-12-11）。G19–G20 也有 |
+| lnu  | Lanyu | 22.037 | 121.558 | 從 G4（2020-11-01）開始出現，是新的站位；不是任何舊代碼確認過的改名（已停用的 `hln` 早約 19 個月就停了，在 G2_G3）。G19–G20 也有 |
+| lyn  | Liyutan | 24.346 | 120.780 | G1–G24 每組都有 |
+| mtu  | Matsu | 26.169 | 119.923 | 從 G4 開始出現。G19–G20 也有 |
+| ncg  | Neicheng | 24.718 | 121.683 | G1–G20 每組都有（G1–G4 窗口內只有部分，見各組筆記），G21–G22 也有；**G23/G24 沒有**（它們只有 8 站的測站池，見 `G23/NOTES.md`） |
+| pta  | Majja | 22.703 | 120.653 | 只有純量（F 通道），在 G1–G13/G19–G23 的窗口之前就停用了；出現在 **G14、G21、G22**（2009–2012 年代的資料）——是 G1–G13 都沒記錄過的歷史站位，G14 把資料延伸到 2009 時才第一次發現，後來也確認 G21/G22（2026-08-20 加入）有。G15–G18 和 G23/G24 沒有 |
+| ttn  | Beinan | 22.818 | 121.080 | 只有純量（F 通道）；出現在 G10、G14–G18、G19（部分，只到 2024-07-22——見下方缺口說明）以及 **G21–G24**（完整涵蓋，G23/G24 共用同一批原始檔）；G12–G13 和 G20 沒有（2024-12 之後的永久缺口） |
+| twu  | Wanqiu | 23.185 | 120.529 | G1–G24 每組都有 |
+| xcg  | Xincheng | 24.038 | 121.609 | 從 G4（2020-10-09）開始出現，是新站位、不是改名——在 G5–G9 和 `sme` 並存。G19–G20 也有 |
+| yhg  | Yeheng | 24.670 | 121.376 | G1–G24 每組都有——**不是** `yli`/`msi` 的改名（它們在 G1 和 `yhg` 並存，在 G14–G18 的 2009–2016 資料中又再次並存） |
+| zbn  | Zhiben | 22.739 | 121.064 | 從 G4 開始出現。G19–G20 也有 |
 
-Retired codes seen only in early-network-era data and never in the modern (G10+ vintage) network: `hln`, `kmn`, `msi`, `pta`, `slg`, `sme`, `yli`. This is a **chronological**, not group-number, distinction — the newly-added G14–G18 and G21–G23 carry group numbers overlapping or higher than G10–G13/G19–G20 but their raw data is chronologically older, so they legitimately contain these retired codes too (`hln`/`kmn`/`msi`/`slg`/`yli` all appear across G14–G18; `pta` in G14, G21, G22; `kmn`/`sme` also appear in **G23/G24**, whose 2020-03~08 data predates that year's Nov–Dec `kmn→kma`/`sme→cnu` transition inside G4's window — G23/G24 are "modern-era" chronologically (2020) but still pre-transition, distinct from G14–G18's genuinely early 2009–2016 vintage). Of these, only `kmn→kma` and `sme→cnu` are well-evidenced 1:1 transitions (contiguous or exact slot replacement); `hln`, `msi`, `pta`, `slg`, `yli` retire without a confirmed successor code in this dataset — don't assume they map onto `lnu`/`xcg`/`yhg`. Uneven per-station file counts within a group's date range (e.g. in G1–G4, G14–G18) generally reflect this real historical station churn, not merge or download damage.
+只出現在早期觀測網資料、從未出現在現代（G10 以後那一代）觀測網的停用代碼：`hln`、`kmn`、`msi`、`pta`、`slg`、`sme`、`yli`。這是依**時間先後**、不是依組號的區分——新加入的 G14–G18 和 G21–G23 組號和 G10–G13/G19–G20 重疊甚至更大，但原始資料在時間上更早，所以它們合理地也含有這些停用代碼（`hln`/`kmn`/`msi`/`slg`/`yli` 都出現在 G14–G18；`pta` 在 G14、G21、G22；`kmn`/`sme` 也出現在 **G23/G24**，它們 2020-03~08 的資料早於當年 11–12 月在 G4 窗口內發生的 `kmn→kma`/`sme→cnu` 交接——G23/G24 在時間上屬於「現代」（2020），但仍在交接之前，和 G14–G18 真正早期的 2009–2016 資料不同）。其中只有 `kmn→kma` 和 `sme→cnu` 是證據充分的一對一交接（連續或完全對應的站位替換）；`hln`、`msi`、`pta`、`slg`、`yli` 停用時在這份資料中都沒有確認過的後繼代碼——不要假設它們對應到 `lnu`/`xcg`/`yhg`。組內各測站在日期範圍中檔案數不一致（例如 G1–G4、G14–G18），一般反映的是真實的歷史測站更替，不是合併或下載損壞。
 
-### Known data issue: ttn (Beinan) gap from late 2024 onward
+### 已知資料問題：ttn（卑南）從 2024 年底起中斷
 
-- **G10** (2024-01-01~06-01): `ttn` present, full coverage (153/153 files).
-- **G11** (2024-10-20~2025-02-12): `ttn` present only through **2024-12-18** (60/116 files) — every other station in the group has full coverage through 2025-02-12, and file mtimes show all stations were fetched in the same batch, so this isn't a slow/retried fetch, `ttn` data simply stops there.
-- **G12** and **G13** (2025-05-26 onward): `ttn` is **absent entirely** (12 stations instead of 13).
+- **G10**（2024-01-01~06-01）：有 `ttn`，完整涵蓋（153/153 檔）。
+- **G11**（2024-10-20~2025-02-12）：`ttn` 只到 **2024-12-18**（60/116 檔）——同組其他測站都完整涵蓋到 2025-02-12，而且檔案 mtime 顯示所有測站是同一批下載的，所以這不是下載慢或重試的問題，`ttn` 的資料就是停在那裡。
+- **G12** 和 **G13**（2025-05-26 之後）：**完全沒有** `ttn`（12 站而不是 13 站）。
 
-Working hypothesis: the `ttn` station went offline/was decommissioned around **2024-12-19**, rather than this being a fetch-script bug — recommend confirming against the CWA GDMS portal (`gdmsn.cwb.gov.tw`, see `docs/13_groups_fetch_ranges.md`) before relying on this in the cross-group statistical analysis.
+目前的推測：`ttn` 站大約在 **2024-12-19** 離線／撤站，而不是下載腳本的 bug——在跨組統計分析中依賴這點之前，建議先到 CWA GDMS 入口網站（`gdmsn.cwb.gov.tw`，見 `docs/13_groups_fetch_ranges.md`）確認。
 
-`ttn` is present with full coverage in the newly-added historical groups **G14** (2009–2010) through **G18** (2015–2016) and, consistent with the same permanent gap, **absent from G20** (2025-09~2026-01). **G19** (2024-05-15~2024-09-07) is a separate case: `ttn` stops after **2024-07-22** (69/116 files), leaving it unavailable for G19's 2024-08-16 anchor event and its ~47-day aftermath. This is a *distinct, temporary* outage, not an early start of the permanent one — G11's data shows `ttn` back online 2024-10-20 through 2024-12-18, i.e. after G19's window and before the permanent gap. See `G19/NOTES.md` for details.
+`ttn` 在新加入的歷史組別 **G14**（2009–2010）到 **G18**（2015–2016）都完整涵蓋，而且和同一個永久缺口一致，**G20**（2025-09~2026-01）沒有。**G19**（2024-05-15~2024-09-07）是另一回事：`ttn` 在 **2024-07-22** 之後就停了（69/116 檔），所以 G19 的 2024-08-16 錨點事件和之後約 47 天都沒有它。這是一次*獨立、暫時*的中斷，不是永久中斷提早開始——G11 的資料顯示 `ttn` 在 2024-10-20 到 2024-12-18 又恢復上線，也就是 G19 窗口之後、永久缺口之前。細節見 `G19/NOTES.md`。
 
-### Known data issue: G12 has only 16 days of data before its anchor
+### 已知資料問題：G12 在錨點前只有 16 天資料
 
-G12's folder starts 2025-05-26 (fetched ~93 days before the old 2025-08-27 anchor); the anchor moved to 2025-06-11 on 2026-08-20. The 28-day trailing baseline has < 5 clean days just before the anchor, so those days' H/Z index is NaN and verify's `baseline_window_excludes_storms` fails for G12. Accepted as a known failure (2026-09-28) rather than fixed -- it would need data from ~2025-04 onward. See `G12/NOTES.md`.
+G12 的資料夾從 2025-05-26 開始（是以舊錨點 2025-08-27 往前約 93 天下載的）；2026-08-20 錨點改成 2025-06-11。28 天的滑動基準期在錨點前不到 5 個乾淨日，所以那幾天的 H/Z 指標是 NaN，verify 的 `baseline_window_excludes_storms` 對 G12 會失敗。2026-09-28 決定接受這是已知失敗而不修——要修得補 2025-04 起的資料。見 `G12/NOTES.md`。
 
-### Known data issue: G14–G18 predate the vector-station network
+### 已知資料問題：G14–G18 早於向量測站網
 
-Empirically checking each new group's station pool (`common.py`'s XYZ/F pool discovery) found **G14, G15, G16, G17, and G18 all have zero usable vector (X/Y/Z) stations** — every station in these groups' `.sec` files reports only the scalar `F` channel as real data (`Reported`/`Sensor Orientation` header fields say `F`, not `XYZF`), the same situation as `G1`/`G2_G3`. This isn't a parsing bug: it reflects that Taiwan's CWA geomagnetic network was largely proton-magnetometer-based (scalar-only) before a vector-magnetometer upgrade that appears to have been substantially complete by the time of **G19** (2024) and **G20** (2025-2026), both of which have full 12-13-station vector pools like G4 onward. Concretely:
+實際檢查每個新組別的測站池（`common.py` 的 XYZ/F 測站池探查），發現 **G14、G15、G16、G17、G18 都沒有任何可用的向量（X/Y/Z）測站**——這些組 `.sec` 檔裡的每個測站都只有純量 `F` 通道是真實資料（檔頭的 `Reported`/`Sensor Orientation` 欄位寫的是 `F`，不是 `XYZF`），和 `G1`/`G2_G3` 的情況一樣。這不是解析 bug：它反映台灣 CWA 地磁網早期主要用質子磁力儀（只有純量），之後才升級成向量磁力儀，而這次升級到 **G19**（2024）和 **G20**（2025-2026）時看來已大致完成，兩者都和 G4 之後一樣有完整的 12–13 站向量測站池。具體來說：
 
-- **G14–G18** (2009–2016 data): scalar-only, `F`-method analysis only (`ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped — see `common.py`'s `MIN_STATIONS_FOR_METHOD` gating).
-- **G19–G20** (2024-2025 data): full vector pools, same analysis methods available as G4–G13.
+- **G14–G18**（2009–2016 資料）：只有純量，只能跑 `F` 方法（`ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法會跳過——見 `common.py` 的 `MIN_STATIONS_FOR_METHOD` 門檻）。
+- **G19–G20**（2024-2025 資料）：完整向量測站池，可用方法和 G4–G13 相同。
 
-This means the dataset's "vector-sufficient" tier (usable for the professor-suggested ULF/ Pc3-Pc4 polarization method) is **G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G19, G20, G23, G24** (14 groups; G6/G7/G8 counted as one until the 2026-09-20 split, G23/G24 counted as one until the 2026-09-22 split) — see `scripts/*.py`'s `ULF_GROUPS` tuple (duplicated across 5 files; keep them in sync if this set changes again). `G23`/`G24` (2020 data) joined this tier 2026-08-20 despite their high group numbers, since the raw data is chronologically modern (post-vector-upgrade) even though it was fetched after G14–G20; `G21`/`G22` (2010/2012 data, also added 2026-08-20) remain scalar-only like G14–G18.
+也就是說，這份資料中「向量站足夠」的那一層（可以跑教授建議的 ULF／Pc3-Pc4 極化方法）是 **G4、G5、G6、G7、G8、G9、G10、G11、G12、G13、G19、G20、G23、G24**（14 組；G6/G7/G8 在 2026-09-20 拆分前算一組，G23/G24 在 2026-09-22 拆分前算一組）——見 `scripts/*.py` 的 `ULF_GROUPS` tuple（在 5 個檔案中各有一份；這個集合再改時要保持同步）。`G23`/`G24`（2020 資料）雖然組號大，2026-08-20 仍加入這一層，因為原始資料在時間上是現代的（向量升級之後），只是比 G14–G20 晚下載；`G21`/`G22`（2010/2012 資料，也是 2026-08-20 加入）則和 G14–G18 一樣只有純量。
 
-### Working with this data
+### 處理這份資料的注意事項
 
-- Files are large (~6 MB/day/station); when writing a parser, stream/parse a file at a time rather than loading a whole group into memory.
-- Skip the 12-line header (or detect the `DATE       TIME` column line) before parsing data rows.
-- No per-file checksums or manifest exist; verify row counts (should be 86400 data rows/file) as a basic integrity check.
-- `build_daily_features.py` ingests via a **non-recursive** glob (`common.list_day_refs`, `*dsec.sec*` matching both plain `.sec` and gzip-compressed `.sec.gz`) against a single flat directory — this is why all `Gx` groups are kept flat rather than nested.
+- 檔案很大（約 6 MB／天／站）；寫解析器時一次串流解析一個檔，不要把整組讀進記憶體。
+- 解析資料列前先跳過 12 行檔頭（或偵測 `DATE       TIME` 那一行欄位標題）。
+- 沒有逐檔 checksum 或清單；基本的完整性檢查是確認列數（每檔應有 86400 列資料）。
+- `build_daily_features.py` 用**不遞迴**的 glob（`common.list_day_refs`，`*dsec.sec*` 同時匹配一般 `.sec` 和 gzip 壓縮的 `.sec.gz`）讀單一扁平目錄——這就是所有 `Gx` 組都保持扁平、不做巢狀的原因。
 
-### `.tgz` batch downloads (GDMS batch-download feature)
+### `.tgz` 批次下載（GDMS 批次下載功能）
 
-A `Gx` folder can also hold one or more `.tgz` archives downloaded from GDMS's batch-download feature, directly alongside (or instead of) loose `.sec`/`.sec.gz` files — the pipeline reads `.sec` members straight out of a `.tgz` via Python's `tarfile` module, no manual `tar xzf` extraction needed. Relevant API: `common.py`'s `list_day_refs`/`resolve_day_ref`, returning `parser.DayFileRef` — a small reference that works uniformly whether the underlying data is a loose file or a `.tgz` member.
+`Gx` 資料夾也可以放一個或多個從 GDMS 批次下載功能下載的 `.tgz` 壓縮檔，直接和（或取代）零散的 `.sec`/`.sec.gz` 檔放在一起——流程會用 Python 的 `tarfile` 模組直接從 `.tgz` 讀出 `.sec` 成員，不需要手動 `tar xzf` 解壓。相關 API：`common.py` 的 `list_day_refs`/`resolve_day_ref`，回傳 `parser.DayFileRef`——一個小型參照，不管底層資料是零散檔案還是 `.tgz` 成員，用法都一樣。
 
-- **A `Gx` folder can have multiple `.tgz` archives.** GDMS batch exports appear to be split into several `.tgz` per request, and **archive filenames do not reliably reflect their date-range contents** (confirmed empirically: an archive named `20240403.tgz` actually contained files from 2024-05-08 through 2024-06-01). Never infer date coverage from a `.tgz`'s filename — the pipeline always enumerates the actual members inside.
-- **Precedence when the same station+date exists in more than one source**: loose `.sec`/`.sec.gz` always wins over `.tgz` content (this is the expected steady state, not warned about); between multiple `.tgz` archives, the first one encountered in filename-sorted order wins, and `list_day_refs` prints a warning to stderr so overlapping batch downloads are noticeable.
-- **`<name>.tgz.idx.json` sidecars**: the first `list_day_refs`/`resolve_day_ref` call against a `.tgz` builds and caches a member index next to the archive (gzip has no random access, so a full index scan of a large archive can take tens of seconds — cached indefinitely, keyed on the archive's size+mtime). Safe to delete to force a rescan, e.g. after replacing a `.tgz` with a different file of the same name.
-- Because `.tgz` reads reopen/scan the whole archive per lookup unless done sequentially, `build_daily_features.py`'s batch pipeline opens each `.tgz` exactly once and extracts all wanted members in one sequential pass in the main process, handing already-extracted text to worker processes — not one `tarfile.open()` per file per worker, which measured ~600x slower on a real GDMS archive.
+- **一個 `Gx` 資料夾可以有多個 `.tgz` 壓縮檔。** GDMS 批次匯出似乎每次請求會拆成好幾個 `.tgz`，而且**壓縮檔檔名不能可靠地反映裡面的日期範圍**（實測確認：一個叫 `20240403.tgz` 的壓縮檔，實際內容是 2024-05-08 到 2024-06-01 的檔案）。絕不要從 `.tgz` 檔名推斷日期涵蓋範圍——流程永遠會列舉裡面實際的成員。
+- **同一測站＋日期出現在多個來源時的優先順序**：零散的 `.sec`/`.sec.gz` 永遠優先於 `.tgz` 內容（這是預期的常態，不會警告）；多個 `.tgz` 之間，依檔名排序先遇到的優先，`list_day_refs` 會印警告到 stderr，讓重疊的批次下載被注意到。
+- **`<name>.tgz.idx.json` 附屬檔**：第一次對某個 `.tgz` 呼叫 `list_day_refs`/`resolve_day_ref` 時，會建立成員索引並快取在壓縮檔旁邊（gzip 無法隨機存取，大壓縮檔完整掃描一次可能要幾十秒——快取永久有效，以壓縮檔的大小＋mtime 為鍵）。可以安全刪除以強制重新掃描，例如用同名但內容不同的檔案替換了某個 `.tgz` 之後。
+- 因為 `.tgz` 讀取除非依序進行，否則每次查詢都要重開／重掃整個壓縮檔，所以 `build_daily_features.py` 的批次流程在主行程中每個 `.tgz` 只開一次、依序一次取出所有需要的成員，再把已取出的文字交給工作行程——而不是每個工作行程每個檔案各 `tarfile.open()` 一次，那樣在真實的 GDMS 壓縮檔上實測慢了約 600 倍。
 
-## Environment setup
+## 環境設定
 
 ```bash
 cd geomag_precursor
@@ -151,70 +151,70 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-`requirements.txt` (added 2026-08-13) is this project's first formal dependency record — before that, packages were installed ad hoc into `.venv` with nothing tracking what/why. `obspy` is the newest addition, added specifically for `seismometer_comparison.py` to read miniSEED waveforms and SAC PoleZero instrument-response files (see "Seismometer comparison data" below) — it's the project's first dependency that isn't numpy/pandas/scipy-adjacent. If you're running any script under `scripts/`, always invoke it via `.venv/bin/python3`, not a bare `python3`.
+`requirements.txt`（2026-08-13 加入）是這個專案第一份正式的相依套件紀錄——在那之前套件都是臨時裝進 `.venv`，沒有任何紀錄說明裝了什麼、為什麼裝。`obspy` 是最新加入的，專門給 `seismometer_comparison.py` 讀 miniSEED 波形和 SAC PoleZero 儀器響應檔（見下方「地震儀比對資料」）——它是專案第一個不屬於 numpy/pandas/scipy 一系的相依套件。執行 `scripts/` 底下任何腳本時，一律用 `.venv/bin/python3`，不要用裸的 `python3`。
 
-## Scripts pipeline (daily-scale, per group)
+## 腳本流程（日尺度，逐組）
 
-Orchestrated by `scripts/run_pipeline.sh --group <G1|...|G24> [--full-report]` (single group) / `scripts/run_all_groups.sh` (all 24 groups in 20 raw-data folders, steps 1–6 only):
+由 `scripts/run_pipeline.sh --group <G1|...|G24> [--full-report]`（單一組）／`scripts/run_all_groups.sh`（20 個原始資料夾中的全部 24 組，只跑步驟 1–6）統籌：
 
-1. `build_daily_features.py` — parses raw `.sec`/`.sec.gz`/`.tgz` day files → `data/interim/<group>/daily_features.csv` + `minute_series_<station>.parquet`.
-2. `timezone_check.py` — confirms the `.sec` TIME column's timezone via diurnal-signal inference (dataset-wide constant `common.DATA_TIMEZONE = "UTC"`, not re-verified per group once established).
-3. `fetch_space_weather.py` — Dst/Kp storm-day flags (cached-skip only if `storm_days.csv` exists AND `storm_days_summary.json` says `confidence: high`; a partial/failed earlier fetch is retried; a missing Dst month is now recorded in `dst_missing_months` and downgrades the confidence to `medium`).
-4. `compute_indices.py` — daily H/Z/F near-far regression anomaly index + candidate-date flagging (MAD z-score, threshold 2.5).
-5. `ulf_analysis.py` — Pc3/Pc4 polarization (XYZ-capable groups only). Since 2026-09-28 the near/far index normalizes each station's nightly Z/H by its own non-storm median before taking the pool median (the old raw-median version, kept as `*_raw`, shifted whenever a station joined or left the pool -- G11's zbn, Z/H 15–45, stopped 2024-12-23 and dropped the near index ~20× at the start of G11's pre-event window). `--from-daily` rebuilds only `ulf_near_far_index.csv` from the existing `ulf_daily.csv`; `--self-test` checks the dropout case. **Primary Pc3 rank test after the fix: p = 0.049** (was 0.016; one per family 0.048; without the discovery case G10 0.055; leave-one-out 0.020–0.103; placebo block just before each real window 0.96). G10's 2024-03-30 dip goes from z −4.64 to −3.29 and is no longer the series minimum (04-14, after the mainshock, is). SEA M≥5.5 day −4 no longer leaves the null band. See `docs/statistical_methods.md` "2026-09-28 修正".
-6. `verify_pipeline.py` — hard-gates everything downstream on all checks passing.
-7–8. (`--full-report` only, G10-specific narrative) `prepare_report_data.py` + `build_artifact.py` → `output/geomag_precursor_report_<group>.html` (i.e. `output/geomag_precursor_report_G10.html`).
+1. `build_daily_features.py` — 解析原始 `.sec`/`.sec.gz`/`.tgz` 日檔 → `data/interim/<group>/daily_features.csv` + `minute_series_<station>.parquet`。
+2. `timezone_check.py` — 用日變化訊號推斷，確認 `.sec` TIME 欄位的時區（全資料集共用常數 `common.DATA_TIMEZONE = "UTC"`，確立後不再逐組重驗）。
+3. `fetch_space_weather.py` — Dst/Kp 磁暴日旗標（只有在 `storm_days.csv` 存在**且** `storm_days_summary.json` 寫 `confidence: high` 時才跳過不抓；先前抓到一半或失敗的會重抓；缺少的 Dst 月份現在會記在 `dst_missing_months`，並把信心降為 `medium`）。
+4. `compute_indices.py` — 每日 H/Z/F 近站–遠站迴歸異常指標＋候選日標記（MAD z-score，門檻 2.5）。
+5. `ulf_analysis.py` — Pc3/Pc4 極化（只限可跑 XYZ 的組別）。2026-09-28 起，近站／遠站指標會先把每個測站的夜間 Z/H 除以它自己非磁暴日的中位數，再取測站池中位數（舊的原始中位數版本保留為 `*_raw`，每當有測站加入或離開測站池就會跳動——G11 的 zbn，Z/H 15–45，2024-12-23 停止，讓近站指標在 G11 震前窗口一開始就掉了約 20 倍）。`--from-daily` 只用現有的 `ulf_daily.csv` 重建 `ulf_near_far_index.csv`；`--self-test` 會檢查測站中斷的情況。**修正後的 Pc3 主要排名檢定：p = 0.049**（原本 0.016；每族一個 0.048；拿掉最早發現的 G10 為 0.055；留一法 0.020–0.103；緊接在每個真實窗口前的安慰劑區段 0.96）。G10 2024-03-30 的低谷從 z −4.64 變成 −3.29，不再是序列最小值（最小值變成主震後的 04-14）。SEA M≥5.5 第 −4 天不再超出虛無帶。見 `docs/statistical_methods.md`「2026-09-28 修正」。
+6. `verify_pipeline.py` — 所有檢查都通過才放行後續步驟（硬性關卡）。
+7–8. （只有 `--full-report`，G10 專用的敘述）`prepare_report_data.py` + `build_artifact.py` → `output/geomag_precursor_report_<group>.html`（即 `output/geomag_precursor_report_G10.html`）。
 
-Cross-group validation on top of that (`scripts/run_validation_pipeline.sh`, assumes steps 1–6 already ran for every `ULF_GROUPS` member): `fetch_earthquake_catalog.py` (×2 magnitude thresholds) → `surrogate_test.py --all` → `superposed_epoch_analysis.py` (×2) → `backtest_rule.py` (×2) → `prepare_validation_report_data.py` + `build_validation_report.py` → `output/geomag_precursor_validation_report.html`.
+在這之上的跨組驗證（`scripts/run_validation_pipeline.sh`，假設每個 `ULF_GROUPS` 成員都已跑完步驟 1–6）：`fetch_earthquake_catalog.py`（×2 個規模門檻）→ `surrogate_test.py --all` → `superposed_epoch_analysis.py`（×2）→ `backtest_rule.py`（×2）→ `prepare_validation_report_data.py` + `build_validation_report.py` → `output/geomag_precursor_validation_report.html`。
 
-**Interactive pipeline flowchart** (every step's summary, I/O, statistical method and math formula): `output/pipeline_flowchart.html`, built from the single content file `docs/flowchart/pipeline_flow.yaml`. After adding/renaming/moving anything under `scripts/`, run `.venv/bin/python3 docs/flowchart/check_flowchart.py` (verifies cited file:line/symbols, constants, and method IDs vs `docs/statistical_methods.md`), then `build_flowchart.py`. See `docs/flowchart/README.md`.
+**互動式流程圖**（每個步驟的摘要、輸入輸出、統計方法和數學公式）：`output/pipeline_flowchart.html`，由唯一的內容檔 `docs/flowchart/pipeline_flow.yaml` 建置。在 `scripts/` 底下新增／改名／搬動任何東西後，先跑 `.venv/bin/python3 docs/flowchart/check_flowchart.py`（檢查引用的檔案:行號／符號、常數，以及和 `docs/statistical_methods.md` 的方法 ID 是否對得上），再跑 `build_flowchart.py`。見 `docs/flowchart/README.md`。
 
-## Coseismic pipeline (second-scale, per event)
+## 同震流程（秒尺度，逐事件）
 
-Not wired into the shell orchestrators above — run directly:
+沒有接到上面的 shell 統籌腳本——直接執行：
 
-- `coseismic_step_analysis.py [--all]` — per-event (all 137, not just anchors) step/spike detector at the origin second, ±180s search window (`SCAN_HALF_SEC`, widened from ±120s 2026-08-16), null distribution from random reference times excluding every real event in that group. Output: `data/interim/coseismic_step_analysis/`.
-- `coseismic_stacking_analysis.py [--all]` — cross-event superposed-epoch stacking of the above statistics (bootstrap CI90 over events + null band over random per-event reference times, mirroring `superposed_epoch_analysis.py`'s day-scale design at 1-second resolution instead). Output: `data/interim/coseismic_stacking_analysis/`.
-- `seismometer_comparison.py [--all]` — compares the geomagnetic anomaly's timing against independent seismometer/accelerometer waveform data (see below) to help separate "instrument shaken by real ground motion" from "the magnetic field itself changed", using the same ±180s window (`SEARCH_HALF_SEC`) on its own independent computation. Output: `data/interim/seismometer_comparison/`. Since 2026-09-25 it also writes PGA (counts / PZ `SENSITIVITY`, max horizontal, own-event window only), a geomagnetic 1Hz noise ratio, a `geomag_dropout` flag, and `alignment_verdict_gated` (the verdict only where the event's own step30 p from `coseismic_step_analysis.py` is < 0.05 -- which is just 7 of 93 events -- G10 2024-04-03's xcg step30 p sits right on the boundary (0.044 with the per-key null streams of 2026-09-26; 0.0500/0.0505 in earlier runs whose shared stream reshuffled whenever any event changed) -- so the ungated verdicts are mostly timing noise).
-- `coseismic_dose_response.py [--all]` — the label-free replacement for reading the verdicts: Spearman of log PGA vs. geomagnetic anomaly size, p from within-group permutation. Result (2026-09-25, numbers updated 2026-09-28): the 1Hz noise ratio rises with PGA in every subset (all ρ=0.33 p=0.009; M≥6 ρ=0.50 p=0.016; seismic station ≤2 km ρ=0.89 p=0.010), and 6 of the 7 significant anomalies sit at PGA ≥100 gal -- consistent with the magnetometers being shaken -- but a genuine field change coupled to ground motion would also scale with PGA, so this test alone can't tell the two apart; only the co-located seismometer check (n=11) and the G10 waveform point to shaking specifically. 7/93 significant events is itself at chance level (4.7 expected at α=0.05, P(≥7) ≈ 0.2). Output: `data/interim/coseismic_dose_response/`.
-- `coseismic_onset_moveout.py [--all] [--min-mag 6] [--group ID]` — near- vs. far-station onset timing (added 2026-09-25), needs no seismometer data: for every event × every station (not just the nearest 2), the first second in −60..+180 s where the 1 Hz first difference exceeds 4σ (σ = MAD of −660..−60 s) in ≥3 of 5 s; each station's false-trigger rate and null onset distribution come from 200 random reference times in the same loaded data. External disturbances would start everywhere at once; shaking noise follows the seismic waves. **Result (2026-09-25, numbers updated 2026-09-28): the onsets follow the seismic waves** (shaking, or a field change carried by ground motion -- the test can't tell which). Since 2026-09-28 all stations of an event share the same random null reference times and the primary p is **event-level** (one shared reference time per event per simulation): the old per-trigger Poisson-binomial treated an event's stations as independent, but they fire together (null variance 1.4–1.7× the independent value; in the self-test's network-wide-disturbance H0 the old p is falsely significant 17.5 % of the time at 5 %, the event-level one 5.0 %). M≥6 (69 events): 59 stations in their arrival window [R/6 − 5, R/3.5 + 30] s vs. 15.4 expected at a random time (null SD 4.5, p<0.0001; clean stations 24 vs 1.45). The event-level count doesn't condition on triggering, so more triggering at the origin also raises it -- M<6 gets event-level p=0.02 while the timing-only test (Poisson-binomial with variance × dispersion ratio) is not significant (z=0.8, p=0.21; M≥6 z=7.8, clean 6.8). Timing-only numbers for M≥6: 59 of 120 onsets vs. 21.8 expected (clean stations 24/32 vs 6.5), pooled within-event Theil–Sen slope 0.22 s/km (CI90 0.12–0.31, p=0.0005); trigger rate falls from 92 % at <30 km to 9 % beyond 250 km. Median residual vs. S arrival is −0.8 s over the original 49 events (47/88 in window vs 16.1) but −12.6 s overall. **Prior-event shaking is not the cause** (sensitivity added 2026-09-28): events with another registered event ≤900 s before them (`PRIOR_EVENT_EXCLUSION_SEC`; G8 2022-03-23c 106 s, G10 2024-04-23b 356 s, G10 2024-04-03b 797 s, G11 2025-01-21b 539 s) have their baseline and search window inside that shaking, so `prior_event_shaking` flags them and `m6_no_prior_shaking`/`m5_no_prior_shaking` in `summary.json` repeat every statistic without them (main `m6`/`m5` unchanged, kept because the main test was fixed first) -- M≥6 gives 55 in window vs 14.3 at a random time (event-level p<0.0001; timing-only 55/112 vs 19.9), clean stations 24 vs 1.27, slope 0.20 s/km (CI90 0.10–0.28, p=0.001), and the S residual is still −13.5 s. The negative median comes from far and noisy stations instead: among M≥6 non-flagged onsets it is −0.5 s at R<150 km vs −33.9 s at R≥150 km, and +2.2 s for clean stations vs −37.1 s for the rest (clean = own null false-trigger rate < 5 %, 31 onsets) -- a noise trigger lands anywhere in −60..+180 s, which is early relative to a late far-field S arrival. Only registered events can be checked (M5 registered only from 2024-09, the GDMS json is M≥6 only), so smaller aftershocks, e.g. before G10 2024-04-03c (2 h after the M7.2), can't be ruled out. No clean station triggers network-wide before the origin. Against the co-located seismometer (stations with false rate <0.2, n=11) the geomagnetic onset is a median 0.6 s after the seismic onset. `xcg` triggers at ~80 % of random times, so its onsets carry almost no timing information. M<6 timing is not significant (25/95 vs 21.3). Output: `data/interim/coseismic_onset_moveout/` (`onsets.csv`, `moveout_per_event.csv`, `summary.json`, `travel_time.png`); `--group`/`--min-mag` runs go to a `subset_*` subfolder.
+- `coseismic_step_analysis.py [--all]` — 逐事件（全部 137 起，不只錨點）在發震秒偵測階躍／突波，搜尋窗口 ±180 秒（`SCAN_HALF_SEC`，2026-08-16 從 ±120 秒放寬），虛無分布來自隨機參考時間，排除該組所有真實事件。輸出：`data/interim/coseismic_step_analysis/`。
+- `coseismic_stacking_analysis.py [--all]` — 把上述統計量做跨事件的疊加時間（superposed-epoch）疊加（對事件做 bootstrap CI90，加上以每個事件隨機參考時間建立的虛無帶，仿照 `superposed_epoch_analysis.py` 日尺度的設計，只是改成 1 秒解析度）。輸出：`data/interim/coseismic_stacking_analysis/`。
+- `seismometer_comparison.py [--all]` — 把地磁異常的時間和獨立的地震儀／加速度儀波形資料（見下方）比對，幫忙區分「儀器被真實地動震到」和「磁場本身改變」，用同樣的 ±180 秒窗口（`SEARCH_HALF_SEC`），但是自己獨立計算。輸出：`data/interim/seismometer_comparison/`。2026-09-25 起它也會輸出 PGA（counts / PZ `SENSITIVITY`，取水平最大值，只看該事件自己的窗口）、地磁 1Hz 雜訊放大倍數、`geomag_dropout` 旗標，以及 `alignment_verdict_gated`（只有當該事件在 `coseismic_step_analysis.py` 的 step30 p < 0.05 時才給判定——這只有 93 起中的 7 起——G10 2024-04-03 的 xcg step30 p 剛好壓在邊界上（2026-09-26 改用逐鍵虛無亂數流後是 0.044；更早的版本是 0.0500/0.0505，那時共用亂數流，任何事件一改就會整個重洗）——所以未經門檻篩選的判定大多只是時間上的雜訊）。
+- `coseismic_dose_response.py [--all]` — 取代人工讀判定的無標籤方法：log PGA 對地磁異常大小的 Spearman 相關，p 值由組內置換得到。結果（2026-09-25，數字 2026-09-28 更新）：1Hz 雜訊放大倍數在每個子集中都隨 PGA 上升（全部 ρ=0.33 p=0.009；M≥6 ρ=0.50 p=0.016；地震站 ≤2 km ρ=0.89 p=0.010），7 個顯著異常中有 6 個落在 PGA ≥100 gal——和磁力儀被震動一致——但和地動耦合的真實磁場變化也會隨 PGA 增加，所以這個檢定本身分不出兩者；只有同址地震儀比對（n=11）和 G10 的波形明確指向震動。93 起中 7 起顯著本身就在機率水準（α=0.05 下預期 4.7，P(≥7) ≈ 0.2）。輸出：`data/interim/coseismic_dose_response/`。
+- `coseismic_onset_moveout.py [--all] [--min-mag 6] [--group ID]` — 近站 vs. 遠站的起始時間（2026-09-25 加入），不需要地震儀資料：對每個事件 × 每個測站（不只最近的 2 站），找 −60..+180 秒內第一個「5 秒中有 ≥3 秒的 1 Hz 一階差分超過 4σ」的秒（σ = −660..−60 秒的 MAD）；每個測站的誤觸發率和虛無起始時間分布，來自同一份已載入資料中的 200 個隨機參考時間。外部擾動會在各站同時開始；震動雜訊則跟著震波走。**結果（2026-09-25，數字 2026-09-28 更新）：起始時間跟著震波走**（是震動，或是由地動帶動的磁場變化——這個檢定分不出來）。2026-09-28 起，同一事件的所有測站共用同一組隨機虛無參考時間，主要 p 值改為**事件層級**（每次模擬每個事件共用一個參考時間）：舊的逐觸發 Poisson-二項檢定把同一事件的各站當成互相獨立，但它們其實會一起觸發（虛無變異數是獨立假設下的 1.4–1.7 倍；在自我測試的全網擾動 H0 下，舊 p 值在 5% 水準有 17.5% 的機率誤判顯著，事件層級的是 5.0%）。M≥6（69 起）：有 59 站落在到時窗 [R/6 − 5, R/3.5 + 30] 秒內，隨機時間的期望值是 15.4（虛無 SD 4.5，p<0.0001；乾淨測站 24 vs 1.45）。事件層級計數不以「有觸發」為條件，所以發震時觸發得越多也會讓它變大——M<6 的事件層級 p=0.02，而只看時間的檢定（Poisson-二項，變異數 × 離散比）不顯著（z=0.8，p=0.21；M≥6 z=7.8，乾淨測站 6.8）。M≥6 只看時間的數字：120 個起始時間中 59 個在窗內，期望 21.8（乾淨測站 24/32 vs 6.5），事件內合併的 Theil–Sen 斜率 0.22 s/km（CI90 0.12–0.31，p=0.0005）；觸發率從 <30 km 的 92% 降到 250 km 以外的 9%。相對 S 波到時的殘差中位數，在最初 49 起事件中是 −0.8 秒（88 個中 47 個在窗內 vs 16.1），但整體是 −12.6 秒。**前一個事件的震動不是原因**（2026-09-28 加入的敏感度分析）：在它之前 ≤900 秒內有另一個已登錄事件的事件（`PRIOR_EVENT_EXCLUSION_SEC`；G8 2022-03-23c 106 秒、G10 2024-04-23b 356 秒、G10 2024-04-03b 797 秒、G11 2025-01-21b 539 秒），它們的基準期和搜尋窗口都在那次震動裡，所以用 `prior_event_shaking` 標記，`summary.json` 的 `m6_no_prior_shaking`/`m5_no_prior_shaking` 會在排除它們後重算每個統計量（主要的 `m6`/`m5` 不變，保留是因為主要檢定先定下來）——M≥6 有 55 站在窗內，隨機時間期望 14.3（事件層級 p<0.0001；只看時間 55/112 vs 19.9），乾淨測站 24 vs 1.27，斜率 0.20 s/km（CI90 0.10–0.28，p=0.001），S 殘差仍是 −13.5 秒。負的中位數其實來自遠站和雜訊大的測站：M≥6 未標記的起始時間中，R<150 km 是 −0.5 秒，R≥150 km 是 −33.9 秒；乾淨測站 +2.2 秒，其他 −37.1 秒（乾淨 = 自己的虛無誤觸發率 < 5%，31 個起始時間）——雜訊觸發會落在 −60..+180 秒的任何地方，相對於遠場較晚的 S 波到時就顯得偏早。只能檢查已登錄的事件（M5 只從 2024-09 起有登錄，GDMS json 只有 M≥6），所以較小的餘震，例如 G10 2024-04-03c 之前的（M7.2 後 2 小時），無法排除。沒有任何乾淨測站在發震前全網觸發。和同址地震儀比較（誤觸發率 <0.2 的測站，n=11），地磁起始時間中位數比地震起始晚 0.6 秒。`xcg` 在約 80% 的隨機時間都會觸發，所以它的起始時間幾乎不帶時間資訊。M<6 的時間不顯著（95 個中 25 個 vs 21.3）。輸出：`data/interim/coseismic_onset_moveout/`（`onsets.csv`、`moveout_per_event.csv`、`summary.json`、`travel_time.png`）；`--group`/`--min-mag` 的執行結果放在 `subset_*` 子資料夾。
 
-Both `coseismic_step_analysis.py` and `seismometer_comparison.py` cap that ±180s window per-event (`_effective_half_sec`, a local copy in each script) at half the gap to the nearest *other* real event in the same group, since G10's 2024-04-23a/b are only 357s apart — without the cap, one event's search would reach into the other's real anomaly. Every other group's events are hours-to-years apart, so this only ever narrows that one pair (to ~178s). 2026-08-19 investigated widening the shared window further, to 300s/360s, specifically to check whether G20's 2025-12-24 `obs_lag=-178s` (2s from the 180s boundary) was itself a truncation artifact — it wasn't (unchanged at 300s), but the wider window changed several *other*, non-boundary-pinned events' reported peaks (a wider search finds a larger max-of-N by chance even under pure noise), so the widening was reverted; the per-event cap was kept as a genuine fix. See plan `artifact-wobbly-kettle.md` for the full investigation.
+`coseismic_step_analysis.py` 和 `seismometer_comparison.py` 都會逐事件限制 ±180 秒窗口（`_effective_half_sec`，兩支腳本各有一份本地副本），上限是到同組最近的*另一個*真實事件間隔的一半，因為 G10 的 2024-04-23a/b 只相隔 357 秒——不設上限的話，一個事件的搜尋範圍會伸進另一個事件的真實異常裡。其他組的事件都相隔數小時到數年，所以這只會讓那一對事件的窗口變窄（到約 178 秒）。2026-08-19 曾研究把共用窗口再放寬到 300/360 秒，專門檢查 G20 2025-12-24 的 `obs_lag=-178s`（距 180 秒邊界只有 2 秒）本身是不是截斷造成的假象——結果不是（放寬到 300 秒仍不變），但較寬的窗口改變了其他好幾個*沒有*卡在邊界的事件的峰值（搜尋範圍越寬，即使是純雜訊，N 個中的最大值也越可能偶然變大），所以放寬的改動撤回了；逐事件上限則當成真正的修正保留下來。完整調查見 plan `artifact-wobbly-kettle.md`。
 
-Geomagnetic storms are **flagged, not excluded** on this line (added 2026-09-24): `coseismic_step_analysis.py::_storm_status` looks up each event's UTC date in its group's `storm_days.csv` and writes `is_storm_day` / `is_storm_onset` (`None` if the event falls outside the fetched space-weather range) into the per-event JSON, `summary.csv`, and `all_events_run_summary.json` (which also gets a storm vs. quiet `storm_sensitivity` split). `coseismic_stacking_analysis.py` re-stacks with flagged events dropped (own rng, so main combos are unchanged) → `stack_storm_sensitivity.csv`. Why not exclude: the 1hr detrend + same-window null already absorb a storm-raised noise floor, and ~half of all events (70/137 storm-or-recovery, 43 onset as of 2026-09-27; 59/117 and 41 onset since the 2026-09-25 re-fetch -- G6/G7/G8's and G17's cached storm_days.csv had been built before their folders were extended, leaving G8 2022-05-09 and G17 2015-03-23 unflagged; `fetch_space_weather.py --check-cache` now also requires the cache to cover the folder's date range) fall on flagged days under the daily pipeline's definition. The remaining risk is a single SSC/substorm transient inside the ±180s window, which is what the flag lets you check. **Result (2026-09-24 run): storms dilute, they don't create.** Fraction of tests with p<0.05 is 6.7% on storm-or-recovery days vs 12.5% on quiet days (137 events, 2026-09-27; 5.3% vs 13.1% over the earlier 117) (12.2% before the re-fetch); dropping storm days *strengthens* the near-station H stack at lag +10s (137 events: step30 p 0.43→0.037, step90 0.74→0.013, spike 0.175→0.042, n 96→44; none of these 48 stacking p-values is multiplicity-corrected; before the 2026-09-26 correction of four minute-truncated origin times the peak sat at +25s) while far-station/F combos stay null — consistent with storm noise masking a shaking-timed signal, not faking one.
+這條線上的磁暴是**標記、不排除**（2026-09-24 加入）：`coseismic_step_analysis.py::_storm_status` 依各事件的 UTC 日期查該組的 `storm_days.csv`，把 `is_storm_day` / `is_storm_onset`（事件落在已抓取的太空天氣範圍之外時為 `None`）寫進逐事件 JSON、`summary.csv` 和 `all_events_run_summary.json`（後者還多一個磁暴 vs. 平靜的 `storm_sensitivity` 拆分）。`coseismic_stacking_analysis.py` 會在去掉被標記事件後重新疊加（用自己的 rng，所以主要組合不變）→ `stack_storm_sensitivity.csv`。為什麼不排除：1 小時去趨勢＋同窗口的虛無分布已經吸收了磁暴抬高的雜訊底，而且在日尺度流程的定義下，約一半的事件（截至 2026-09-27 為 137 起中 70 起是磁暴或恢復期、43 起是磁暴開始；2026-09-25 重抓後為 117 起中 59 起和 41 起——G6/G7/G8 和 G17 快取的 storm_days.csv 是在資料夾延長前建的，導致 G8 2022-05-09 和 G17 2015-03-23 沒被標記；現在 `fetch_space_weather.py --check-cache` 也會要求快取涵蓋資料夾的日期範圍）落在被標記的日子。剩下的風險是 ±180 秒窗口內剛好有一次 SSC／亞暴的瞬變，這正是旗標讓你可以檢查的。**結果（2026-09-24 執行）：磁暴會稀釋訊號，不會製造訊號。** p<0.05 的檢定比例，在磁暴或恢復期日是 6.7%，平靜日是 12.5%（137 起，2026-09-27；先前 117 起時為 5.3% vs 13.1%）（重抓前為 12.2%）；去掉磁暴日反而*加強*了近站 H 在延遲 +10 秒的疊加（137 起：step30 p 0.43→0.037、step90 0.74→0.013、spike 0.175→0.042、n 96→44；這 48 個疊加 p 值都沒做多重比較校正；2026-09-26 更正四個被截到分鐘的發震時間之前，峰值在 +25 秒），而遠站／F 的組合仍不顯著——和「磁暴雜訊遮蓋了跟著震動時間的訊號」一致，而不是磁暴偽造出訊號。
 
-All three take `--self-test` (synthetic/known-file sanity checks, run automatically before touching real data unless `--self-test` is passed alone) and `--group <ID>` (repeatable, restricts to a subset).
+三支都接受 `--self-test`（合成資料／已知檔案的健全性檢查，除非單獨傳 `--self-test`，否則碰真實資料前會自動先跑）和 `--group <ID>`（可重複，限定在部分組別）。
 
-Findings from this line of analysis were written up as a published Artifact report (not stored in this repo — see the report itself for the link) rather than a `docs/` file; the two persistence-vs-recovery flagship cases are G9's 2022-09-18 mainshock (`csg` station, persistent non-recovering offset) and G10's 2024-04-03 mainshock (`xcg` station, noise burst that recovers).
+這條分析線的發現寫成了一份已發布的 Artifact 報告（不放在這個 repo——連結見報告本身），而不是 `docs/` 裡的檔案；兩個「持續 vs. 恢復」的代表案例是 G9 的 2022-09-18 主震（`csg` 站，持續不恢復的偏移）和 G10 的 2024-04-03 主震（`xcg` 站，會恢復的雜訊爆發）。
 
-## Seismometer comparison data (fetched separately, not by this pipeline)
+## 地震儀比對資料（另外下載，不經由這個流程）
 
-`seismometer_comparison.py` reads data that lives under `seismometer/` (moved into this project 2026-09-14, shortly after `Gx`; resolved via `SEISMIC_ROOT = common.GX_DATA_ROOT / "seismometer"`), fetched manually by the user rather than by any script here. As of the 2026-08-17 reorganization, each event gets one `GXX_MMDD/` folder (e.g. `seismometer/G10_0403/`) holding *both*:
+`seismometer_comparison.py` 讀的資料放在 `seismometer/`（2026-09-14 在 `Gx` 之後不久搬進這個專案；以 `SEISMIC_ROOT = common.GX_DATA_ROOT / "seismometer"` 解析），由使用者手動下載，不是由這裡的任何腳本下載。自 2026-08-17 重新整理後，每個事件有一個 `GXX_MMDD/` 資料夾（例如 `seismometer/G10_0403/`），同時放著：
 
-- SAC PoleZero instrument-response files, `SAC_PZs_TW_<STA>_<CHAN>_<LOC>_<start>_<end>`.
-- The matching miniSEED waveform, `GXX_MMDD_w.mseed` (100Hz, `event_utc-60s` to `event_utc+600s`).
+- SAC PoleZero 儀器響應檔，`SAC_PZs_TW_<STA>_<CHAN>_<LOC>_<start>_<end>`。
+- 對應的 miniSEED 波形，`GXX_MMDD_w.mseed`（100Hz，`event_utc-60s` 到 `event_utc+600s`）。
 
-(Before 2026-08-17 the mseed files sat loose directly under this project's parent directory, one level up from their PZ folder; before 2026-08-16 only the 16 anchor events had been fetched at all.)
+（2026-08-17 之前，mseed 檔散放在這個專案的上層目錄，比它們的 PZ 資料夾高一層；2026-08-16 之前只下載了 16 個錨點事件。）
 
-**Coverage is 111/137 events** (the 20 M≥6 events registered 2026-09-27 have no seismometer data fetched yet; updated 2026-09-25: the remaining 80 fetchable events -- 14 M>=6, 66 M5 -- came in one batch, laid out as `G<NN>_<MMDD><suffix>/` and auto-registered by `seismometer_comparison.py::_register_convention_dirs`; the 6 left are the pre-2012 permanent gap below, status `no_data_pre_2012`). History: coverage was 30/49 as of 2026-09-20 — the 11 non-anchor events (foreshocks/aftershocks within the originally-covered 16 groups) plus a previously-missing G9 foreshock were fetched and wired into `SEISMIC_DATA_DIRS` 2026-08-16 (27 events); G22's 1 event and G23's 1 event + G24's 1 event (split 2026-09-22 from a single merged "G23" with 2 events; mseed fetched 2026-09-19, PoleZero files added 2026-09-20) were wired in 2026-09-20. Of the 19 uncovered events, **6 are a permanent, structural gap**: G14's 5 (its earliest event, 2009-07-14, predates the seismic data source's ~2012 cutoff) plus G21's 1 (2010-11-21, same reason — confirmed 2026-09-19 that the data source's fetchable range only starts 2012-01-01). The remaining **13** (spread across G5, G6_G7_G8, G9, G10, G11, G12, G15, G17) are simply not yet fetched. The G22/G23 PZ sets are missing a few stations that appear in the mseed (G22: CHK/ELD loc 11 and HEN; G23: HEN and SSH) — those traces get `no_pz_epoch`, which doesn't affect the three events' results (the picked stations are ILA for G22, NSK for G23). `seismometer_comparison.py`'s `coverage_summary.json` output enumerates all 49 events with an honest status rather than silently implying full coverage.
+**涵蓋率是 137 起中的 111 起**（2026-09-27 登錄的 20 起 M≥6 事件還沒下載地震儀資料；2026-09-25 更新：剩下 80 起可下載的事件——14 起 M>=6、66 起 M5——一批到齊，配置為 `G<NN>_<MMDD><suffix>/`，由 `seismometer_comparison.py::_register_convention_dirs` 自動登錄；剩下的 6 起是下面說的 2012 年前永久缺口，狀態 `no_data_pre_2012`）。沿革：截至 2026-09-20 涵蓋率是 49 起中 30 起——2026-08-16 下載了 11 起非錨點事件（最初涵蓋的 16 組內的前震／餘震）以及一起先前漏掉的 G9 前震，並接進 `SEISMIC_DATA_DIRS`（27 起）；G22 的 1 起、G23 的 1 起＋G24 的 1 起（2026-09-22 從原本有 2 起事件的單一合併「G23」拆出；mseed 2026-09-19 下載，PoleZero 檔 2026-09-20 加入）在 2026-09-20 接上。未涵蓋的 19 起中，**6 起是永久性的結構缺口**：G14 的 5 起（最早的事件 2009-07-14 早於地震資料來源約 2012 年的起始）加上 G21 的 1 起（2010-11-21，同樣原因——2026-09-19 確認資料來源可下載範圍從 2012-01-01 才開始）。其餘 **13** 起（分散在 G5、G6_G7_G8、G9、G10、G11、G12、G15、G17）只是還沒下載。G22/G23 的 PZ 檔組缺了幾個 mseed 裡有的測站（G22：CHK/ELD loc 11 和 HEN；G23：HEN 和 SSH）——那些波形會得到 `no_pz_epoch`，不影響這三起事件的結果（G22 選的是 ILA 站，G23 是 NSK）。`seismometer_comparison.py` 輸出的 `coverage_summary.json` 會列出全部 49 起事件的真實狀態，而不是默默暗示完整涵蓋。
 
-**The folder-name ↔ mseed-filename mapping is hardcoded** in `seismometer_comparison.py::SEISMIC_DATA_DIRS` (keyed by `(group_id, event.date)`, mseed path resolved as `SEISMIC_ROOT / pz_dir / mseed_filename` since the reorg), not derived by pattern — most groups follow `G0N_MMDD` for both the PZ folder and `G0N_MMDD_w.mseed`, but **G9 doesn't**: its PZ folder is `G9_0918` (no leading zero) while its mseed file is `G09_0918_w.mseed` (leading zero). `G10`'s two 2024-04-23 events also share one PZ folder (`G10_0422`) but each keep their own mseed file inside it. Don't assume the pattern holds for any future additions; check `SEISMIC_DATA_DIRS` directly.
+**資料夾名稱 ↔ mseed 檔名的對應是寫死的**，在 `seismometer_comparison.py::SEISMIC_DATA_DIRS`（以 `(group_id, event.date)` 為鍵，重新整理後 mseed 路徑解析為 `SEISMIC_ROOT / pz_dir / mseed_filename`），不是用規則推出來的——大多數組的 PZ 資料夾和 mseed 都遵循 `G0N_MMDD` 和 `G0N_MMDD_w.mseed`，但 **G9 不是**：它的 PZ 資料夾是 `G9_0918`（沒有前導零），mseed 檔卻是 `G09_0918_w.mseed`（有前導零）。`G10` 的兩起 2024-04-23 事件也共用一個 PZ 資料夾（`G10_0422`），但各自保留自己的 mseed 檔。之後新增的資料不要假設符合這個規則；直接查 `SEISMIC_DATA_DIRS`。
 
-Other confirmed quirks handled in `seismometer_comparison.py` (see its module docstring for detail): mseed traces are not uniformly the full ±60s/+600s window (some stations are short triggered-accelerograph recordings, flagged `triggered_short_trace`); some `(station, channel)` pairs have duplicate traces in the same file (handled via `Stream.merge()`); PZ epoch selection matches on the trace's own `location` code, not a guess.
+`seismometer_comparison.py` 中處理的其他已確認怪癖（細節見它的模組 docstring）：mseed 波形不一定都是完整的 −60s/+600s 窗口（有些測站是較短的觸發式強震儀紀錄，標記為 `triggered_short_trace`）；有些 `(station, channel)` 在同一個檔案裡有重複波形（用 `Stream.merge()` 處理）；PZ 時段的選擇是依波形自己的 `location` 代碼比對，不是用猜的。
 
-## Version control
+## 版本控制
 
-This project got a fresh `git init` on 2026-09-14 (its earlier 2026-08-14 history was dropped when `G1`..`G24` and, shortly after, `seismometer/` were moved in from the parent directory and it was re-established as a self-contained standalone repo — this is the only repo among the moved material that's published). `.gitignore` excludes `.venv/`, `__pycache__/`, `data/` (regenerable analysis intermediates/outputs, ~850MB, reproducible from `scripts/` + the raw data with the project's fixed seed `20260805` — not worth version-controlling), each `Gx/*` raw day-file/batch-archive (~18GB, too big for git; each `Gx/NOTES.md` is explicitly kept via a `!` negation), and all of `seismometer/` (~384MB, all binary, no docs to keep). Tracked: `scripts/`, `docs/`, `output/` (the built HTML reports), `requirements.txt`, each `Gx/NOTES.md`, this file, `README.md`.
+這個專案在 2026-09-14 重新 `git init`（2026-08-14 起的舊歷史被捨棄，因為 `G1`..`G24` 以及隨後的 `seismometer/` 從上層目錄搬了進來，重新建立成自成一體的獨立 repo——這是搬過來的東西中唯一公開發布的 repo）。`.gitignore` 排除 `.venv/`、`__pycache__/`、`data/`（可重新產生的分析中間檔／輸出，約 850MB，用 `scripts/`＋原始資料以專案固定的亂數種子 `20260805` 就能重現——不值得版本控制）、每個 `Gx/*` 原始日檔／批次壓縮檔（約 18GB，對 git 來說太大；每個 `Gx/NOTES.md` 用 `!` 否定規則明確保留），以及整個 `seismometer/`（約 384MB，全是二進位檔，沒有文件要保留）。有追蹤的：`scripts/`、`docs/`、`output/`（建置好的 HTML 報告）、`requirements.txt`、每個 `Gx/NOTES.md`、這個檔案、`README.md`。
 
-## Documentation
+## 文件
 
-- Math in markdown uses `$...$` inline and `$$...$$` display. Never use `\(...\)` or `\[...\]`.
-- Documentation, reports and figure labels are for Chinese grad-school application materials. Use Chinese labels on figures unless told otherwise.
-- `docs/statistical_methods.md` must stay in sync with the code. When a formula or function changes, update its formula and line references.
-- Files under `docs/` planning folders are historical records. Do not edit them unless asked.
+- markdown 中的數學式行內用 `$...$`、獨立式用 `$$...$$`。絕不用 `\(...\)` 或 `\[...\]`。
+- 文件、報告和圖表標籤是給研究所推甄資料用的。公開 repo 的文件、程式碼註解、docstring、給人看的輸出訊息和新的 commit 訊息一律用繁體中文（程式識別字與技術名詞保留原文）。圖上標籤用中文，除非另有指示。
+- `docs/statistical_methods.md` 必須和程式碼保持同步。公式或函式改了，就要更新它的公式和行號引用。
+- `docs/` 底下的規劃類檔案是歷史紀錄。除非被要求，不要修改。
 
-## Workflow
+## 工作流程
 
-- At the end of each work block: commit with clear split commits, update the progress notes file, and update memory with pending items (e.g. open verify failures).
-- Rendered outputs (HTML slides, flowcharts, `.docx`, charts) must be visually verified before reporting them done. Render the BUILT output, not the template.
-- For LICENSE files (CC-BY-4.0), do not fetch the license text from the web because it triggers content-filter errors. Ask the user to add it, or write a short header linking to the official URL.
+- 每個工作段落結束時：用清楚拆分的 commit 提交、更新進度筆記檔，並把待辦事項（例如尚未解決的 verify 失敗）更新到記憶。
+- 算圖輸出（HTML 投影片、流程圖、`.docx`、圖表）回報完成前必須實際目視檢查。要檢查**建置後**的輸出，不是模板。
+- LICENSE 檔（CC-BY-4.0）不要從網路抓授權條文，會觸發內容過濾錯誤。請使用者自己加，或寫一段簡短的檔頭連到官方網址。

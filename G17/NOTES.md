@@ -1,14 +1,14 @@
 # NOTES.md (G17)
 
-Group G17 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+20 組地磁前兆資料集中的 G17 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_groups_G14_G20.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-07 原始資料下載後重新查證的）。
 
-## Event(s)
+## 事件
 
-2014-12-11 M6.1 (USGS Mww6.1; CWA report not located via web search), very deep (256km) offshore NE Taiwan, roughly "offshore Yilan" + 2015-02-14 ML6.3 (CWA, anchor), offshore Taitung — CWA's own decimal coordinates not located, USGS's Mww6.2 coordinates used as a substitute (depths reasonably consistent between sources, see `events.py`).
+2014-12-11 M6.1（USGS Mww6.1；網路搜尋找不到 CWA 報告），非常深（256km），台灣東北外海，大約是「宜蘭外海」+ 2015-02-14 ML6.3（CWA，錨點），台東外海——找不到 CWA 自己的十進位座標，改用 USGS Mww6.2 的座標替代（兩個來源的深度大致一致，見 `events.py`）。
 
-## Contents (verified against disk 2026-08-09)
+## 內容（2026-08-09 對照磁碟確認）
 
-- 1,991 `.sec` files, 2014-09-09 ~ 2015-03-08.
-- 11 stations, uniform 181 files each: `csg, hcn, hln, kmn, lyn, ncg, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- `csg` reappears here — installed sometime between G16's end (2013-11) and this group's start (2014-09), per root NOTES.md's station-code notes. Retired codes `hln, kmn, slg, yli` still in use.
-- Zero usable vector (X/Y/Z) stations — scalar `F`-only; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group.
+- 1,991 個 `.sec` 檔，2014-09-09 ~ 2015-03-08。
+- 11 站，每站一律 181 檔：`csg, hcn, hln, kmn, lyn, ncg, slg, ttn, twu, yhg, yli`。組內沒有缺檔。
+- `csg` 在這裡重新出現——依根目錄 NOTES.md 的測站代碼說明，它是在 G16 結束（2013-11）到本組開始（2014-09）之間設置的。停用代碼 `hln, kmn, slg, yli` 仍在使用。
+- 沒有任何可用的向量（X/Y/Z）測站——只有純量 `F`；這組會跳過 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法。

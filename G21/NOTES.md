@@ -1,14 +1,14 @@
 # NOTES.md (G21)
 
-Group G21 of the 23-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_fetch_ranges_from_GDMScatalog.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-20). New standalone group added 2026-08-20 alongside G22 and G23, from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`) that surfaced M≥6 events the original per-event web search had missed.
+23 組地磁前兆資料集中的 G21 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_fetch_ranges_from_GDMScatalog.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-20 原始資料下載後重新查證的）。2026-08-20 和 G22、G23 一起新增的獨立組別，來源是使用者提供的 CWA GDMS 區域目錄匯出檔（`GDMScatalog.json`），它找出了原本逐事件網路搜尋漏掉的 M≥6 事件。
 
-## Event(s)
+## 事件
 
-2010-11-21 ML6.14 (anchor), CWA, coordinates 23.8525N/121.6857E, depth 46.87km. No confirmed CWA place name found via web search (event too small/old to have dedicated news coverage indexed) — the coordinates put it offshore, roughly east of Hualien; treat any place-name description as coordinate-derived, not an official CWA name. This event's baseline/aftermath window (2010-08-20~2010-12-13) didn't overlap G14's window (ends 2010-03-26) or G15's (starts 2013-03-01), so it was registered as a new standalone group rather than merged into either.
+2010-11-21 ML6.14（錨點），CWA，座標 23.8525N/121.6857E，深度 46.87km。網路搜尋找不到確認過的 CWA 地名（事件太小或太舊，沒有被索引的專門新聞報導）——座標顯示在外海，大約在花蓮東方；任何地名描述都當成由座標推得，不是 CWA 官方名稱。這個事件的基準期／震後窗口（2010-08-20~2010-12-13）和 G14 的窗口（到 2010-03-26 為止）、G15 的窗口（2013-03-01 開始）都不重疊，所以登錄成新的獨立組別，沒有併入任何一組。
 
-## Contents (verified against disk 2026-08-20)
+## 內容（2026-08-20 對照磁碟確認）
 
-- 1,276 `.sec.gz` files, 2010-08-20 ~ 2010-12-13.
-- 11 stations, uniform 116 files each: `hcn, hln, kmn, lyn, ncg, pta, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- Uses the era's retired station codes (`hln, kmn, slg, yli` — no confirmed successor mapping, see root NOTES.md); `csg` not yet installed (same era as G14–G16). `pta` (Majja) is present here — confirmed via file header (`Station Name Majja`) — correcting the earlier (now-fixed) root NOTES.md claim that `pta` only appeared in G14; it's also present in G22.
-- Zero usable vector (X/Y/Z) stations — scalar `F`-only, same situation as G14–G18; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group.
+- 1,276 個 `.sec.gz` 檔，2010-08-20 ~ 2010-12-13。
+- 11 站，每站一律 116 檔：`hcn, hln, kmn, lyn, ncg, pta, slg, ttn, twu, yhg, yli`。組內沒有缺檔。
+- 使用那個年代的停用測站代碼（`hln, kmn, slg, yli`——沒有確認過的後繼對應，見根目錄 NOTES.md）；`csg` 尚未設置（和 G14–G16 同一年代）。這裡有 `pta`（Majja）——由檔頭（`Station Name Majja`）確認——更正了根目錄 NOTES.md 先前（現已修正）說 `pta` 只出現在 G14 的說法；G22 也有。
+- 沒有任何可用的向量（X/Y/Z）測站——只有純量 `F`，和 G14–G18 情況相同；這組會跳過 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法。

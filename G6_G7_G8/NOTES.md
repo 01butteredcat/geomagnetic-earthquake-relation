@@ -1,18 +1,18 @@
 # NOTES.md (G6_G7_G8)
 
-**Update 2026-09-20:** this folder now holds three separate analysis groups, **G6** (2021-10-24), **G7** (2022-01-03) and **G8** (2022-03-23 anchor, plus its 03-23b aftershock and the 2022-05-09 event), which share this raw-data folder (`events.py::Group.folder`) but have their own `data/interim/<group>/` and their own near/far station pools chosen from each epicenter. The folder was merged only because the events were fetched together for convenience. The text below predates the split and describes the folder's data as a whole.
+**2026-09-20 更新：** 這個資料夾現在裝著三個獨立的分析組，**G6**（2021-10-24）、**G7**（2022-01-03）和 **G8**（錨點 2022-03-23，加上它的 03-23b 餘震和 2022-05-09 事件），共用這個原始資料夾（`events.py::Group.folder`），但各有自己的 `data/interim/<group>/`，以及從各自震央挑選的近站／遠站池。當初合併只是因為這些事件為了方便一起下載。下面的內容寫於拆分之前，描述的是整個資料夾的資料。
 
-Combined-folder description (historical): covering event sequences G6, G7, and G8
+合併資料夾說明（歷史紀錄）：涵蓋事件序列 G6、G7 和 G8
 
-Combined group covering event sequences G6, G7, and G8 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中涵蓋事件序列 G6、G7 和 G8 的合併組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-- G6: 2021-10-24 M6.5, Yilan City.
-- G7: 2022-01-03 M6.0, offshore Yilan.
-- G8: 2022-03-23 M6.6, offshore Hualien.
+- G6：2021-10-24 M6.5，宜蘭市。
+- G7：2022-01-03 M6.0，宜蘭外海。
+- G8：2022-03-23 M6.6，花蓮外海。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 3,432 `.sec` files, 2021-07-23 ~ 2022-04-14.
-- 13 stations, uniform 264 files each: `csg, hcn, kma, lnu, lyn, mtu, ncg, sme, ttn, twu, xcg, yhg, zbn`. No gaps within the group.
+- 3,432 個 `.sec` 檔，2021-07-23 ~ 2022-04-14。
+- 13 站，每站一律 264 檔：`csg, hcn, kma, lnu, lyn, mtu, ncg, sme, ttn, twu, xcg, yhg, zbn`。組內沒有缺檔。

@@ -1,12 +1,12 @@
 # NOTES.md (G5)
 
-Group G5 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中的 G5 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-2021-04-18 M6.2, Hualien Shoufeng.
+2021-04-18 M6.2，花蓮壽豐。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 1,508 `.sec` files, 2021-01-15 ~ 2021-05-10.
-- 13 stations, uniform 116 files each: `csg, hcn, kma, lnu, lyn, mtu, ncg, sme, ttn, twu, xcg, yhg, zbn`. Note `sme` and `xcg` are both present as distinct, independently-operating stations here (not a rename of one into the other — see root NOTES.md). No gaps within the group.
+- 1,508 個 `.sec` 檔，2021-01-15 ~ 2021-05-10。
+- 13 站，每站一律 116 檔：`csg, hcn, kma, lnu, lyn, mtu, ncg, sme, ttn, twu, xcg, yhg, zbn`。注意 `sme` 和 `xcg` 在這裡同時存在，是兩個各自獨立運作的測站（不是其中一個改名成另一個——見根目錄 NOTES.md）。組內沒有缺檔。

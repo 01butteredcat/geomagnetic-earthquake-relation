@@ -1,28 +1,28 @@
 # NOTES.md (G2_G3)
 
-**Update 2026-09-20:** this folder now holds two separate analysis groups, **G2** (2019-04-18 anchor) and **G3** (2019-08-08 anchor), which share this raw-data folder (`events.py::Group.folder`) but have their own `data/interim/G2/`, `data/interim/G3/` and their own near/far station pools chosen from each epicenter. The folder was merged only because the two were fetched together for convenience. The text below predates the split and describes the folder's data as a whole.
+**2026-09-20 更新：** 這個資料夾現在裝著兩個獨立的分析組，**G2**（錨點 2019-04-18）和 **G3**（錨點 2019-08-08），共用這個原始資料夾（`events.py::Group.folder`），但各有自己的 `data/interim/G2/`、`data/interim/G3/`，以及從各自震央挑選的近站／遠站池。當初合併只是因為兩者為了方便一起下載。下面的內容寫於拆分之前，描述的是整個資料夾的資料。
 
-Combined-folder description (historical): covering event sequences G2 and G3
+合併資料夾說明（歷史紀錄）：涵蓋事件序列 G2 和 G3
 
-Combined group covering event sequences G2 and G3 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中涵蓋事件序列 G2 和 G3 的合併組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-- G2: 2019-04-18 M6.1, Hualien Xiulin.
-- G3: 2019-08-08 M6.0, offshore Yilan.
+- G2：2019-04-18 M6.1，花蓮秀林。
+- G3：2019-08-08 M6.0，宜蘭外海。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 2,652 `.sec` files, 2019-01-15 ~ 2019-10-30.
-- Per-station counts are **uneven** — this reflects real station code transitions during 2019, not a merge/download problem:
+- 2,652 個 `.sec` 檔，2019-01-15 ~ 2019-10-30。
+- 各站檔案數**不一致**——這反映 2019 年間真實的測站代碼交接，不是合併或下載的問題：
 
-  | Station | Files | Range |
+  | 測站 | 檔案數 | 範圍 |
   |---|---|---|
-  | csg, hcn, kmn, lyn, ttn, twu, yhg | 289 each | 2019-01-15 ~ 2019-10-30 (full) |
+  | csg, hcn, kmn, lyn, ttn, twu, yhg | 各 289 | 2019-01-15 ~ 2019-10-30（完整） |
   | ncg | 227 | 2019-01-15 ~ 2019-08-29 |
   | yli | 249 | 2019-01-15 ~ 2019-09-20 |
   | hln | 85 | 2019-01-15 ~ 2019-04-09 |
   | slg | 45 | 2019-01-15 ~ 2019-02-28 |
   | sme | 23 | 2019-10-08 ~ 2019-10-30 |
 
-  `hln` and `slg` both stop mid-window with no confirmed successor code in this dataset; `sme` starts late (2019-10-08) and continues through G9 before being replaced by `cnu` starting at G10 — see root NOTES.md's station-code table for what is and isn't a confirmed 1:1 transition.
+  `hln` 和 `slg` 都在窗口中途停止，在這份資料中沒有確認過的後繼代碼；`sme` 較晚才開始（2019-10-08），一直延續到 G9，從 G10 起被 `cnu` 取代——哪些是、哪些不是確認過的一對一交接，見根目錄 NOTES.md 的測站代碼表。

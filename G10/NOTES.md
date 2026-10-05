@@ -1,15 +1,15 @@
 # NOTES.md (G10)
 
-Group G10 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale. This group is the original single-event (2024/4/3 M7.2) dataset that `geomag_precursor/` was first built around.
+13 組地磁前兆資料集中的 G10 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。這一組是 `geomag_precursor/` 最初建立時所根據的那份單一事件（2024/4/3 M7.2）資料。
 
-## Event(s)
+## 事件
 
-2024-04-03 M7.2 mainshock (3 records same day) + 2024-04-23 (2 records) + 2024-05-10, all Hualien-area.
+2024-04-03 M7.2 主震（同一天 3 筆紀錄）+ 2024-04-23（2 筆紀錄）+ 2024-05-10，都在花蓮一帶。
 
-## Contents (verified against disk 2026-08-04, post-merge)
+## 內容（2026-08-04 對照磁碟確認，合併後）
 
-- 1,989 `.sec` files, 2024-01-01 ~ 2024-06-01.
-- 13 stations, uniform 153 files each: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, ttn, twu, xcg, yhg, zbn`. No gaps within the group.
-- This is the first group to use `cnu` (replacing the retired code `sme`, last seen in G9).
-- Range was extended from the original 2024-01-01~2024-04-25 fetch to the full 2024-01-01~2024-06-01 recommended in `13_groups_fetch_ranges.md`, to also cover the 04-23 aftershocks and the 05-10 M6.0.
-- `geomag_precursor/scripts/common.py`'s `KNOWN_OUTAGE_WINDOWS` documents several genuine short data-outage windows within this range (network-wide brief outages, and per-station gaps for `twu`, `zbn`, `kma`, `yhg`) — distinct from the structural `88888.00`/`99999.00` sentinels, see that file before treating any dip as anomaly signal.
+- 1,989 個 `.sec` 檔，2024-01-01 ~ 2024-06-01。
+- 13 站，每站一律 153 檔：`cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, ttn, twu, xcg, yhg, zbn`。組內沒有缺檔。
+- 這是第一組使用 `cnu` 的（取代停用代碼 `sme`，最後出現在 G9）。
+- 範圍從最初下載的 2024-01-01~2024-04-25 延長到 `13_groups_fetch_ranges.md` 建議的完整 2024-01-01~2024-06-01，以便涵蓋 04-23 的餘震和 05-10 的 M6.0。
+- `geomag_precursor/scripts/common.py` 的 `KNOWN_OUTAGE_WINDOWS` 記錄了這段範圍內好幾段真實的短暫資料中斷（全網短暫中斷，以及 `twu`、`zbn`、`kma`、`yhg` 的個別測站缺口）——和結構性的 `88888.00`/`99999.00` 哨兵值不同，把任何下凹當成異常訊號之前先看那個檔案。

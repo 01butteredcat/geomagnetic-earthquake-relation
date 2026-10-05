@@ -1,13 +1,13 @@
 # NOTES.md (G11)
 
-Group G11 of the 13-event geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/13_groups_fetch_ranges.md` for the full event/range rationale.
+13 組地磁前兆資料集中的 G11 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，完整的事件／範圍理由見 `../docs/13_groups_fetch_ranges.md`。
 
-## Event(s)
+## 事件
 
-2025-01-21 M6.4, Chiayi Dapu. **This is the only inland, non-subduction-zone event** in the 13-group dataset — the other 12 groups cluster around the Yilan-Hualien offshore subduction/plate-boundary zone. May warrant separate/stratified statistical treatment.
+2025-01-21 M6.4，嘉義大埔。**這是 13 組資料中唯一的內陸、非隱沒帶事件**——其他 12 組都集中在宜蘭–花蓮外海的隱沒帶／板塊邊界。可能需要分開或分層的統計處理。
 
-## Contents (verified against disk 2026-08-04)
+## 內容（2026-08-04 對照磁碟確認）
 
-- 1,452 `.sec` files, 2024-10-20 ~ 2025-02-12.
-- 12 stations with full coverage, 116 files each: `cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`.
-- **`ttn` (Beinan) gap**: only 60 files, 2024-10-20 ~ 2024-12-18 — stops well short of the group's end date. File mtimes show `ttn` was fetched in the same batch as every other station, so this isn't a partial/failed re-fetch — the source data itself stops there. `ttn` is also entirely absent from G12 and G13 (see those groups' notes and root NOTES.md). Working hypothesis: `ttn` went offline/was decommissioned around 2024-12-19; recommend confirming against the CWA GDMS portal before relying on `ttn` for cross-group analysis involving this or later groups.
+- 1,452 個 `.sec` 檔，2024-10-20 ~ 2025-02-12。
+- 12 站完整涵蓋，每站 116 檔：`cnu, csg, hcn, kma, lnu, lyn, mtu, ncg, twu, xcg, yhg, zbn`。
+- **`ttn`（Beinan）缺口**：只有 60 檔，2024-10-20 ~ 2024-12-18——遠在本組結束日之前就停了。檔案 mtime 顯示 `ttn` 和其他所有測站是同一批下載的，所以這不是部分或失敗的重抓——來源資料本身就停在那裡。G12 和 G13 也完全沒有 `ttn`（見那兩組的筆記和根目錄 NOTES.md）。目前的推測：`ttn` 大約在 2024-12-19 離線／撤站；在涉及本組或之後組別的跨組分析中依賴 `ttn` 之前，建議先到 CWA GDMS 入口網站確認。

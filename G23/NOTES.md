@@ -1,21 +1,21 @@
 # NOTES.md (G23)
 
-**Update 2026-09-22:** this folder now holds two separate analysis groups, **G23** (2020-07-26 anchor) and **G24** (2020-06-14 anchor), which share this raw-data folder (`events.py::Group.folder`) but have their own `data/interim/G23/`, `data/interim/G24/` and their own near/far station pools chosen from each epicenter (in practice nearly identical here -- the two epicenters are only ~1.6km apart, far smaller than any inter-station distance). The folder was merged only because the two events' fetch windows overlapped (mechanical rule), not because they belong to one sequence -- confirmed no foreshock/mainshock/aftershock relationship. The text below predates the split and describes the folder's data as a whole.
+**2026-09-22 更新：** 這個資料夾現在裝著兩個獨立的分析組，**G23**（錨點 2020-07-26）和 **G24**（錨點 2020-06-14），共用這個原始資料夾（`events.py::Group.folder`），但各有自己的 `data/interim/G23/`、`data/interim/G24/`，以及從各自震央挑選的近站／遠站池（在這裡實際上幾乎一樣——兩個震央只相距約 1.6km，遠小於任何測站間距）。當初合併只是因為兩起事件的下載窗口重疊（機械式規則），不是因為它們屬於同一序列——已確認沒有前震／主震／餘震關係。下面的內容寫於拆分之前，描述的是整個資料夾的資料。
 
-Combined-folder description (historical): covering event sequences G23 and G24
+合併資料夾說明（歷史紀錄）：涵蓋事件序列 G23 和 G24
 
-Group covering event sequences G23 and G24 of the (now 24-group) geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_fetch_ranges_from_GDMScatalog.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-20). New standalone group added 2026-08-20 alongside G21 and G22, from a user-supplied CWA GDMS regional catalog export (`GDMScatalog.json`) that surfaced M≥6 events the original per-event web search had missed.
+（現為 24 組的）地磁前兆資料集中涵蓋事件序列 G23 和 G24 的組別——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_fetch_ranges_from_GDMScatalog.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-20 原始資料下載後重新查證的）。2026-08-20 和 G21、G22 一起新增的獨立組別，來源是使用者提供的 CWA GDMS 區域目錄匯出檔（`GDMScatalog.json`），它找出了原本逐事件網路搜尋漏掉的 M≥6 事件。
 
-## Event(s)
+## 事件
 
-- G23: 2020-07-26 ML6.24 (anchor), CWA, coordinates 24.2552N/122.4215E, depth 53.59km. Higher magnitude than 2020-06-14, so this was already the merged group's anchor -- unchanged by the 2026-09-22 split.
-- G24: 2020-06-14 ML6.09 (anchor of its own group since the 2026-09-22 split), CWA, coordinates 24.2632N/122.4350E, depth 55.55km. Previously the non-anchor event of the merged group.
+- G23：2020-07-26 ML6.24（錨點），CWA，座標 24.2552N/122.4215E，深度 53.59km。規模比 2020-06-14 大，所以原本就是合併組的錨點——2026-09-22 拆分後不變。
+- G24：2020-06-14 ML6.09（2026-09-22 拆分後成為自己那組的錨點），CWA，座標 24.2632N/122.4350E，深度 55.55km。原本是合併組的非錨點事件。
 
-Neither event has a confirmed CWA place name found via web search (both too small to have dedicated news coverage indexed) — coordinates put both offshore NE Taiwan, ~1.6km apart; treat any place-name description as coordinate-derived, not an official CWA name. Combined baseline/aftermath window (2020-03-13~2020-08-17) didn't overlap G4's window (starts 2020-09-08).
+兩起事件都沒有網路搜尋找得到、確認過的 CWA 地名（都太小，沒有被索引的專門新聞報導）——座標顯示兩者都在台灣東北外海，相距約 1.6km；任何地名描述都當成由座標推得，不是 CWA 官方名稱。合併的基準期／震後窗口（2020-03-13~2020-08-17）和 G4 的窗口（2020-09-08 開始）不重疊。
 
-## Contents (verified against disk 2026-08-20)
+## 內容（2026-08-20 對照磁碟確認）
 
-- 1,264 `.sec.gz` files, 2020-03-13 ~ 2020-08-17 (combined baseline/aftermath window; shared unchanged by the group split, since raw data is not moved/duplicated).
-- 8 stations, uniform 158 files each: `csg, hcn, kmn, lyn, sme, ttn, twu, yhg`. No gaps within the group.
-- **Notably smaller station pool than G21/G22 (8 vs. 11) despite being chronologically modern** — has `csg` (installed by this era, unlike G14–G16/G21/G22) and still uses the pre-transition codes `kmn`/`sme` (this window is entirely before G4's Nov–Dec 2020 `kmn→kma`/`sme→cnu` transition), but is missing `cnu, kma, lnu, mtu, ncg, pta, xcg, zbn` that the modern G4+ network otherwise has by this vintage. **Reason unconfirmed** — could be GDMS's regional-catalog batch export not including every station slot CWA had by 2020, or a real narrower deployment at this specific time; flagging as an open question rather than a settled explanation.
-- **Has usable vector (X/Y/Z) stations**, unlike G21/G22 and G14–G18 — `ulf_analysis.py` ran successfully (`data/interim/{G23,G24}/ulf_daily.csv`, `ulf_near_far_index.csv`, `ulf_spectrogram_{kmn,yhg}_eq_window.json`), and `H`/`Z`/`ULF_pc3` methods are all available. G23 was added to the `ULF_GROUPS` tuple (duplicated across 5 `geomag_precursor/scripts/*.py` files) 2026-08-20 alongside this group's registration; G24 was added to the same tuple 2026-09-22 when the group split.
+- 1,264 個 `.sec.gz` 檔，2020-03-13 ~ 2020-08-17（合併的基準期／震後窗口；拆分組別後仍共用、不變，因為原始資料沒有搬動或複製）。
+- 8 站，每站一律 158 檔：`csg, hcn, kmn, lyn, sme, ttn, twu, yhg`。組內沒有缺檔。
+- **雖然時間上屬於現代，測站池明顯比 G21/G22 小（8 vs. 11）**——有 `csg`（這個年代已設置，不像 G14–G16/G21/G22），仍使用交接前的代碼 `kmn`/`sme`（這個窗口完全在 G4 於 2020 年 11–12 月的 `kmn→kma`/`sme→cnu` 交接之前），但缺少 G4 之後的現代觀測網在這個年代原本就有的 `cnu, kma, lnu, mtu, ncg, pta, xcg, zbn`。**原因未確認**——可能是 GDMS 區域目錄批次匯出沒有包含 CWA 在 2020 年擁有的所有站位，也可能是當時的實際部署就比較少；這裡當成未解的問題標記，不是定論。
+- **有可用的向量（X/Y/Z）測站**，和 G21/G22、G14–G18 不同——`ulf_analysis.py` 跑成功（`data/interim/{G23,G24}/ulf_daily.csv`、`ulf_near_far_index.csv`、`ulf_spectrogram_{kmn,yhg}_eq_window.json`），`H`/`Z`/`ULF_pc3` 方法都可用。G23 在 2026-08-20 登錄本組時加入 `ULF_GROUPS` tuple（在 5 個 `geomag_precursor/scripts/*.py` 檔案中各有一份）；G24 在 2026-09-22 拆分時加入同一個 tuple。

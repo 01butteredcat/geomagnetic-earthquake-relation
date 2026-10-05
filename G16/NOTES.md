@@ -1,14 +1,14 @@
 # NOTES.md (G16)
 
-Group G16 of the 20-group geomagnetic precursor dataset — see `../NOTES.md` for the shared IAGA-2002 data format and station table, and `../docs/candidate_groups_G14_G20.md` for the candidate research that identified this date range (superseded by `../scripts/events.py`'s finalized event/coordinate details, researched fresh after the raw data was fetched 2026-08-07).
+20 組地磁前兆資料集中的 G16 組——共用的 IAGA-2002 資料格式和測站表見 `../NOTES.md`，找出這段日期範圍的候選研究見 `../docs/candidate_groups_G14_G20.md`（已被 `../scripts/events.py` 定案的事件／座標細節取代，那些是 2026-08-07 原始資料下載後重新查證的）。
 
-## Event(s)
+## 事件
 
-2013-10-31 M6.3 (USGS Mww6.3, 46km SSW of Hualien City; anchor) — CWA-attributed figures found via web search conflict (some report ML6.4/depth15.0km near Wanrong, others ML6.3/depth19.5km) and could not be resolved to a final CWA catalog value, so USGS's figure is used as the primary/consistent one here, flagged low-confidence pending direct CWA bulletin confirmation (see `events.py`).
+2013-10-31 M6.3（USGS Mww6.3，花蓮市西南西 46km；錨點）——網路上找到的 CWA 數字互相矛盾（有的說 ML6.4／深度 15.0km、在萬榮附近，有的說 ML6.3／深度 19.5km），無法確定 CWA 目錄的最終值，所以這裡以 USGS 的數字作為主要且一致的值，標記為低信心，待直接以 CWA 公報確認（見 `events.py`）。
 
-## Contents (verified against disk 2026-08-09)
+## 內容（2026-08-09 對照磁碟確認）
 
-- 1,160 `.sec` files, 2013-07-30 ~ 2013-11-22.
-- 10 stations, uniform 116 files each: `hcn, hln, kmn, lyn, ncg, slg, ttn, twu, yhg, yli`. No gaps within the group.
-- Same station-pool caveats as G15: `csg` not yet installed (absent from G14–G16), `pta` already retired.
-- Zero usable vector (X/Y/Z) stations — scalar `F`-only; `ULF_pc3`/`ULF_pc4`/`H`/`Z` methods are skipped for this group.
+- 1,160 個 `.sec` 檔，2013-07-30 ~ 2013-11-22。
+- 10 站，每站一律 116 檔：`hcn, hln, kmn, lyn, ncg, slg, ttn, twu, yhg, yli`。組內沒有缺檔。
+- 測站池的注意事項和 G15 相同：`csg` 尚未設置（G14–G16 都沒有），`pta` 已停用。
+- 沒有任何可用的向量（X/Y/Z）測站——只有純量 `F`；這組會跳過 `ULF_pc3`/`ULF_pc4`/`H`/`Z` 方法。
