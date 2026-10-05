@@ -85,13 +85,13 @@ def main():
         known_outage_windows = [dict(w) for w in G10_KNOWN_OUTAGE_WINDOWS]
         twu_out = full_outage_by_station.get("twu", [])
         for w in known_outage_windows:
-            if w["station"] == "twu" and w["note"] == "fully missing" and twu_out:
+            if w["station"] == "twu" and w["note"] == "完全缺漏" and twu_out:
                 last = pd.to_datetime(twu_out[-1], format="%Y%m%d").strftime("%Y-%m-%d")
                 w["end"] = f"{last} 23:59:59"
     else:
         auto = auto_outage_dates(daily)
         known_outage_windows = [
-            {"station": s, "start": d, "end": d, "note": "auto-detected (pct_missing > threshold)"}
+            {"station": s, "start": d, "end": d, "note": "自動偵測（pct_missing > 門檻）"}
             for s, dates in sorted(auto.items()) for d in sorted(dates)
         ]
 

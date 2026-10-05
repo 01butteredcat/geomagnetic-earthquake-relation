@@ -94,7 +94,7 @@ def check_known_outage_ground_truth(cfg):
     if cfg.group_id != "G10":
         checks["known_outage_ground_truth"] = {
             "pass": None,
-            "note": "skipped_not_applicable -- this hand-verified ground truth is G10-specific",
+            "note": "skipped_not_applicable——這份人工確認的實際資料只適用於 G10",
         }
         return
 
@@ -140,9 +140,9 @@ def check_timezone_conclusion(cfg):
         "confidence": confidence,
         "expected_per_common_py": expected,
         "note": (
-            "no header TZ field exists; common.DATA_TIMEZONE is the dataset-wide ground truth "
-            "(confirmed on G10's clean data) -- this check only fails on a CONFIDENT contradiction, "
-            "not on a low-confidence/inconclusive spot-check result for a noisier station/group"
+            "檔頭沒有時區欄位；common.DATA_TIMEZONE 是全資料集共用的實際資料"
+            "（已在 G10 的乾淨資料上確認）——這個檢查只有在出現「有信心」的矛盾時才失敗，"
+            "雜訊較大的測站／組別得到低信心或無法判定的抽查結果時不會失敗"
         ),
     }
 
@@ -193,14 +193,14 @@ def check_storm_cancellation(cfg):
     if not storm_path.exists() or idx_field is None:
         checks["storm_cancellation_test"] = {
             "pass": None,
-            "note": "inconclusive -- storm-day list unavailable or no station pool sufficient to compute an index",
+            "note": "無法判定——沒有磁暴日清單，或沒有足以計算指標的測站池",
         }
         return
 
     idx = pd.read_csv(cfg.interim_dir / "local_anomaly_index.csv", dtype={"date": str})
     near_col, local_col = f"near_index_{idx_field}", f"local_anomaly_index_{idx_field}"
     if near_col not in idx.columns:
-        checks["storm_cancellation_test"] = {"pass": None, "note": f"inconclusive -- {near_col} not computed"}
+        checks["storm_cancellation_test"] = {"pass": None, "note": f"無法判定——{near_col} 沒有算出來"}
         return
 
     storm = pd.read_csv(storm_path, dtype={"date": str})
@@ -253,37 +253,37 @@ def check_storm_cancellation(cfg):
     result_warnings = []
     if len(rows) < MIN_STORM_DAYS_FOR_TEST:
         result["note"] = (
-            f"inconclusive -- only {len(rows)} storm day(s) with a computable index (< {MIN_STORM_DAYS_FOR_TEST}); "
-            "too few to judge"
+            f"無法判定——只有 {len(rows)} 個磁暴日可計算指標（< {MIN_STORM_DAYS_FOR_TEST}）；"
+            "太少，無法判斷"
         )
     elif result["median_abs_near_index"] < STORM_SIGNAL_FLOOR:
         result["note"] = (
-            f"inconclusive -- median storm-day |near_index| is only {result['median_abs_near_index']:.2f} z "
-            f"(< {STORM_SIGNAL_FLOOR}); this group shows no measurable storm signal to cancel"
+            f"無法判定——磁暴日 |near_index| 中位數只有 {result['median_abs_near_index']:.2f} z"
+            f"（< {STORM_SIGNAL_FLOOR}）；這組沒有可量測的磁暴訊號可以消除"
         )
     elif result.get("bootstrap_ci90_hi") is None or np.isnan(result["bootstrap_ci90_hi"]):
         result["note"] = (
-            "inconclusive -- bootstrap CI for the ratio is undefined (a degenerate share of resamples had "
-            "median|near_index| == 0); cannot judge against the ratio threshold"
+            "無法判定——比值的 bootstrap 信賴區間沒有定義（有一部分退化的重抽"
+            "中位數|near_index| == 0）；無法和比值門檻比較"
         )
     else:
         ci_hi = result["bootstrap_ci90_hi"]
         result["pass"] = bool(ci_hi < STORM_CANCELLATION_RATIO)
         result["note"] = (
-            f"pooled over {len(rows)} storm days: point estimate = {result['ratio_local_over_near']:.2f}, "
-            f"{int(CI_LEVEL * 100)}% bootstrap CI = [{result['bootstrap_ci90_lo']:.2f}, {ci_hi:.2f}] over "
-            f"{N_BOOTSTRAP} resamples (seed={SEED}); pass requires the CI UPPER BOUND < {STORM_CANCELLATION_RATIO} "
-            "(stricter than the old point-estimate rule -- a marginal point-estimate pass can now fail if the CI is "
-            "wide); expect the far-station regression to absorb the common-mode storm signal"
+            f"合併 {len(rows)} 個磁暴日：點估計 = {result['ratio_local_over_near']:.2f}，"
+            f"{int(CI_LEVEL * 100)}% bootstrap 信賴區間 = [{result['bootstrap_ci90_lo']:.2f}, {ci_hi:.2f}]，"
+            f"重抽 {N_BOOTSTRAP} 次（seed={SEED}）；通過需要信賴區間上界 < {STORM_CANCELLATION_RATIO}"
+            "（比舊的點估計規則嚴格——點估計勉強通過的情況，如果信賴區間很寬，現在可能會失敗）；"
+            "預期遠站迴歸會吸收共模的磁暴訊號"
         )
         if len(rows) < LOW_BOOTSTRAP_POWER_THRESHOLD:
             result_warnings.append(
-                f"low_bootstrap_power -- only {len(rows)} storm day(s) used (< {LOW_BOOTSTRAP_POWER_THRESHOLD}); "
-                "the resample space is combinatorially thin at this n, so the CI edges are coarser/less "
-                "trustworthy -- this does NOT downgrade the verdict, it's a caveat on the CI's precision"
+                f"low_bootstrap_power——只用了 {len(rows)} 個磁暴日（< {LOW_BOOTSTRAP_POWER_THRESHOLD}）；"
+                "這個 n 下重抽空間的組合數很少，所以信賴區間的邊界比較粗、比較不可信"
+                "——這不會降低判定結果，只是對信賴區間精度的提醒"
             )
     if n_fit is None or n_fit < WARN_FIT_DAYS_BELOW:
-        result_warnings.append(f"only {n_fit} regression-fit days (< {WARN_FIT_DAYS_BELOW}); the far->near fit is thin")
+        result_warnings.append(f"只有 {n_fit} 個迴歸擬合日（< {WARN_FIT_DAYS_BELOW}）；遠站->近站的擬合很薄")
     if result_warnings:
         result["warnings"] = result_warnings
     checks["storm_cancellation_test"] = result
@@ -366,7 +366,7 @@ def check_quiet_day_smoothness(cfg):
         "station": station,
         "days_checked": quiet_days,
         "max_abs_jump_values": sub["max_abs_jump"].tolist(),
-        "note": "occasional double-digit-to-~O(100nT) single-second jumps are expected real transients, not parsing bugs; n_spikes==0 confirms none crossed the 300nT structural-glitch threshold",
+        "note": "偶爾出現兩位數到約 O(100nT) 的單秒跳動是預期中的真實瞬變，不是解析 bug；n_spikes==0 確認沒有任何跳動超過 300nT 的結構性故障門檻",
     }
 
 
@@ -400,7 +400,7 @@ def check_no_spikes_adjacent_to_missing_data(cfg):
         "pass": len(bad) == 0,
         "station_days_checked": len(partial),
         "bad_flags": bad[:20],
-        "note": "any entry here means a spike was flagged directly adjacent to a NaN sample -- the exact NaN-miscounted-as-spike failure mode",
+        "note": "這裡只要有任何條目，就代表有突波被標記在緊鄰 NaN 樣本的位置——正是 NaN 被誤算成突波的失效模式",
     }
 
 
@@ -433,7 +433,7 @@ def check_baseline_window_excludes_storms(cfg):
     條件。"""
     storm_path = cfg.interim_dir / "storm_days.csv"
     if not storm_path.exists():
-        checks["baseline_window_excludes_storms"] = {"pass": None, "note": "inconclusive -- storm_days.csv missing"}
+        checks["baseline_window_excludes_storms"] = {"pass": None, "note": "無法判定——缺少 storm_days.csv"}
         return
     storm_dates = set(pd.read_csv(storm_path, dtype={"date": str})["date"])
 
@@ -480,10 +480,10 @@ def check_baseline_window_excludes_storms(cfg):
         "min_clean_points_threshold": MIN_CLEAN_POINTS,
         "probe_days": results,
         "note": (
-            "checks every day in the critical pre-anchor-event window still has >= MIN_CLEAN_POINTS clean "
-            "baseline days after excluding overlapping storm dates" + ("" if overlap_exercised else
-            " -- INCONCLUSIVE: no probe day's window actually overlapped a storm date, so this test "
-            "did not exercise the failure scenario")
+            "檢查錨點事件前關鍵窗口中的每一天，在排除重疊的磁暴日之後，仍有 >= MIN_CLEAN_POINTS 個乾淨"
+            "基準日" + ("" if overlap_exercised else
+            "——無法判定：沒有任何探測日的窗口真的和磁暴日重疊，所以這個測試"
+            "沒有觸及失效情境")
         ),
     }
 

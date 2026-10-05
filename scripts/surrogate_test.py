@@ -84,7 +84,7 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     vals = df.loc[mask, col].to_numpy(dtype=float)
     n = len(vals)
     if n < 20:
-        return {"group": group_id, "band": band, "error": f"only {n} clean days, too few to test"}
+        return {"group": group_id, "band": band, "error": f"只有 {n} 個乾淨日，太少，無法檢定"}
 
     # 1. 常態性檢查——這正是一開始改用中位數／MAD + 替代資料，
     # 而不用參數式常態理論檢定的理由。
@@ -134,7 +134,7 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     # report_template_validation.html 的數字也一個位元都不變）
     rng_w = np.random.default_rng([SEED, sum(map(ord, group_id + band))])
     if len(series) < 20:
-        return {"group": group_id, "band": band, "error": f"only {len(series)} non-storm days"}
+        return {"group": group_id, "band": band, "error": f"只有 {len(series)} 個非磁暴日"}
     win_res = mc.surrogate_test(series.to_numpy(dtype=float), np.flatnonzero(series.index.isin(window)),
                                 rng_w, tail="lower")
     pre_event = {k: v for k, v in win_res.items() if "whole" not in k}
