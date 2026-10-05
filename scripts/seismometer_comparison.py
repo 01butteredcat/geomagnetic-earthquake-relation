@@ -1,101 +1,101 @@
-"""Co-located/nearby seismometer-vs-geomagnetic comparison for the coseismic
-anomalies `coseismic_step_analysis.py` / `coseismic_stacking_analysis.py`
-found near each earthquake's origin second.
+"""同址／附近地震儀 vs 地磁的比較，針對
+`coseismic_step_analysis.py` / `coseismic_stacking_analysis.py`
+在每起地震發震秒附近找到的同震異常。
 
-## Why this exists
+## 為什麼有這支腳本
 
-Neither of those two scripts can tell "the magnetometer's housing got
-physically shaken" apart from "the magnetic field itself changed" -- both
-produce the same signature (a step/spike near the origin second) in 1Hz
-magnetic data alone. This script adds the one thing that CAN separate them:
-independent ground-motion data from a real seismometer/accelerometer, at or
-near the same site. The logic (per the user's own framing, which this
-script implements directly):
+那兩支腳本都分不出「磁力儀外殼被
+實際震動」和「磁場本身改變了」——光看 1Hz 磁場資料，
+兩者產生相同的特徵（發震秒附近的階躍／突波）。
+這支腳本加上唯一**能**區分兩者的東西：同址或附近
+真實地震儀／加速度儀的獨立地動資料。
+邏輯（依使用者自己的框架，這支
+腳本直接實作）：
 
-  - If the geomagnetic anomaly's onset and duration line up with the
-    seismometer's own strong-motion window, that's consistent with
-    (though doesn't prove) shaking-induced instrumental noise.
-  - If the geomagnetic anomaly starts measurably BEFORE the ground starts
-    moving, or PERSISTS after the ground motion has died down, that favors
-    a real geophysical mechanism (piezomagnetic effect, etc.) instead.
+  - 如果地磁異常的起始和持續時間和
+    地震儀自己的強震窗口對齊，那和
+    震動造成的儀器雜訊一致（雖然不能證明）。
+  - 如果地磁異常在地面開始動**之前**就明顯開始，
+    或在地動平息之後仍**持續**，那就傾向
+    真實的地球物理機制（壓磁效應等）。
 
-## Data used (fetched separately by the user, not by this pipeline)
+## 使用的資料（由使用者另外下載，不經由這個流程）
 
-31 of the 117 events in `events.py` have SAC PoleZero instrument-response
-files (`<GROUP_MMDD>/SAC_PZs_TW_<STA>_<CHAN>_...`) and a matching miniSEED
-waveform file (`<GROUP_MMDD>/<GROUP_MMDD>_w.mseed`, ~event_utc-60s to
-event_utc+600s, 100Hz), both under `seismometer/<GROUP_MMDD>/` -- see
-`SEISMIC_DATA_DIRS` below, keyed by (group_id, event.date). (Reorganized
-2026-08-17: previously the mseed files sat loose directly under this
-project's parent directory, one level up from their matching PZ folder;
-both now live together under `seismometer/`, one folder per event, out of
-the way of the Gx geomagnetic folders.) Of the 19 uncovered events, 6 are a
-permanent, structural gap: G14's 5 (its earliest event, 2009-07-14, predates
-the seismic data source's 2012 cutoff) plus G21's 1 (2010-11-21, same reason
--- confirmed 2026-09-19 that the data source's fetchable range only starts
-2012-01-01). The remaining 13 (spread across G5, G8, G9, G10, G11, G12,
-G15, G17) are simply not yet fetched. (G22's 1 event and G23's 1 event + G24's
-1 event -- G23/G24 split 2026-09-22 from a single merged "G23" that had 2
-events -- had mseed fetched 2026-09-19 and PZ files added 2026-09-20, and are
-now wired in;
-the PZ sets lack a few stations that appear in the mseed -- G22: CHK/ELD loc 11
-and HEN, G23: HEN and SSH -- which only affects those stations' traces, none
-of which were the nearest-station pick.)
-(As of 2026-08-13/14, only the 16 anchor events had been fetched; the
-remaining 11 non-anchor events plus the previously-missing G9 2022-09-17
-foreshock were fetched and verified 2026-08-16 -- see `coverage_summary.json`,
-which enumerates all events in `events.py`'s current registry with an honest
-`seismic_data_status` so the report never implies more coverage than it has.)
-(2026-09-23: registry grew from 49 to 117 events, all 68 new ones non-anchor
-and none seismometer-fetched, so the "19 uncovered" breakdown above is stale
--- it describes only the original 19, not the ~86 uncovered now; see
-`docs/candidate_events_gdms_2024_2026.md` for the new batch's own provenance.
-One of the new events, G11's 2025-01-21b, turned out to already have real
-data -- it falls inside the 2025-01-21 anchor's already-fetched mseed window
--- and was wired into `SEISMIC_DATA_DIRS` below; see that key's comment.)
+`events.py` 117 起事件中有 31 起有 SAC PoleZero 儀器響應
+檔（`<GROUP_MMDD>/SAC_PZs_TW_<STA>_<CHAN>_...`）和對應的 miniSEED
+波形檔（`<GROUP_MMDD>/<GROUP_MMDD>_w.mseed`，約 event_utc-60s 到
+event_utc+600s，100Hz），都放在 `seismometer/<GROUP_MMDD>/` 底下——見
+下面的 `SEISMIC_DATA_DIRS`，以 (group_id, event.date) 為鍵。（2026-08-17
+重新整理：之前 mseed 檔散放在這個
+專案的上層目錄，比對應的 PZ 資料夾高一層；
+現在兩者一起放在 `seismometer/` 底下，每個事件一個資料夾，不和
+Gx 地磁資料夾混在一起。）未涵蓋的 19 起事件中，6 起是
+永久性的結構缺口：G14 的 5 起（最早的事件 2009-07-14 早於
+地震資料來源 2012 年的起始）加上 G21 的 1 起（2010-11-21，同樣原因
+——2026-09-19 確認資料來源可下載範圍從
+2012-01-01 才開始）。其餘 13 起（分散在 G5、G8、G9、G10、G11、G12、
+G15、G17）只是還沒下載。（G22 的 1 起、G23 的 1 起 + G24 的
+1 起——G23/G24 在 2026-09-22 從原本有 2 起事件的單一合併 "G23" 拆出——
+mseed 在 2026-09-19 下載、PZ 檔在 2026-09-20 加入，現在
+已經接上；
+PZ 檔組缺了幾個 mseed 裡有的測站——G22：CHK/ELD loc 11
+和 HEN，G23：HEN 和 SSH——只影響那些測站的波形，它們都
+不是被選中的最近測站。）
+（截至 2026-08-13/14，只下載了 16 個錨點事件；
+其餘 11 起非錨點事件加上先前漏掉的 G9 2022-09-17
+前震在 2026-08-16 下載並確認——見 `coverage_summary.json`，
+它列出 `events.py` 目前登錄表中的所有事件，附上真實的
+`seismic_data_status`，讓報告永遠不會暗示比實際更多的涵蓋。）
+（2026-09-23：登錄表從 49 起成長到 117 起，68 起新事件全是非錨點，
+也都沒有下載地震儀資料，所以上面「19 起未涵蓋」的拆解已經過時
+——它只描述最初的 19 起，不是現在約 86 起未涵蓋的；新一批的來源
+見 `docs/candidate_events_gdms_2024_2026.md`。
+新事件中有一起，G11 的 2025-01-21b，結果已經有真實
+資料——它落在 2025-01-21 錨點已下載的 mseed 窗口內
+——已接進下面的 `SEISMIC_DATA_DIRS`；見那個鍵的註解。）
 
-(2026-09-25: the remaining 80 fetchable events were fetched in one batch --
-14 M>=6, 66 M5 -- and laid out under one naming rule that
-`_register_convention_dirs()` derives rather than lists. Coverage is now 111 of
-117; the other 6 predate the data source (G14's 5, G21's 1) and report
-`no_data_pre_2012`. The batch carried no PoleZero files; each new folder holds
-copies of the existing folders' PZ files whose epoch covers the event, since
-same-named PZ files differ only in their CREATED line.)
+（2026-09-25：其餘 80 起可下載的事件一批下載完成——
+14 起 M>=6、66 起 M5——依同一個命名規則配置，
+由 `_register_convention_dirs()` 推出而不是逐一列出。涵蓋率現在是 117 起中的
+111 起；另外 6 起早於資料來源（G14 的 5 起、G21 的 1 起），回報
+`no_data_pre_2012`。這一批沒有附 PoleZero 檔；每個新資料夾放的是
+既有資料夾中時段涵蓋該事件的 PZ 檔副本，因為
+同名的 PZ 檔只差在 CREATED 那一行。）
 
-Empirically confirmed quirks this module works around (see functions below
-for where): (1) the PZ-folder-name <-> mseed-filename mapping is NOT a
-derivable pattern -- G9's PZ folder is `G9_0918` but its mseed file is
-`G09_0918_w.mseed` -- so SEISMIC_DATA_DIRS below is a small hardcoded table,
-matching this codebase's own events.py precedent of hardcoding rather than
-inferring; (2) miniSEED traces are NOT uniformly -60s/+600s -- some stations
-(e.g. G9's `ECS`, otherwise an excellent 1.9km co-location candidate for the
-csg persistent-offset case) are short triggered-accelerograph recordings
-ending well before +600s, handled via the `triggered_short_trace` flag
-rather than assumed away; (3) some (station, channel) pairs have duplicate
-traces in the same mseed file (a gap-split recording or two nearby
-triggers), handled via `Stream.merge()` rather than a naive `select()[0]`.
+這個模組處理的、已實際確認的怪癖（在哪裡處理見下面的
+函式）：(1) PZ 資料夾名稱 <-> mseed 檔名的對應**不是**
+可推導的規則——G9 的 PZ 資料夾是 `G9_0918`，但它的 mseed 檔是
+`G09_0918_w.mseed`——所以下面的 SEISMIC_DATA_DIRS 是一張寫死的小表，
+和這個程式庫 events.py 寫死而不推斷的先例
+一致；(2) miniSEED 波形**不一定**都是 -60s/+600s——有些測站
+（例如 G9 的 `ECS`，否則它是 csg 持續偏移案例極佳的 1.9km 同址
+候選）是較短的觸發式強震儀紀錄，
+在 +600s 之前很早就結束，用 `triggered_short_trace` 旗標處理，
+而不是假設不存在；(3) 有些 (station, channel) 配對在同一個 mseed 檔裡有重複
+波形（因缺口而分段的紀錄，或兩次相近的
+觸發），用 `Stream.merge()` 處理，而不是天真的 `select()[0]`。
 
-## Method
+## 方法
 
-Two independent strong-motion window detectors are computed and both kept
-(not one silently preferred), because the confirmed short-triggered-trace
-case doesn't have enough pre-event baseline for STA/LTA to work:
-  - `detect_window_sta_lta`: classic STA/LTA trigger (needs a pre-event
-    baseline; returns `no_pre_event_baseline` rather than a fabricated
-    result when the trace is too short).
-  - `detect_window_envelope_threshold`: bandpass + envelope, thresholded
-    relative to its own peak -- works even on short triggered traces, at
-    the cost of being threshold-sensitive.
-The geomagnetic side reuses `coseismic_step_analysis.py`'s own detrend +
-step30-statistic machinery directly (not `coseismic_stacking_analysis.py`'s
-cached output -- the two new scripts have no run-order dependency), z-scored
-against that event's own off-event noise floor exactly like the stacking
-script.
+計算兩個獨立的強震窗口偵測器，兩者都保留
+（不默默偏好其中一個），因為已確認的短觸發波形
+情況沒有足夠的震前基準讓 STA/LTA 運作：
+  - `detect_window_sta_lta`：經典的 STA/LTA 觸發（需要震前
+    基準；波形太短時回傳 `no_pre_event_baseline`，而不是捏造的
+    結果）。
+  - `detect_window_envelope_threshold`：帶通 + 包絡，以相對於
+    自己峰值的門檻判斷——即使在短觸發波形上也能用，代價是
+    對門檻敏感。
+地磁那一側直接重用 `coseismic_step_analysis.py` 自己的去趨勢 +
+step30 統計量機制（不用 `coseismic_stacking_analysis.py` 的
+快取輸出——兩支新腳本沒有執行順序的相依），並和疊加
+腳本完全一樣，以該事件自己的事件外雜訊底做 z-score
+標準化。
 
-Usage:
-  seismometer_comparison.py --self-test                         # PZ-parse + response-removal sanity check
-  seismometer_comparison.py --group G9 --geomag-station csg      # spot check the flagship G9 case
-  seismometer_comparison.py --all                                 # every group with seismic data fetched
+用法：
+  seismometer_comparison.py --self-test                         # PZ 解析 + 去除儀器響應的健全性檢查
+  seismometer_comparison.py --group G9 --geomag-station csg      # 抽查代表性的 G9 案例
+  seismometer_comparison.py --all                                 # 每個已下載地震資料的組
 """
 from __future__ import annotations
 
@@ -123,42 +123,42 @@ from coseismic_step_analysis import (  # noqa: E402
     _step_statistic,
 )
 
-# Reorganized 2026-08-17: each GXX_MMDD folder (with its mseed file moved
-# inside it, no longer a loose <GROUP_MMDD>_w.mseed at DATA_ROOT) now lives
-# under this subdirectory instead of directly alongside the Gx geomagnetic
-# folders.
-# Moved 2026-09-14: seismometer/ now lives inside geomag_precursor/ itself
-# (alongside Gx, which moved the same way earlier that day), not one level
-# up at common.DATA_ROOT anymore -- hence GX_DATA_ROOT (== PROJECT_DIR), not
-# DATA_ROOT, below.
+# 2026-08-17 重新整理：每個 GXX_MMDD 資料夾（mseed 檔已移進
+# 資料夾裡，不再是 DATA_ROOT 底下零散的 <GROUP_MMDD>_w.mseed）現在放在
+# 這個子目錄底下，而不是直接和 Gx 地磁
+# 資料夾並列。
+# 2026-09-14 搬家：seismometer/ 現在放在 geomag_precursor/ 本身裡面
+# （和 Gx 一起，Gx 當天稍早也這樣搬過），不再在上一層的
+# common.DATA_ROOT——所以下面用的是 GX_DATA_ROOT（== PROJECT_DIR），不是
+# DATA_ROOT。
 SEISMIC_ROOT = common.GX_DATA_ROOT / "seismometer"
 
-# Hardcoded because the folder-name <-> group-id mapping is not reliably
-# derivable -- G9's mismatch (pz_dir "G9_0918" vs mseed "G09_0918_w.mseed")
-# is the concrete counterexample. G14 intentionally absent: its 2009-12-19
-# anchor predates the seismic data source's 2012 cutoff.
+# 寫死是因為資料夾名稱 <-> group-id 的對應無法可靠地
+# 推導——G9 的不一致（pz_dir "G9_0918" vs mseed "G09_0918_w.mseed"）
+# 就是具體的反例。G14 刻意不列：它的 2009-12-19
+# 錨點早於地震資料來源 2012 年的起始。
 #
-# Keyed by (group_id, event.date) -- as of 2026-09-20 this covered 30 of the
-# 49 events then in the registry (all except G14, G21 and 13 not-yet-fetched; not just the 16
-# anchors from the original single-event-per-group fetch), confirmed present on disk with mseed windows correctly
-# bracketing each event's origin second. G10's 2024-04-23a/2024-04-23b share
-# one PZ folder (same UTC calendar day, station metadata doesn't change
-# minute to minute) but have their own separate mseed files -- the same a/b/c-suffixed-`date`
-# pattern used below for any other same-group, same-calendar-day events (see events.py's
-# 2026-09-23 note on why: `event.date` is used as a same-group unique key here and in
-# coseismic_step_analysis.py/coseismic_stacking_analysis.py's per-event output naming, which a
-# 2026-09-23 batch of 68 new non-anchor events -- registry now 117 events -- would otherwise
-# silently collide on for 7 same-day pairs across G11/G13/G20; all suffixed at the source in
-# events.py rather than worked around here). 31 of 117 events have real seismic data as of
-# 2026-09-23 (30 pre-existing + 2025-01-21b, recovered from the anchor's already-fetched window
-# below -- see that key's own comment).
+# 以 (group_id, event.date) 為鍵——截至 2026-09-20，這涵蓋了當時登錄表 49 起事件中的
+# 30 起（除了 G14、G21 和 13 起還沒下載的都有；不只是最初每組單一事件下載的 16 個
+# 錨點），已確認存在於磁碟上，mseed 窗口也正確地
+# 包住每個事件的發震秒。G10 的 2024-04-23a/2024-04-23b 共用
+# 一個 PZ 資料夾（同一個 UTC 日曆天，測站中繼資料不會
+# 每分鐘變），但各有自己的 mseed 檔——下面任何其他同組、同日曆天的事件
+# 也用同樣的 a/b/c 尾碼 `date` 模式（原因見 events.py 的
+# 2026-09-23 說明：`event.date` 在這裡以及
+# coseismic_step_analysis.py/coseismic_stacking_analysis.py 的逐事件輸出命名中都被當成同組唯一鍵，
+# 2026-09-23 那批 68 起新的非錨點事件——登錄表現在 117 起——否則
+# 會在 G11/G13/G20 的 7 對同日事件上默默撞名；全部在
+# events.py 源頭就加上尾碼，而不是在這裡繞過）。截至 2026-09-23，117 起事件中有 31 起
+# 有真實地震資料（原有 30 起 + 2025-01-21b，從下面錨點已下載的窗口中
+# 救回——見那個鍵自己的註解）。
 SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     "G1": {
         "2018-02-04": {"pz_dir": "G01_0204", "mseed": "G01_0204_w.mseed"},
         "2018-02-06": {"pz_dir": "G01_0206", "mseed": "G01_0206_w.mseed"},
     },
-    # G2/G3 and G6/G7/G8 were one merged group each until the 2026-09-20 split; the seismometer
-    # folder/file names (fetched under the old merged names) are unchanged.
+    # G2/G3 和 G6/G7/G8 在 2026-09-20 拆分前各是一個合併組；地震儀
+    # 資料夾／檔名（用舊的合併名稱下載）維持不變。
     "G2": {
         "2019-04-18": {"pz_dir": "G02_G03_0418", "mseed": "G02_G03_0418_w.mseed"},
     },
@@ -192,10 +192,10 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     },
     "G11": {
         "2025-01-21": {"pz_dir": "G11_0121", "mseed": "G11_0121_w.mseed"},
-        # 2025-01-21b (00:26:25 local = 2025-01-20 16:26:25 UTC) falls inside the anchor's
-        # already-fetched event_utc-60s~+600s window (16:16:26~16:27:26 UTC) -- same mseed file,
-        # genuinely covers this event too. 2025-01-21c (01:42:31 local) does NOT (>1h outside the
-        # window) and is correctly left unmapped here (reports not_fetched).
+        # 2025-01-21b（當地 00:26:25 = 2025-01-20 16:26:25 UTC）落在錨點
+        # 已下載的 event_utc-60s~+600s 窗口內（16:16:26~16:27:26 UTC）——同一個 mseed 檔，
+        # 確實也涵蓋這個事件。2025-01-21c（當地 01:42:31）**沒有**（超出
+        # 窗口 1 小時以上），這裡正確地不對應（回報 not_fetched）。
         "2025-01-21b": {"pz_dir": "G11_0121", "mseed": "G11_0121_w.mseed"},
     },
     "G12": {
@@ -236,13 +236,13 @@ SEISMIC_DATA_DIRS: dict[str, dict[str, dict]] = {
     },
 }
 
-# Everything fetched from 2026-09-25 on follows one naming rule, so it is derived
-# instead of listed: G<2-digit group>_<MMDD of event.date, i.e. Taiwan local
-# date><a/b/c suffix if any>/, holding <that name>_w.mseed plus the SAC PoleZero
-# files whose epoch covers the event. (The hand-listed entries above predate the
-# rule: mixed zero-padding, some UTC-dated folders, pre-split G06_G07_G08 names.)
-# The 2026-09-25 batch added 80 events this way (14 M>=6, 66 M5).
-SEISMIC_DATA_SOURCE_START_UTC = pd.Timestamp("2012-01-01")  # nothing earlier is fetchable
+# 2026-09-25 起下載的東西都遵循同一個命名規則，所以用推導的
+# 而不是逐一列出：G<2 位數組號>_<event.date 的 MMDD，也就是台灣當地
+# 日期><如果有則加 a/b/c 尾碼>/，裡面放 <那個名稱>_w.mseed 加上
+# 時段涵蓋該事件的 SAC PoleZero 檔。（上面人工列出的條目早於
+# 這個規則：補零不一致、有些資料夾用 UTC 日期、還有拆分前的 G06_G07_G08 名稱。）
+# 2026-09-25 那一批以這種方式加入 80 起事件（14 起 M>=6、66 起 M5）。
+SEISMIC_DATA_SOURCE_START_UTC = pd.Timestamp("2012-01-01")  # 更早的都無法下載
 
 
 def convention_dir_name(group_id: str, event_date: str) -> str:
@@ -262,35 +262,35 @@ def _register_convention_dirs() -> None:
 
 _register_convention_dirs()
 
-GEOMAG_HALF_SEC = 240        # target: window for the geomagnetic side's z-scored step30 profile
-SEARCH_HALF_SEC = 180        # target: peak-search sub-window, same convention as coseismic_step_analysis.py's
-                              # SCAN_HALF_SEC (widened 120->180 2026-08-16 -- was pinning G12/G13/G20's
-                              # obs_lag at the old +-120s boundary. 2026-08-19: investigated widening
-                              # further to 300/360s to check whether G20's 2025-12-24 obs_lag=-178s (2s
-                              # from this 180s boundary) was a truncation artifact -- see plan
-                              # artifact-wobbly-kettle.md. It was NOT (obs_lag stayed at -178s at 300s),
-                              # but the wider window changed several OTHER, non-boundary-pinned events'
-                              # reported obs_lag (a wider search finds a larger max-of-N by chance even
-                              # under noise alone; see coseismic_step_analysis.py's SCAN_HALF_SEC comment
-                              # for the full writeup) -- reverted to 180/240s. Both are per-event TARGETS,
-                              # not hard values -- see `_effective_half_sec`: G10's 2024-04-23a/b are
-                              # only 357s apart, so their actual window is capped below these targets to
-                              # avoid one event's profile/search reaching into the other's real anomaly.)
+GEOMAG_HALF_SEC = 240        # 目標：地磁那一側 z-score 化 step30 剖面的窗口
+SEARCH_HALF_SEC = 180        # 目標：峰值搜尋子窗口，和 coseismic_step_analysis.py 的
+                              # SCAN_HALF_SEC 相同慣例（2026-08-16 從 120 放寬到 180——之前 G12/G13/G20 的
+                              # obs_lag 都卡在舊的 ±120 秒邊界。2026-08-19：研究過再放寬
+                              # 到 300/360 秒，檢查 G20 的 2025-12-24 obs_lag=-178s（距
+                              # 這個 180 秒邊界 2 秒）是不是截斷假象——見 plan
+                              # artifact-wobbly-kettle.md。結果**不是**（300 秒時 obs_lag 仍是 -178s），
+                              # 但較寬的窗口改變了其他好幾個**沒有**卡在邊界的事件
+                              # 回報的 obs_lag（搜尋範圍越寬，即使只有雜訊，
+                              # N 個中的最大值也越可能偶然變大；完整說明見 coseismic_step_analysis.py 的 SCAN_HALF_SEC 註解）
+                              # ——退回 180/240 秒。兩者都是逐事件的**目標**，
+                              # 不是固定值——見 `_effective_half_sec`：G10 的 2024-04-23a/b
+                              # 只相隔 357 秒，所以它們實際的窗口被限制在這些目標以下，
+                              # 避免一個事件的剖面／搜尋伸進另一個事件的真實異常。）
 MIN_OFF_EVENT_SAMPLES = 200
-MIN_POST_EVENT_SEC = 60      # a trace with less than this much post-origin data is flagged triggered_short_trace
+MIN_POST_EVENT_SEC = 60      # 發震後資料少於這麼多的波形會被標記為 triggered_short_trace
 PERSISTENCE_Z_THRESHOLD = 2.0
 PERSISTENCE_TAIL_FRACTION = 0.3
 ALIGNMENT_TOLERANCE_SEC = 5
-# Gate for alignment_verdict_gated: the per-event step30 p-value from
-# coseismic_step_analysis.py (D7, 2000 random reference times, same +-180s
-# search). Without it the verdict times whatever the largest value in the
-# window happens to be -- on 2026-09-25 only 7 of 93 events reached p < 0.05.
+# alignment_verdict_gated 的門檻：來自
+# coseismic_step_analysis.py 的逐事件 step30 p 值（D7，2000 個隨機參考時間，同樣的 ±180 秒
+# 搜尋）。沒有它的話，判定只是在對窗口中剛好最大的那個值
+# 計時——2026-09-25 時 93 起事件中只有 7 起達到 p < 0.05。
 ANOMALY_P_THRESHOLD = 0.05
 STEP_SUMMARY_CSV = common.PROJECT_DIR / "data" / "interim" / "coseismic_step_analysis" / "summary.csv"
-NOISE_PRE_LAGS = (-660, -60)   # pre-event reference for the geomag 1Hz difference-noise ratio
-# The magnetometer itself can stop during strong shaking: twu at the 2025-01-21
-# Dapu mainshock (2065 gal nearby) went flat at origin, then 146 of the next 240 s
-# were missing -- "no anomaly" there is a sensor dropout, not a quiet field.
+NOISE_PRE_LAGS = (-660, -60)   # 地磁 1Hz 差分雜訊比值的震前參考
+# 磁力儀本身在強烈震動時可能會停：2025-01-21 大埔主震時的 twu
+# （附近 2065 gal）在發震時變平，接下來 240 秒中有 146 秒
+# 缺值——那裡的「沒有異常」是感測器中斷，不是平靜的磁場。
 DROPOUT_WINDOW_SEC = (0, 300)
 DROPOUT_MISSING_FRACTION = 0.2
 
@@ -300,9 +300,9 @@ _MSEED_CACHE: dict[str, object] = {}
 
 
 # ---------------------------------------------------------------------------
-# PZ catalog: parse each PZ file's own dashed-comment header (no separate
-# filename-parsing path -- confirmed the header itself carries every field
-# needed).
+# PZ 目錄：解析每個 PZ 檔自己的虛線註解檔頭（沒有另外的
+# 檔名解析路徑——已確認檔頭本身就帶有所需的每一個
+# 欄位）。
 # ---------------------------------------------------------------------------
 
 _PZ_FIELD_RE = {
@@ -315,8 +315,8 @@ _PZ_FIELD_RE = {
     "lon": re.compile(r"LONGITUDE\s*:\s*([\-0-9.]+)"),
     "elevation": re.compile(r"ELEVATION\s*:\s*([\-0-9.]+)"),
 }
-# Optional (not required for a PZ file to parse): counts per m/s**2 -- every PZ
-# file here is an HL-band accelerometer with this unit (checked 2026-09-25).
+# 選用（PZ 檔解析不需要它）：每 m/s**2 的 counts——這裡每個 PZ
+# 檔都是這個單位的 HL 頻段加速度儀（2026-09-25 檢查過）。
 _PZ_SENSITIVITY_RE = re.compile(r"SENSITIVITY\s*:\s*([0-9.eE+\-]+)")
 
 
@@ -336,10 +336,10 @@ def _parse_pz_header(text: str) -> dict | None:
 
 
 def _load_pz_catalog(pz_dir: Path) -> dict[tuple[str, str], list[dict]]:
-    """key = (station, channel). value = list of epoch dicts (location,
-    start_utc, end_utc, lat, lon, elevation_m, path), one per PZ file --
-    a station/channel can have more than one epoch (differentiated by
-    `location` and/or `start_utc`)."""
+    """key = (station, channel)。value = 時段 dict 的清單（location、
+    start_utc、end_utc、lat、lon、elevation_m、path），每個 PZ 檔一個——
+    一個測站／通道可以有不只一個時段（由
+    `location` 及／或 `start_utc` 區分）。"""
     catalog: dict[tuple[str, str], list[dict]] = {}
     for path in sorted(pz_dir.glob("SAC_PZs_*")):
         text = path.read_text(errors="replace")
@@ -353,14 +353,14 @@ def _load_pz_catalog(pz_dir: Path) -> dict[tuple[str, str], list[dict]]:
 
 def _select_pz_epoch(catalog: dict, station: str, channel: str, location: str,
                       event_utc: pd.Timestamp) -> dict | None:
-    """Match on `location` (read directly off the miniSEED trace's own
-    stats.location -- unambiguous per-trace metadata, not a guess), then
-    pick the entry in force at event_utc (start_utc <= event_utc <= end_utc)
-    with the latest start_utc. Falls back to ignoring the location match only
-    if no in-force epoch matches it (shouldn't normally happen)."""
+    """先比對 `location`（直接讀自 miniSEED 波形自己的
+    stats.location——逐波形明確的中繼資料，不是猜的），再
+    挑出在 event_utc 時有效（start_utc <= event_utc <= end_utc）
+    且 start_utc 最晚的條目。只有在沒有任何有效時段符合 location 時，
+    才退而忽略 location 比對（正常情況不應發生）。"""
     entries = catalog.get((station, channel), [])
-    # the epoch has to still be in force at the event, not just have started --
-    # otherwise a station re-instrumented before the event would get its old response
+    # 時段必須在事件發生時仍然有效，不只是已經開始——
+    # 否則一個在事件前更換過儀器的測站會拿到它舊的響應
     in_force = [e for e in entries if e["start_utc"] <= event_utc <= e["end_utc"]]
     candidates = [e for e in in_force if e["location"] == location]
     if not candidates:
@@ -371,10 +371,10 @@ def _select_pz_epoch(catalog: dict, station: str, channel: str, location: str,
 
 
 def find_colocated_seismic_stations(pz_dir: Path, ref_lat: float, ref_lon: float, top_n: int = 3) -> list[dict]:
-    """Ranks seismic stations by distance to `ref_lat`/`ref_lon` -- the
-    GEOMAGNETIC station's own coordinates, not the epicenter. The goal is
-    co-location with the magnetometer being tested, not proximity to the
-    earthquake source."""
+    """依距離 `ref_lat`/`ref_lon` 排序地震站——那是
+    **地磁**測站自己的座標，不是震央。目標是
+    和被檢定的磁力儀同址，而不是靠近
+    地震震源。"""
     catalog = _load_pz_catalog(pz_dir)
     seen: dict[str, float] = {}
     for (station, _channel), entries in catalog.items():
@@ -387,7 +387,7 @@ def find_colocated_seismic_stations(pz_dir: Path, ref_lat: float, ref_lon: float
 
 
 # ---------------------------------------------------------------------------
-# miniSEED access
+# miniSEED 存取
 # ---------------------------------------------------------------------------
 
 def _read_mseed_cached(mseed_path: Path):
@@ -400,12 +400,12 @@ def _read_mseed_cached(mseed_path: Path):
 
 def load_trace(mseed_path: Path, pz_catalog: dict, station: str, channel: str,
                 event_utc: pd.Timestamp, remove_response: bool = True) -> dict:
-    """Reads (cached) the whole mseed file, selects the (station, channel)
-    traces, merges any duplicates (confirmed present -- some (station,
-    channel) pairs had 2 traces in the same file, a gap-split recording or
-    two nearby triggers), removes instrument response via the matching PZ
-    epoch if requested, and flags short triggered-accelerograph traces
-    rather than assuming a uniform window."""
+    """讀取（並快取）整個 mseed 檔，選出 (station, channel)
+    波形，合併任何重複（已確認存在——有些 (station,
+    channel) 配對在同一個檔案裡有 2 條波形，因缺口而分段的紀錄或
+    兩次相近的觸發），需要時用對應的 PZ 時段去除儀器
+    響應，並標記較短的觸發式強震儀波形，
+    而不是假設窗口都一樣。"""
     from obspy import UTCDateTime
 
     st = _read_mseed_cached(mseed_path)
@@ -443,22 +443,22 @@ def load_trace(mseed_path: Path, pz_catalog: dict, station: str, channel: str,
 
 
 PGA_BAND_HZ = (0.1, 20.0)
-PGA_WINDOW_SEC = (-10, 120)   # peak taken only in this window around the event's own origin
+PGA_WINDOW_SEC = (-10, 120)   # 只在事件自己的發震時間周圍這個窗口內取峰值
 
 
 def peak_ground_acceleration(mseed_path: Path, pz_catalog: dict, station: str,
                               event_utc: pd.Timestamp, window_end_sec: float = PGA_WINDOW_SEC[1]) -> dict:
-    """PGA in gal (cm/s**2) at `station`: max |acceleration| over the two
-    horizontal components (HLZ only if neither horizontal is usable).
+    """`station` 處的 PGA，單位 gal（cm/s**2）：兩個水平分量上的
+    最大 |加速度|（只有兩個水平分量都不能用時才用 HLZ）。
 
-    Acceleration = demeaned, PGA_BAND_HZ-bandpassed counts / the PZ header's
-    SENSITIVITY (counts per m/s**2) -- the standard strong-motion conversion
-    for these accelerometers. The peak is taken only from PGA_WINDOW_SEC[0] to
-    window_end_sec around this event's origin: some events share another
-    event's mseed file (G11 2025-01-21b sits 9 min into the anchor's window),
-    and an unwindowed max would return the other event's shaking. Deliberately not load_trace()'s response-removed
-    trace: the PZ files' INPUT UNIT is M, so removing the full response yields
-    displacement, not acceleration."""
+    加速度 = 去平均、經 PGA_BAND_HZ 帶通的 counts / PZ 檔頭的
+    SENSITIVITY（每 m/s**2 的 counts）——這些加速度儀標準的強震
+    換算。峰值只在這個事件發震時間周圍 PGA_WINDOW_SEC[0] 到
+    window_end_sec 之間取：有些事件共用另一個
+    事件的 mseed 檔（G11 2025-01-21b 落在錨點窗口開始後 9 分鐘），
+    不加窗的最大值會回傳另一個事件的震動。刻意不用 load_trace() 去除響應後的
+    波形：PZ 檔的 INPUT UNIT 是 M，所以去除完整響應得到的是
+    位移，不是加速度。"""
     from obspy import Stream, UTCDateTime
 
     ev = UTCDateTime(event_utc.isoformat())
@@ -473,18 +473,18 @@ def peak_ground_acceleration(mseed_path: Path, pz_catalog: dict, station: str,
         if epoch is None or not epoch.get("sensitivity"):
             continue
         peak = 0.0
-        for seg in Stream([tr]).split():  # merge() leaves a masked array where there are gaps
+        for seg in Stream([tr]).split():  # merge() 在有缺口的地方會留下遮罩陣列
             if seg.stats.npts < 2 * seg.stats.sampling_rate:
                 continue
             seg.data = seg.data.astype(float)
             seg.detrend("demean")
             seg.filter("bandpass", freqmin=PGA_BAND_HZ[0],
                        freqmax=min(PGA_BAND_HZ[1], seg.stats.sampling_rate / 2 - 0.5), zerophase=True)
-            win = seg.slice(t0, t1)  # filter the full segment first, then window, to avoid edge effects
+            win = seg.slice(t0, t1)  # 先濾整段再加窗，避免邊緣效應
             if win.stats.npts:
                 peak = max(peak, float(np.max(np.abs(win.data))))
         if peak > 0:
-            per_comp[comp] = peak / epoch["sensitivity"] * 100.0  # m/s**2 -> gal
+            per_comp[comp] = peak / epoch["sensitivity"] * 100.0  # m/s**2 -> gal 換算
     horizontal = {c: v for c, v in per_comp.items() if c != "HLZ"}
     use = horizontal or per_comp
     if not use:
@@ -495,9 +495,9 @@ def peak_ground_acceleration(mseed_path: Path, pz_catalog: dict, station: str,
 
 
 # ---------------------------------------------------------------------------
-# Strong-motion window detectors (both computed, neither silently preferred
-# -- see module docstring for why: the confirmed short-triggered-trace case
-# doesn't have enough pre-event baseline for STA/LTA).
+# 強震窗口偵測器（兩者都計算，都不默默偏好
+# ——原因見模組 docstring：已確認的短觸發波形情況
+# 沒有足夠的震前基準讓 STA/LTA 運作）。
 # ---------------------------------------------------------------------------
 
 def detect_window_sta_lta(tr, event_utc: pd.Timestamp, sta_sec: float = 1.0, lta_sec: float = 10.0,
@@ -546,7 +546,7 @@ def detect_window_envelope_threshold(tr, event_utc: pd.Timestamp, threshold_frac
         return {"status": "no_signal_above_threshold"}
 
     sr = tr.stats.sampling_rate
-    start_offset = tr.stats.starttime - ev  # seconds, trace start relative to origin
+    start_offset = tr.stats.starttime - ev  # 秒，波形起點相對於發震時間
     return {
         "status": "ok",
         "onset_lag_sec": round(float(above[0] / sr + start_offset), 2),
@@ -557,12 +557,12 @@ def detect_window_envelope_threshold(tr, event_utc: pd.Timestamp, threshold_frac
 
 def _effective_half_sec(target_half_sec: int, event_utc: pd.Timestamp,
                          exclude_centers: list[pd.Timestamp]) -> int:
-    """Local copy of coseismic_step_analysis.py's identically-named helper
-    (see that module for the full rationale) -- caps a per-event window at
-    half the gap to the nearest *other* real event in the same group, so
-    G10's 2024-04-23a/b (357s apart) never let one event's extracted
-    profile/search reach into the other's real anomaly. A no-op everywhere
-    else (every other group's events are hours-to-years apart)."""
+    """coseismic_step_analysis.py 同名輔助函式的本地副本
+    （完整理由見那個模組）——把逐事件窗口限制在
+    到同組最近*另一個*真實事件間隔的一半，讓
+    G10 的 2024-04-23a/b（相隔 357 秒）永遠不會讓一個事件取出的
+    剖面／搜尋伸進另一個事件的真實異常。在其他地方
+    都不起作用（其他每組的事件都相隔數小時到數年）。"""
     others = [c for c in exclude_centers if c != event_utc]
     if not others:
         return target_half_sec
@@ -571,9 +571,9 @@ def _effective_half_sec(target_half_sec: int, event_utc: pd.Timestamp,
 
 
 # ---------------------------------------------------------------------------
-# Geomagnetic side: reuses coseismic_step_analysis.py's detrend/statistic
-# machinery directly (independent computation, no dependency on
-# coseismic_stacking_analysis.py's cached output).
+# 地磁那一側：直接重用 coseismic_step_analysis.py 的去趨勢／統計量
+# 機制（獨立計算，不依賴
+# coseismic_stacking_analysis.py 的快取輸出）。
 # ---------------------------------------------------------------------------
 
 def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channel_type: str,
@@ -597,10 +597,10 @@ def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channe
         return None
 
     d = _detrend(raw)
-    arr = _step_statistic(d, 30)  # step30: same "headline" statistic as coseismic_stacking_analysis.py, used for ONSET timing
+    arr = _step_statistic(d, 30)  # step30：和 coseismic_stacking_analysis.py 相同的「主要」統計量，用於**起始**計時
 
-    exclude_centers = sibling_utcs  # same list computed above for the half_sec cap; kept as its own name here since
-                                      # its role from this point on is null/baseline exclusion, not window sizing
+    exclude_centers = sibling_utcs  # 和上面計算 half_sec 上限用的是同一個清單；這裡另取名稱，因為
+                                      # 從這裡開始它的角色是虛無／基準排除，而不是決定窗口大小
 
     def _off_event_baseline(series: np.ndarray) -> tuple[float, float] | None:
         mask = np.ones(len(series), dtype=bool)
@@ -632,20 +632,20 @@ def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channe
     z_profile = (_extract_profile(arr) - step_med) / step_mad
     lags = np.arange(-half_sec, half_sec + 1)
 
-    # `arr` (a moving-window step DIFFERENCE) is well-suited to finding WHEN
-    # a transition happens, but is structurally the wrong quantity for
-    # asking whether the field STAYS shifted afterward: once both sides of
-    # the sliding window sit on the same new plateau, a step-difference
-    # statistic returns to ~0 by construction, regardless of whether that
-    # plateau is permanent (a real persistent offset) or itself about to
-    # revert. Persistence has to be judged on the detrended FIELD LEVEL `d`
-    # itself, z-scored the same way -- a separate profile from the one used
-    # for onset timing.
+    # `arr`（移動窗口的階躍**差值**）很適合找出轉變
+    # **何時**發生，但在結構上不適合拿來
+    # 問磁場之後是否**維持**偏移：一旦
+    # 滑動窗口兩側都落在同一個新平台上，階躍差值
+    # 統計量依定義就會回到約 0，不管那個
+    # 平台是永久的（真正持續的偏移），還是本身就快要
+    # 回復。持續性必須在去趨勢後的**磁場水準** `d`
+    # 本身上判斷，用同樣方式做 z-score——這是和
+    # 起始計時用的剖面不同的另一條剖面。
     level_base = _off_event_baseline(d)
     level_z_profile = (_extract_profile(d) - level_base[0]) / level_base[1] if level_base is not None else None
 
-    # raw 1Hz first differences over a wide window, for the shaking-noise ratio
-    # compare_event computes once it knows the shaking window (popped before output)
+    # 寬窗口上的原始 1Hz 一階差分，給震動雜訊比值用，
+    # compare_event 知道震動窗口後才計算（輸出前會移除）
     p0 = _pos(idx, event_utc)
     lo_d, hi_d = max(1, p0 + NOISE_PRE_LAGS[0]), min(len(raw), p0 + 601)
     raw_vals = raw.to_numpy(dtype=float)
@@ -673,8 +673,8 @@ def geomag_profile(cfg: "common.GroupConfig", group, event, station: str, channe
 
 
 def geomag_dropout(diff_lags: np.ndarray, diff: np.ndarray) -> bool | None:
-    """True if more than DROPOUT_MISSING_FRACTION of the magnetometer's samples
-    in DROPOUT_WINDOW_SEC after origin are missing."""
+    """如果發震後 DROPOUT_WINDOW_SEC 內磁力儀的樣本
+    缺漏超過 DROPOUT_MISSING_FRACTION 則為 True。"""
     sel = (diff_lags >= DROPOUT_WINDOW_SEC[0]) & (diff_lags <= DROPOUT_WINDOW_SEC[1])
     if not sel.any():
         return None
@@ -683,10 +683,10 @@ def geomag_dropout(diff_lags: np.ndarray, diff: np.ndarray) -> bool | None:
 
 def geomag_noise_ratio(diff_lags: np.ndarray, diff: np.ndarray,
                         onset: float | None, offset: float | None) -> float | None:
-    """RMS of the geomagnetic 1Hz first difference during shaking over the RMS
-    in the 10 minutes before the event (NOISE_PRE_LAGS) -- the shaking-noise
-    signature seen in the G10 pilot (~11.6x). Shaking window = [onset, offset],
-    or 60 s from onset if no offset was detected."""
+    """震動期間地磁 1Hz 一階差分的 RMS 除以
+    事件前 10 分鐘（NOISE_PRE_LAGS）的 RMS——G10 試行中看到的
+    震動雜訊特徵（約 11.6 倍）。震動窗口 = [onset, offset]，
+    如果沒偵測到 offset，則為從 onset 起 60 秒。"""
     if onset is None:
         return None
     end = offset if offset is not None else onset + 60
@@ -700,17 +700,17 @@ def geomag_noise_ratio(diff_lags: np.ndarray, diff: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
-# Comparison / verdict
+# 比較／判定
 # ---------------------------------------------------------------------------
 
 def assess_persistence(lags_sec: list[int], z_profile: list[float | None],
                         shaking_offset_lag_sec: float | None,
                         z_threshold: float = PERSISTENCE_Z_THRESHOLD,
                         tail_frac: float = PERSISTENCE_TAIL_FRACTION) -> bool | None:
-    """True if the geomagnetic z-profile stays elevated (|z| > z_threshold)
-    for at least `tail_frac` of its samples after the shaking has stopped
-    (or after lag=0 if no shaking-offset is known) -- the quantitative form
-    of "G9 csg doesn't revert, G10 xcg does"."""
+    """如果地磁 z 剖面在震動停止後（不知道震動結束時間時則為
+    lag=0 之後），至少有 `tail_frac` 比例的樣本
+    維持升高（|z| > z_threshold）則為 True——這是
+    「G9 csg 不回復、G10 xcg 會回復」的量化形式。"""
     lags = np.array(lags_sec, dtype=float)
     z = np.array([np.nan if v is None else v for v in z_profile], dtype=float)
     ref = shaking_offset_lag_sec if shaking_offset_lag_sec is not None else 0.0
@@ -724,10 +724,10 @@ def assess_persistence(lags_sec: list[int], z_profile: list[float | None],
 def alignment_verdict(geomag_lag_sec: float | None, shaking_onset_lag_sec: float | None,
                        shaking_offset_lag_sec: float | None, persists: bool | None,
                        tolerance_sec: float = ALIGNMENT_TOLERANCE_SEC) -> str:
-    """One of: aligned_with_shaking / leads_shaking / persists_after_shaking_ends
-    / insufficient_data -- directly implements the user's own framing:
-    alignment supports the instrument-noise explanation; leading or
-    outlasting the shaking supports a real geophysical mechanism."""
+    """以下之一：aligned_with_shaking / leads_shaking / persists_after_shaking_ends
+    / insufficient_data——直接實作使用者自己的框架：
+    對齊支持儀器雜訊的解釋；領先或
+    比震動持續更久支持真實的地球物理機制。"""
     if geomag_lag_sec is None or shaking_onset_lag_sec is None:
         return "insufficient_data"
     if persists:
@@ -799,9 +799,9 @@ def compare_event(cfg: "common.GroupConfig", group, event, geomag_station: str, 
 
 
 # ---------------------------------------------------------------------------
-# Case studies: compare_event's result plus a downsampled raw waveform, for
-# report plotting. Reuses compare_event rather than recomputing onset
-# detection separately.
+# 個案研究：compare_event 的結果加上降取樣的原始波形，給
+# 報告畫圖用。重用 compare_event，而不是另外重算起始
+# 偵測。
 # ---------------------------------------------------------------------------
 
 def _downsample(data: np.ndarray, factor: int) -> list[float]:
@@ -853,7 +853,7 @@ def build_case_study(group_id: str, event_date: str, geomag_station: str) -> dic
         tr = info["trace"]
         sr = tr.stats.sampling_rate
         t0_offset = (tr.stats.starttime.datetime - event_utc.to_pydatetime()).total_seconds()
-        factor = max(1, int(round(sr / 20)))  # downsample toward ~20Hz for compact JSON
+        factor = max(1, int(round(sr / 20)))  # 降取樣到約 20Hz，讓 JSON 精簡
         wave_ds = _downsample(tr.data.astype(float), factor)
         env_ds = _downsample(_envelope(tr.data.astype(float)), factor)
         lags_ds = [round(t0_offset + i * factor / sr, 3) for i in range(len(wave_ds))]
@@ -864,10 +864,10 @@ def build_case_study(group_id: str, event_date: str, geomag_station: str) -> dic
 
 
 # ---------------------------------------------------------------------------
-# Self-test: PZ-parse + response-removal round-trip on a known real file
-# (not synthetic -- the thing worth sanity-checking here is obspy/PZ
-# plumbing, not the statistics, which coseismic_stacking_analysis.py's
-# self-test already covers).
+# 自我測試：在一個已知的真實檔案上做 PZ 解析 + 去除響應的來回檢查
+# （不是合成資料——這裡值得健全性檢查的是 obspy/PZ
+# 管線，而不是統計，統計已由 coseismic_stacking_analysis.py 的
+# 自我測試涵蓋）。
 # ---------------------------------------------------------------------------
 
 def self_test() -> bool:
@@ -903,7 +903,7 @@ def self_test() -> bool:
               f"envelope={env['status']}  {status4}")
         ok = ok and status4 == "PASS"
 
-    colocated = find_colocated_seismic_stations(pz_dir, 24.038, 121.609, top_n=3)  # xcg's coordinates
+    colocated = find_colocated_seismic_stations(pz_dir, 24.038, 121.609, top_n=3)  # xcg 的座標
     status5 = "PASS" if colocated and colocated[0]["station"] == "HWA" else "FAIL"
     print(f"[self-test] find_colocated_seismic_stations(xcg): nearest={colocated[:1]}  {status5}")
     ok = ok and status5 == "PASS"
@@ -912,7 +912,7 @@ def self_test() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Coverage summary + real-data orchestration
+# 涵蓋率摘要 + 真實資料統籌
 # ---------------------------------------------------------------------------
 
 def build_coverage_summary() -> dict:
@@ -933,11 +933,11 @@ def build_coverage_summary() -> dict:
 
 
 def gate_verdicts(rows: list[dict]) -> list[dict]:
-    """Attach the event's own step30 p-value (same station, H or F) from
-    coseismic_step_analysis.py and derive alignment_verdict_gated: the original
-    verdict when the anomaly is significant, otherwise no_significant_anomaly
-    (anomaly_p_unavailable if there is no matching p-value). The ungated
-    alignment_verdict is left as is."""
+    """附上該事件自己的 step30 p 值（同一測站，H 或 F），來自
+    coseismic_step_analysis.py，並推出 alignment_verdict_gated：異常顯著時
+    沿用原本的判定，否則為 no_significant_anomaly
+    （沒有對應的 p 值時為 anomaly_p_unavailable）。未經門檻篩選的
+    alignment_verdict 維持原樣。"""
     step = pd.read_csv(STEP_SUMMARY_CSV) if STEP_SUMMARY_CSV.exists() else pd.DataFrame()
     if len(step):
         step = step[(step.statistic_type == "step") & (step.window_sec == 30)]
@@ -982,7 +982,7 @@ def run_available_events(group_ids: tuple[str, ...] | None = None) -> dict:
 
         for event in group.events:
             if event.date not in group_dirs:
-                continue  # e.g. G14's events (no seismic source coverage at all)
+                continue  # 例如 G14 的事件（完全沒有地震資料來源涵蓋）
             pz_dir = SEISMIC_ROOT / group_dirs[event.date]["pz_dir"]
             mseed_path = pz_dir / group_dirs[event.date]["mseed"]
             pz_catalog = _load_pz_catalog(pz_dir)

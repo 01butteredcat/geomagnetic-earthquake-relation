@@ -1,44 +1,44 @@
-"""Fetch an EXTENDED earthquake catalog near the geomagnetic station network,
-covering every M>=6.0 event AND the smaller ones in between -- this is the
-"把一次地震變成很多次" (turn one earthquake into many) piece of the professor's
-suggested methodology: `events.py` only has the 20 hand-picked M>=6.0 events
-used to define the 13 groups, which is not enough for a real superposed-epoch
-stack or a meaningful backtest population.
+"""抓取地磁測站網附近的**擴充**地震目錄，
+涵蓋每一起 M>=6.0 事件**以及**其間較小的事件——這是教授建議方法中
+「把一次地震變成很多次」的那一塊：
+`events.py` 只有用來定義 13 組的 20 起人工挑選 M>=6.0 事件，
+不足以做真正的疊加時間
+疊加，也不足以構成有意義的回測母體。
 
-Source: the user-supplied CWA GDMS catalog exports (ML, UTC) -- this project
-takes CWA as the authority for every event and magnitude. Two exports tile
-2009-01-01 ~ 2026-07-31 (CWA_CATALOGS); a group's window is read from both, so
-a window straddling the files (G19) is still pure CWA. The USGS FDSN query is
-kept only behind --allow-usgs for windows outside that range: before
-2026-09-30 it was the silent fallback for every group outside 2024-09~2026-07,
-which put Mw/mb magnitudes into the M>=5.0/5.5 tiers.
+來源：使用者提供的 CWA GDMS 目錄匯出檔（ML，UTC）——本專案
+以 CWA 作為所有事件和規模的權威來源。兩份匯出檔接續涵蓋
+2009-01-01 ~ 2026-07-31（CWA_CATALOGS）；每組的窗口會同時從兩份讀取，所以
+橫跨兩個檔案的窗口（G19）仍然是純 CWA。USGS FDSN 查詢
+只保留在 --allow-usgs 之後，給這個範圍以外的窗口用：在
+2026-09-30 之前，它是 2024-09~2026-07 以外每一組都會默默退回的來源，
+因而把 Mw/mb 規模混進了 M>=5.0/5.5 級距。
 
-Scope:
-  - Only the 8 groups that have `ulf_near_far_index.csv` (vector-sufficient
-    XYZ pool; G1/G2/G3 are scalar-only and can't run the polarization method
-    at all, so they're not part of the superposed-epoch/backtest population).
-  - Per-group date window = exactly the window that group's ULF index
-    actually covers (read from the CSV itself, not re-derived from
-    events.py/docs, so this never drifts from what data is really usable).
-  - Bounding box covers the whole station network with margin: lat
-    20.5-27 (network spans hcn 21.94N to mtu 26.17N), lon 117.5-123.5
-    (kma 118.35E to offshore events out past 122E).
-  - Declustering: sort by time; an event is dropped if it falls within
-    `decluster_days` days AND `decluster_km` km of an already-kept event of
-    >= its own magnitude (i.e. keep the largest event of each tight
-    space-time cluster) -- avoids treating an aftershock sequence as many
-    independent samples, the same pseudo-replication concern events.py's own
-    docstring raises for the 13-group design.
-  - Cross-referenced against events.py's registered events (origin times
-    within KNOWN_EVENT_SEC and epicenters within KNOWN_EVENT_KM; magnitude
-    is NOT compared, since USGS and CWA ML routinely differ by more than
-    0.3 for the same earthquake) and flagged `is_known_event` rather than
-    duplicated.
+範圍：
+  - 只有 8 個有 `ulf_near_far_index.csv` 的組別（向量站足夠的
+    XYZ 測站池；G1/G2/G3 只有純量，根本跑不了極化方法，
+    所以不屬於疊加時間／回測母體）。
+  - 每組的日期窗口 = 該組 ULF 指標
+    實際涵蓋的窗口（直接從 CSV 讀取，不從
+    events.py／文件重新推導，所以永遠不會和實際可用的資料脫節）。
+  - 邊界框涵蓋整個測站網並留有餘裕：緯度
+    20.5-27（測站網從 hcn 21.94N 到 mtu 26.17N），經度 117.5-123.5
+    （kma 118.35E 到 122E 以外的外海事件）。
+  - 去叢集：依時間排序；一個事件如果落在某個已保留、規模
+    >= 它自己的事件的 `decluster_days` 天**且** `decluster_km` km 之內，
+    就丟掉（也就是每個緊密的
+    時空叢集只保留最大的事件）——避免把一個餘震序列當成許多
+    獨立樣本，和 events.py 自己的
+    docstring 針對 13 組設計提出的偽重複疑慮相同。
+  - 和 events.py 已登錄的事件交叉比對（發震時間
+    在 KNOWN_EVENT_SEC 內、震央在 KNOWN_EVENT_KM 內；**不**比較
+    規模，因為同一起地震的 USGS 和 CWA ML 常常相差超過
+    0.3），標記為 `is_known_event`，而不是
+    重複計入。
 
-Usage:
+用法：
   fetch_earthquake_catalog.py --min-mag 5.5
   fetch_earthquake_catalog.py --min-mag 5.0 --output data/external/extended_catalog_m5.0.csv
-  fetch_earthquake_catalog.py --min-mag 5.5 --reflag   # recompute is_known_event only, offline
+  fetch_earthquake_catalog.py --min-mag 5.5 --reflag   # 只離線重算 is_known_event
 """
 from __future__ import annotations
 
@@ -61,20 +61,20 @@ ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G
 
 DECLUSTER_DAYS = 3
 DECLUSTER_KM = 100
-# Same earthquake in the catalog and in events.py: origin times within a minute and epicenters
-# within 50 km. The old rule (6 h, magnitude within 0.3) missed duplicates whose USGS magnitude
-# differs from CWA ML by more than 0.3 (G4 2020-12-10: 6.1 vs 6.64, 0 s apart) and matched
-# distinct aftershocks hours away from a registered event.
+# 目錄和 events.py 中的同一起地震：發震時間相差一分鐘以內，震央
+# 相距 50 km 以內。舊規則（6 小時、規模相差 0.3 以內）會漏掉 USGS 規模
+# 和 CWA ML 相差超過 0.3 的重複事件（G4 2020-12-10：6.1 vs 6.64，相差 0 秒），也會配到
+# 距離已登錄事件數小時的不同餘震。
 KNOWN_EVENT_SEC = 60
 KNOWN_EVENT_KM = 50
 
-# User-supplied CWA GDMS regional magnitude-report exports (space-delimited, header
-# "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality"), M>=5.0,
-# as (path, first day, last day) of each export's requested range. Both are UTC:
-# GDMScatalog.txt by G11's 2025-01-21 anchor (its 2025-01-20 16:17 UTC row only lands on
-# 01-21 in Taiwan local time); GDMScatalog_2009-2024.txt by all 62 events.py events before
-# 2024-09 matching a row within 2 s. The exports cover a wider area than BBOX (out to lon
-# 125.6), so fetch_cwa() applies BBOX itself.
+# 使用者提供的 CWA GDMS 區域規模報告匯出檔（以空白分隔，標題列
+# "date time lat lon depth ML nstn dmin gap trms ERH ERZ fixed nph quality"），M>=5.0，
+# 格式為（路徑, 第一天, 最後一天），對應每份匯出檔請求的範圍。兩份都是 UTC：
+# GDMScatalog.txt 由 G11 的 2025-01-21 錨點確認（它的 2025-01-20 16:17 UTC 那一列只有在
+# 台灣當地時間才落在 01-21）；GDMScatalog_2009-2024.txt 由 events.py 在 2024-09 之前的
+# 全部 62 起事件都在 2 秒內對到一列確認。匯出檔涵蓋的範圍比 BBOX 大（經度延伸到
+# 125.6），所以 fetch_cwa() 會自己套用 BBOX。
 CWA_CATALOGS = (
     (PROJECT_DIR.parent / "GDMScatalog_2009-2024.txt", "2009-01-01", "2024-08-31"),
     (PROJECT_DIR.parent / "GDMScatalog.txt", "2024-09-01", "2026-07-31"),
@@ -133,15 +133,15 @@ def in_bbox(lat: float, lon: float) -> bool:
 
 
 def fetch_cwa_all(paths: list[Path], start: str, end: str, min_mag: float) -> list[dict]:
-    """fetch_cwa() over every export, so a window straddling two of them is read whole."""
+    """對每一份匯出檔執行 fetch_cwa()，讓橫跨兩份的窗口被完整讀取。"""
     return [e for path in paths for e in fetch_cwa(path, start, end, min_mag)]
 
 
 def fetch_cwa(path: Path, start: str, end: str, min_mag: float) -> list[dict]:
-    """Parse one user-supplied CWA GDMS catalog export, filtered to [start, end]
-    (inclusive, YYYY-MM-DD), mag >= min_mag and BBOX (the same box fetch_usgs() queries).
-    Returns the same dict shape as fetch_usgs() so decluster()/flag_known_events() work
-    unchanged."""
+    """解析一份使用者提供的 CWA GDMS 目錄匯出檔，篩選到 [start, end]
+    （含端點，YYYY-MM-DD）、mag >= min_mag 和 BBOX（和 fetch_usgs() 查詢的框相同）。
+    回傳和 fetch_usgs() 相同結構的 dict，讓 decluster()/flag_known_events() 不用改
+    就能用。"""
     start_dt = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     end_dt = datetime.strptime(end, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
     events = []
@@ -193,7 +193,7 @@ def decluster(events: list[dict], days: float = DECLUSTER_DAYS, km: float = DECL
 
 
 def flag_known_events(events: list[dict], group_id: str) -> None:
-    # folder_events: a sibling group's registered event is just as "known" as this group's own.
+    # folder_events：兄弟組的已登錄事件和這一組自己的一樣算「已知」。
     known = folder_events(group_id)
     for e in events:
         e["is_known_event"] = False
@@ -206,8 +206,8 @@ def flag_known_events(events: list[dict], group_id: str) -> None:
 
 
 def reflag_existing(path: Path) -> None:
-    """Recompute only is_known_event on an already-fetched catalog CSV, offline: rows,
-    declustering and group assignment stay exactly as fetched."""
+    """只在已經抓好的目錄 CSV 上離線重算 is_known_event：資料列、
+    去叢集和組別歸屬都維持抓取時的樣子。"""
     with path.open(newline="") as f:
         reader = csv.DictReader(f)
         fields = reader.fieldnames
@@ -258,7 +258,7 @@ def main():
             print(f"[{group_id}] no ulf_near_far_index.csv -- skipping (scalar-only or not run)", file=sys.stderr)
             continue
         start, end = window
-        # USGS endtime is exclusive-ish at day boundary in practice; pad by 1 day
+        # 實務上 USGS 的 endtime 在日界線差不多是不含端點的；多補 1 天
         end_padded = (datetime.strptime(end, "%Y-%m-%d")).strftime("%Y-%m-%d")
         if CWA_CATALOG_START <= start and end <= CWA_CATALOG_END:
             paths = [p for p, _, _ in CWA_CATALOGS]
@@ -280,10 +280,10 @@ def main():
         events = decluster(events)
         flag_known_events(events, group_id)
         if len(sibling_group_ids(group_id)) > 1:
-            # Sibling groups (shared raw-data folder) all query this same date range: keep each
-            # catalog event in exactly one of them (decluster/known-flagging above ran on the
-            # whole window first, so a foreshock/aftershock pair straddling two groups is still
-            # declustered together), otherwise it would be counted once per sibling.
+            # 兄弟組（共用原始資料夾）都查詢同樣的日期範圍：每個
+            # 目錄事件只保留在其中一組（上面的去叢集／已知標記是先對
+            # 整個窗口跑的，所以橫跨兩組的前震／餘震對仍會
+            # 一起去叢集），否則它會在每個兄弟組各被算一次。
             n_all = len(events)
             events = [e for e in events if assign_group_for_time(group_id, e["_dt"]) == group_id]
             print(f"  folder shared with {sibling_group_ids(group_id)}: kept {len(events)}/{n_all} "

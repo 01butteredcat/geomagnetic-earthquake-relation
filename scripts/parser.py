@@ -1,21 +1,21 @@
-"""IAGA-2002 parser for GDMSdata 1-second geomagnetic files.
+"""GDMSdata 1 秒地磁檔的 IAGA-2002 解析器。
 
-Handles the two station conventions found across the full G1-G13 dataset:
-  - vector stations: real data in X/Y/Z, F is the structural placeholder
-    88888.00 (not reported).
-  - scalar-only stations: real data in F, X/Y/Z always 88888.00.
+處理整個 G1-G13 資料集中出現的兩種測站慣例：
+  - 向量站：真實資料在 X/Y/Z，F 是結構性佔位值
+    88888.00（未回報）。
+  - 純量站：真實資料在 F，X/Y/Z 永遠是 88888.00。
 
-Which convention applies is NOT a fixed property of a station code -- most
-stations start scalar-only and are upgraded to vector partway through the
-dataset's history (the transition always lands on a group-era boundary, per
-the G1-G13 station registry survey; `ttn` is the one long-lived station that
-never upgrades). Each file's own header states which applies via the
-`Reported` line (`F` or `XYZF`), so `parse_day_file` reads that per file
-rather than consulting a static registry -- see `parse_header`/`is_scalar_only`.
+適用哪一種慣例**不是**測站代碼的固定屬性——大多數
+測站一開始只有純量，在資料集歷史中途才升級成向量
+（依 G1-G13 測站登錄調查，交接總是落在組別年代的
+邊界上；`ttn` 是唯一一個從未升級的
+長期測站）。每個檔案自己的檔頭會透過
+`Reported` 那一行（`F` 或 `XYZF`）說明適用哪一種，所以 `parse_day_file` 逐檔讀取它，
+而不是查靜態登錄表——見 `parse_header`/`is_scalar_only`。
 
-Both conventions also use 99999.00 as a distinct sentinel meaning genuine
-data outage (as opposed to 88888.00's "channel not reported" meaning), which
-is mapped to NaN in whichever column(s) are the "real" ones for that station.
+兩種慣例也都用 99999.00 當另一個哨兵值，代表真的
+資料中斷（和 88888.00 的「通道未回報」意思不同），它會
+在該測站「真實」的那些欄位中被對應成 NaN。
 """
 from __future__ import annotations
 
@@ -37,16 +37,16 @@ _HEADER_FIELD_RE = re.compile(r"^\s*(.+?)\s{2,}(.*?)\s*\|\s*$")
 
 @dataclass(frozen=True)
 class DayFileRef:
-    """Points at one station-day's worth of .sec data, regardless of whether
-    it lives as a loose file or as a member inside a GDMS batch-download
-    .tgz. Only str/Path fields -- safe to pickle across
-    ProcessPoolExecutor process boundaries (unlike an open tarfile handle).
-    `member` is None for loose files, the tar member name for .tgz sources.
+    """指向一個測站–日份量的 .sec 資料，不管它
+    是零散檔案，還是 GDMS 批次下載 .tgz 裡的
+    成員。只有 str/Path 欄位——可以安全地 pickle 跨越
+    ProcessPoolExecutor 的行程邊界（不像開啟中的 tarfile handle）。
+    `member` 對零散檔是 None，對 .tgz 來源是 tar 成員名稱。
     """
 
     station: str
-    date_str: str  # YYYYMMDD
-    source_path: Path  # loose: the .sec/.sec.gz itself; tgz: the .tgz file
+    date_str: str  # YYYYMMDD 格式
+    source_path: Path  # 零散檔：.sec/.sec.gz 本身；tgz：.tgz 檔
     member: str | None = None
 
     @property
@@ -55,13 +55,13 @@ class DayFileRef:
 
     @property
     def label(self) -> str:
-        """For log/error messages, in place of just printing a bare path."""
+        """用於記錄／錯誤訊息，取代只印出一個裸路徑。"""
         return f"{self.source_path}!{self.member}" if self.member else str(self.source_path)
 
 
 def _as_ref(x: "str | Path | DayFileRef", station_code: str | None = None) -> DayFileRef:
-    """Normalize a loose path (str/Path, as every caller historically passed)
-    into a DayFileRef so the rest of this module only has one code path."""
+    """把零散路徑（str/Path，每個呼叫者過去都是這樣傳的）
+    正規化成 DayFileRef，讓這個模組其餘部分只有一條程式路徑。"""
     if isinstance(x, DayFileRef):
         return x
     path = Path(x)
@@ -70,21 +70,21 @@ def _as_ref(x: "str | Path | DayFileRef", station_code: str | None = None) -> Da
 
 
 def _read_text(ref: DayFileRef) -> str:
-    """Read this ref's full file content into memory exactly once. A .sec
-    file is ~6MB decompressed, small enough that reading it whole up front
-    (instead of re-opening/re-decompressing per pass) is cheap for loose
-    files and *necessary* for .tgz members: gzip doesn't support random
-    access, so re-opening the same .tgz per read would be far more
-    expensive than reading it once (see build_daily_features.py for the
-    batch-extraction path that avoids doing this per file per worker)."""
-    if ref.member is None:  # loose .sec or .sec.gz
+    """把這個參照的完整檔案內容讀進記憶體，只讀一次。一個 .sec
+    檔解壓後約 6MB，小到一開始就整個讀進來
+    （而不是每一輪都重開／重解壓）對零散檔很便宜，
+    對 .tgz 成員則是**必要**的：gzip 不支援隨機
+    存取，所以每次讀取都重開同一個 .tgz 會比讀一次
+    昂貴得多（避免每個工作行程每個檔案都這樣做的批次取出路徑，
+    見 build_daily_features.py）。"""
+    if ref.member is None:  # 零散的 .sec 或 .sec.gz
         path = ref.source_path
         if path.suffix == ".gz":
             with gzip.open(path, "rt", encoding="ascii", errors="strict") as f:
                 return f.read()
         with open(path, "r", encoding="ascii", errors="strict") as f:
             return f.read()
-    # .tgz member
+    # .tgz 成員
     with tarfile.open(ref.source_path, "r:gz") as tf:
         extracted = tf.extractfile(ref.member)
         if extracted is None:
@@ -94,17 +94,17 @@ def _read_text(ref: DayFileRef) -> str:
 
 
 def open_raw(ref: "str | Path | DayFileRef"):
-    """Open a .sec/.sec.gz file or .tgz member for text reading, returning a
-    context-manager-able, line-iterable object -- same interface as before
-    (backward compatible with callers passing a bare str/Path, e.g.
-    verify_pipeline.py's spot-check). Internally now always reads the whole
-    file/member up front (see `_read_text`) rather than returning a live
-    gzip/plain file handle."""
+    """以文字模式開啟 .sec/.sec.gz 檔或 .tgz 成員，回傳一個
+    可以當 context manager、可逐行迭代的物件——介面和以前相同
+    （向後相容傳入裸 str/Path 的呼叫者，例如
+    verify_pipeline.py 的抽查）。內部現在一律一開始就讀進整個
+    檔案／成員（見 `_read_text`），而不是回傳一個即時的
+    gzip／一般檔案 handle。"""
     return io.StringIO(_read_text(_as_ref(ref)))
 
 
 def _find_data_start_from_text(text: str, label: str) -> int:
-    """Return the 0-indexed line number of the first data row."""
+    """回傳第一列資料的行號（從 0 起算）。"""
     for i, line in enumerate(text.splitlines(keepends=True)):
         if _HEADER_LINE_RE.match(line):
             return i + 1
@@ -135,35 +135,35 @@ def _parse_header_from_text(text: str, label: str) -> dict:
 
 
 def parse_header(ref: "str | Path | DayFileRef") -> dict:
-    """Parse the IAGA-2002 header of one .sec file/tgz member into station
-    metadata.
+    """把一個 .sec 檔／tgz 成員的 IAGA-2002 檔頭解析成測站
+    中繼資料。
 
-    Every file carries its own station name/lat/lon/elevation and a
-    `Reported` field (`F` or `XYZF`) -- confirmed consistent across dates for
-    a given station/era by spot-checking multiple files per station code
-    across all 13 groups. This means station metadata and scalar-vs-vector
-    classification can be derived directly from the data rather than
-    hand-maintained in a separate lookup table.
+    每個檔案都帶有自己的測站名稱／緯度／經度／高程，以及
+    `Reported` 欄位（`F` 或 `XYZF`）——已在所有 13 組中對每個測站代碼
+    抽查多個檔案，確認同一測站／年代在不同日期間一致。
+    這代表測站中繼資料和純量 vs 向量的
+    分類可以直接從資料推出，而不必
+    在另一張查詢表中人工維護。
 
-    Returns dict with: station_name, lat, lon, elevation_m (None if the
-    header field is blank -- seen for several older/retired stations),
-    reported (raw string, e.g. "F" or "XYZF"), source.
+    回傳的 dict 含：station_name、lat、lon、elevation_m（如果
+    檔頭欄位空白則為 None——幾個較舊／已停用的測站有這種情況）、
+    reported（原始字串，例如 "F" 或 "XYZF"）、source。
     """
     ref = _as_ref(ref)
     return _parse_header_from_text(_read_text(ref), ref.label)
 
 
 def is_scalar_only(ref: "str | Path | DayFileRef") -> bool:
-    """True if this file's own header reports F only (no real X/Y/Z)."""
+    """如果這個檔案自己的檔頭只回報 F（沒有真實 X/Y/Z）則為 True。"""
     return parse_header(ref)["reported"].strip().upper() == "F"
 
 
 def _parse_day_file_from_text(text: str, ref: DayFileRef, station_code: str) -> pd.DataFrame:
-    """Core parse logic, operating on already-read-into-memory text rather
-    than re-reading from disk/tar. Exposed (not just an inline helper)
-    because build_daily_features.py's batch .tgz path extracts member text
-    once per file in the main process and hands it straight to worker
-    processes, skipping the per-file I/O this function would otherwise do."""
+    """核心解析邏輯，處理已經讀進記憶體的文字，而不是
+    從磁碟／tar 重新讀取。獨立公開（而不只是內嵌的輔助函式），
+    是因為 build_daily_features.py 的批次 .tgz 路徑會在主行程中
+    每個檔案取出一次成員文字，直接交給工作
+    行程，省掉這個函式原本要做的逐檔 I/O。"""
     skiprows = _find_data_start_from_text(text, ref.label)
     scalar_only = _parse_header_from_text(text, ref.label)["reported"].strip().upper() == "F"
 
@@ -191,8 +191,8 @@ def _parse_day_file_from_text(text: str, ref: DayFileRef, station_code: str) -> 
         real = df[["X", "Y", "Z"]].copy()
         for col in ("X", "Y", "Z"):
             real.loc[real[col] == OUTAGE_SENTINEL, col] = pd.NA
-            # Defensive: a stray not-reported placeholder in a vector column
-            # would also be invalid data, though not expected per ground truth.
+            # 防禦性處理：向量欄位中零星出現的未回報佔位值
+            # 也是無效資料，雖然依實際資料不預期會出現。
             real.loc[real[col] == NOT_REPORTED_PLACEHOLDER, col] = pd.NA
 
     real = real.astype("float32")
@@ -202,18 +202,18 @@ def _parse_day_file_from_text(text: str, ref: DayFileRef, station_code: str) -> 
 
 
 def parse_day_file(ref: "str | Path | DayFileRef", station_code: str) -> pd.DataFrame:
-    """Parse one <station><YYYYMMDD>dsec.sec file (loose or a .tgz member)
-    into a DataFrame.
+    """把一個 <station><YYYYMMDD>dsec.sec 檔（零散檔或 .tgz 成員）
+    解析成 DataFrame。
 
-    Returns a DataFrame indexed by UTC-naive datetime (raw clock value as
-    printed in the file; true UTC offset is resolved separately by
-    timezone_check.py) with float32 columns depending on what this specific
-    file's header reports (see `is_scalar_only`):
-      - vector file: X, Y, Z
-      - scalar-only file: F
-    Missing/outage samples (sentinel 99999.00) are NaN. `station_code` is not
-    used to determine this (kept for caller bookkeeping/error messages only)
-    -- scalar-vs-vector status is read fresh from this file's own header.
+    回傳以不含時區的 UTC datetime 為索引的 DataFrame（檔案中印出的
+    原始時鐘值；真正的 UTC 偏移另外由
+    timezone_check.py 判定），float32 欄位取決於這個特定
+    檔案的檔頭回報了什麼（見 `is_scalar_only`）：
+      - 向量檔：X、Y、Z
+      - 純量檔：F
+    缺值／中斷樣本（哨兵值 99999.00）是 NaN。`station_code` 不會
+    用來判斷這件事（只保留給呼叫者記帳／錯誤訊息用）
+    ——純量 vs 向量的狀態每次都從這個檔案自己的檔頭重新讀取。
     """
     ref = _as_ref(ref, station_code=station_code)
     return _parse_day_file_from_text(_read_text(ref), ref, station_code)

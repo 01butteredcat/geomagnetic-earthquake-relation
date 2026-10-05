@@ -1,7 +1,7 @@
-"""Verification pass (plan Section 7) -- must be run and all checks reviewed
-before trusting any precursor conclusion drawn from this pipeline.
+"""驗證步驟（計畫第 7 節）——在相信這個流程得出的任何前兆結論之前，
+必須執行並檢視所有檢查。
 
-Usage: verify_pipeline.py --group G10
+用法：verify_pipeline.py --group G10
 """
 from __future__ import annotations
 
@@ -50,28 +50,28 @@ def check_raw_vs_parsed_spotcheck(cfg):
 
         real_cols = ["F"] if scalar else ["X", "Y", "Z"]
         junk_cols = ["X", "Y", "Z"] if scalar else ["F"]
-        # junk columns (never real for this file's channel type) are
-        # normally the not-reported placeholder (88888), but on some older
-        # (pre-2024, CWB-era) totally-dead days the file instead fills the
-        # outage sentinel (99999) into the junk column too -- e.g. a whole
-        # G2_G3-era file can read X=Y=Z=88888/F=99999 for a vector-type
-        # station on a day with zero data at all. The pipeline itself
-        # already handles this correctly (parser.py's defensive NaN-ing
-        # treats a stray 88888 in a real column as invalid too), so this
-        # check only requires the junk value be ONE of the two known
-        # sentinels, not a specific one -- a genuinely wrong/corrupted raw
-        # value would still be caught.
+        # 垃圾欄位（對這個檔案的通道類型來說從來不是真實資料）
+        # 通常是未回報佔位值（88888），但在一些較舊的
+        # （2024 年前、CWB 時代）完全沒資料的日子，檔案會改把
+        # 中斷哨兵值（99999）也填進垃圾欄位——例如整個
+        # G2_G3 時代的檔案，向量型測站在完全沒有資料的那天
+        # 可能讀到 X=Y=Z=88888/F=99999。流程本身
+        # 已經正確處理這種情況（parser.py 的防禦性 NaN 處理
+        # 也把真實欄位中零星的 88888 當成無效），所以這個
+        # 檢查只要求垃圾值是兩個已知哨兵值**之一**，
+        # 不指定是哪一個——真正錯誤／損壞的原始
+        # 值仍然會被抓到。
         junk_ok = all(raw[c] in (88888.0, 99999.0) for c in junk_cols)
-        # A real column reads NaN in the parsed output for the outage
-        # sentinel (99999) always, AND for a stray not-reported placeholder
-        # (88888) too -- but only for vector (X/Y/Z) columns, which is where
-        # parser.py's defensive fallback applies (a totally-dead day can
-        # apparently still write 88888 into what should be a real vector
-        # column; ground truth per common.py's/NOTES.md's convention is
-        # that shouldn't happen, but the pipeline treats it defensively as
-        # invalid rather than a bogus real reading). The scalar (F) column
-        # has no such defensive mapping in parser.py, so 88888 there is not
-        # expected/tested for.
+        # 真實欄位在解析輸出中，遇到中斷
+        # 哨兵值（99999）一律是 NaN，遇到零星的未回報佔位值
+        # （88888）也是——但只限向量（X/Y/Z）欄位，那是
+        # parser.py 防禦性備援套用的地方（完全沒資料的日子
+        # 顯然仍可能把 88888 寫進本該是真實向量的
+        # 欄位；依 common.py／NOTES.md 的慣例，實際資料
+        # 不應該發生這種事，但流程防禦性地把它當成
+        # 無效，而不是一個假的真實讀值）。純量（F）欄位
+        # 在 parser.py 中沒有這種防禦性對應，所以那裡的 88888 不在
+        # 預期／檢查範圍內。
         nan_sentinels = {"X": (88888.0, 99999.0), "Y": (88888.0, 99999.0), "Z": (88888.0, 99999.0), "F": (99999.0,)}
         real_ok = all(
             pd.isna(parsed_row[c]) if raw[c] in nan_sentinels[c] else np.isclose(parsed_row[c], raw[c])
@@ -85,12 +85,12 @@ def check_raw_vs_parsed_spotcheck(cfg):
 
 
 def check_known_outage_ground_truth(cfg):
-    """Manually pre-verified ground truth for three specific twu outage days
-    -- only meaningful for G10, where this was hand-checked against the raw
-    files when the pipeline was first built. Other groups have no equivalent
-    manually-verified ground truth, so this check is not applicable there
-    (their gap-handling correctness is instead covered generically by
-    check_no_spikes_adjacent_to_missing_data below)."""
+    """人工預先確認的三個特定 twu 中斷日的實際資料
+    ——只對 G10 有意義，那是在流程最初建立時對照原始
+    檔案人工檢查過的。其他組沒有對應的
+    人工確認實際資料，所以這個檢查在那裡不適用
+    （它們的缺口處理正確性改由下面的
+    check_no_spikes_adjacent_to_missing_data 通用地涵蓋）。"""
     if cfg.group_id != "G10":
         checks["known_outage_ground_truth"] = {
             "pass": None,
@@ -116,17 +116,17 @@ def check_known_outage_ground_truth(cfg):
 
 
 def check_timezone_conclusion(cfg):
-    """common.DATA_TIMEZONE ('UTC') is an already-established, dataset-wide
-    ground truth confirmed with high confidence on G10's clean 2024 data
-    (see common.py's comment) -- it should hold for every group, since all
-    groups share the same CWA IAGA-2002 recording convention. This check's
-    per-group re-run of timezone_check.py is a spot-check, not a fresh
-    from-scratch proof: a station with degraded data quality (e.g. G11's
-    twu, which has many partial outages) can legitimately come back
-    UNCERTAIN/low-confidence without that meaning anything is wrong -- it
-    just means that particular station's signal wasn't clean enough this
-    time. A real problem is a CONFIDENT conclusion that contradicts
-    common.DATA_TIMEZONE; that would be a genuine red flag."""
+    """common.DATA_TIMEZONE（'UTC'）是已經確立、全資料集共用的
+    實際資料，在 G10 乾淨的 2024 資料上以高信心確認
+    （見 common.py 的註解）——它應該對每一組都成立，因為所有
+    組別都使用同一個 CWA IAGA-2002 紀錄慣例。這個檢查
+    逐組重跑 timezone_check.py 是抽查，不是從頭重新
+    證明：資料品質較差的測站（例如 G11 的
+    twu，有很多部分中斷）合理地可能得到
+    UNCERTAIN／低信心的結果，那不代表有任何問題——
+    只是那個測站這次的訊號不夠乾淨。真正的問題是
+    一個**有信心**、卻和
+    common.DATA_TIMEZONE 矛盾的結論；那才是真正的警訊。"""
     tz = json.loads((cfg.interim_dir / "timezone_check.json").read_text())
     conclusion, confidence = tz["conclusion_timezone"], tz["confidence"]
     expected = "UTC" if DATA_TIMEZONE == "UTC" else "LOCAL (UTC+8)"
@@ -147,42 +147,42 @@ def check_timezone_conclusion(cfg):
     }
 
 
-# Storm-cancellation test (multi-day). The far->near regression is fit on
-# non-storm days only, so every storm day is an extrapolation, and a verdict
-# from any single day (the old "highest-Kp day" version) is dominated by that
-# day's noise: G2/G3's F index was only ~-2 z there, G6/G13's near and far
-# stations simply disagreed that day. Instead, pool EVERY storm-onset day
-# (Kp>=KP_STORM_THRESHOLD or Dst<=DST_STORM_THRESHOLD, from storm_days.csv)
-# on which the index is computable, and compare the group's typical storm-day
-# |near_index| with its typical |local_anomaly_index| after the regression.
-# Storm days are excluded from the regression fit, so this test is out-of-sample:
-# a thin fit (G13: 18 days) does not invalidate a strong pooled result, it only
-# earns a warning (WARN_FIT_DAYS_BELOW) -- the verdict rests on the storm days.
+# 磁暴消除檢定（多日）。遠站->近站迴歸只在
+# 非磁暴日上擬合，所以每個磁暴日都是外推，而只看
+# 單一天的判定（舊的「Kp 最高那天」版本）會被那天的
+# 雜訊主導：G2/G3 的 F 指標在那天只有約 -2 z，G6/G13 的近站和遠站
+# 那天就是不一致。改成合併**每一個**磁暴開始日
+# （Kp>=KP_STORM_THRESHOLD 或 Dst<=DST_STORM_THRESHOLD，取自 storm_days.csv）
+# 中指標可計算的日子，比較該組典型磁暴日的
+# |near_index| 和迴歸後典型的 |local_anomaly_index|。
+# 磁暴日排除在迴歸擬合之外，所以這個檢定是樣本外的：
+# 擬合天數少（G13：18 天）不會讓強的合併結果失效，只會
+# 得到一個警告（WARN_FIT_DAYS_BELOW）——判定取決於磁暴日。
 WARN_FIT_DAYS_BELOW = 30
-MIN_STORM_DAYS_FOR_TEST = 5  # fewer usable storm days than this: no verdict
-STORM_SIGNAL_FLOOR = 0.5  # median |near_index| (z) below this: no measurable storm signal to cancel
-STORM_CANCELLATION_RATIO = 0.6  # pass if median|local| < this * median|near| (same 0.6 as the old single-day rule; a judgment call)
-# Judging on the point estimate alone let a lucky small-sample ratio pass
-# even though resampling uncertainty says it isn't reliably below the
-# threshold -- pass now requires the bootstrap CI's UPPER bound to clear
-# STORM_CANCELLATION_RATIO, not just the point estimate (a strict tightening:
-# ci_hi >= point_estimate always, so this can only turn a pass into a fail,
-# never the reverse). LOW_BOOTSTRAP_POWER_THRESHOLD flags (doesn't gate) days
-# counts where the bootstrap has little combinatorial room to work with: a
-# multiset resample of n items has only C(2n-1, n) distinct outcomes (126 at
-# n=5, ~92k at n=10, ~7.76e7 at n=15), so below ~15 the CI is coarser than
-# N_BOOTSTRAP=2000 draws would suggest.
+MIN_STORM_DAYS_FOR_TEST = 5  # 可用磁暴日少於這個：不判定
+STORM_SIGNAL_FLOOR = 0.5  # |near_index| 中位數（z）低於這個：沒有可量測的磁暴訊號可以消除
+STORM_CANCELLATION_RATIO = 0.6  # 中位數|local| < 這個 * 中位數|near| 則通過（和舊的單日規則同樣是 0.6；判斷值）
+# 只看點估計判定，會讓運氣好的小樣本比值通過，
+# 即使重抽的不確定性顯示它並沒有可靠地低於
+# 門檻——現在通過需要 bootstrap 信賴區間的**上界**低於
+# STORM_CANCELLATION_RATIO，而不只是點估計（嚴格收緊：
+# ci_hi >= point_estimate 永遠成立，所以這只會把通過變成失敗，
+# 不會反過來）。LOW_BOOTSTRAP_POWER_THRESHOLD 標記（不擋）天數
+# 少到 bootstrap 沒有多少組合空間的情況：n 個項目的
+# 多重集合重抽只有 C(2n-1, n) 種不同結果（n=5 時 126，
+# n=10 時約 92k，n=15 時約 7.76e7），所以低於約 15 時，信賴區間比
+# N_BOOTSTRAP=2000 次抽樣所暗示的更粗。
 CI_LEVEL = 0.90
-N_BOOTSTRAP = 2000  # same as every other bootstrapping script in this repo (SEED below too) -- cost here is negligible either way
+N_BOOTSTRAP = 2000  # 和這個 repo 中其他所有 bootstrap 腳本相同（下面的 SEED 也是）——這裡的成本反正可以忽略
 SEED = 20260805
 LOW_BOOTSTRAP_POWER_THRESHOLD = 15
 
 
 def _median_ratio(near_abs: np.ndarray, local_abs: np.ndarray) -> float:
-    """statistic() for bootstrap_ci: median|local| / median|near| on one
-    paired resample. Returns NaN (not an exception) when a resample's
-    near-day median collapses to 0, so nanpercentile drops that rare
-    degenerate replicate instead of the whole bootstrap crashing."""
+    """給 bootstrap_ci 的 statistic()：一次配對重抽上的
+    中位數|local| / 中位數|near|。當某次重抽的近站日中位數
+    塌成 0 時回傳 NaN（而不是拋出例外），讓 nanpercentile 丟掉那個罕見的
+    退化重抽，而不是讓整個 bootstrap 當掉。"""
     med_near = np.median(near_abs)
     return float(np.median(local_abs) / med_near) if med_near > 0 else float("nan")
 
@@ -234,7 +234,7 @@ def check_storm_cancellation(cfg):
             frac_days_reduced=float(np.mean(local_abs < near_abs)),
             frac_days_sign_flipped=float(np.mean(np.sign(near_v) != np.sign(local_v))),
         )
-        # informational: one-sided Wilcoxon signed-rank test that |local| < |near| across storm days
+        # 參考用：跨磁暴日 |local| < |near| 的單尾 Wilcoxon 符號等級檢定
         if len(rows) >= MIN_STORM_DAYS_FOR_TEST and np.any(near_abs != local_abs):
             from scipy.stats import wilcoxon
 
@@ -290,30 +290,30 @@ def check_storm_cancellation(cfg):
 
 
 def check_candidates_not_in_outage_windows(cfg):
-    """A candidate day should never fall on a day compute_indices.py's own
-    is_clean_day considered dirty -- candidate_flag is defined to require
-    is_clean_day==True, so this is a regression test that the gate actually
-    held, not a tautology: it independently rebuilds the same "outage" event
-    compute_indices.py's clean_overall now uses (a day only counts as an
-    outage for a pool if EVERY station in that pool's near group, or every
-    station in its far group, was out that day -- matching how the median-
-    of-near/median-of-far index tolerates a single missing station), rather
-    than the earlier, over-strict "any one relevant station is dirty" union,
-    which produced false failures once auto_outage_dates started finding
-    long-running single-station outages that the near/far median already
-    routes around without issue. Station-day "out" is judged on the night
-    window (see below), matching what compute_indices.py's night features
-    (MIN_NIGHT_MINUTES) actually gate on."""
+    """候選日絕不應該落在 compute_indices.py 自己的
+    is_clean_day 認為不乾淨的日子——candidate_flag 的定義要求
+    is_clean_day==True，所以這是確認這道關卡真的
+    守住的回歸測試，不是同義反覆：它獨立重建
+    compute_indices.py 的 clean_overall 現在使用的同一個「中斷」事件
+    （一天只有在測站池近站組的**每一個**測站、或遠站組的每一個
+    測站那天都中斷時，才算該測站池的中斷——和近站中位數／
+    遠站中位數指標可以容忍單一測站缺漏的方式一致），而不是
+    較早、過度嚴格的「任何一個相關測站不乾淨」聯集，
+    那在 auto_outage_dates 開始找到長期的
+    單一測站中斷後產生了假失敗，而那些中斷近站／遠站中位數早就
+    能毫無問題地繞過。測站–日是否「中斷」依夜間
+    窗口判斷（見下面），和 compute_indices.py 的夜間特徵
+    （MIN_NIGHT_MINUTES）實際把關的方式一致。"""
     cand = json.loads((cfg.interim_dir / "candidate_windows.json").read_text())
     daily = pd.read_csv(cfg.interim_dir / "daily_features.csv", dtype={"date": str})
     all_days = sorted(daily["date"].unique())
 
-    # "Outage" here is judged on the NIGHT window the index is actually built
-    # from (NIGHT_HOURS_UTC, >= MIN_NIGHT_MINUTES valid minutes of that
-    # station+channel), not the whole-day pct_missing: a station can be >5%
-    # missing over 24h yet have a complete night window, and vice versa. That
-    # mismatch is what made this check flag G14/G18 candidates whose near or
-    # far median was in fact computed from full night data.
+    # 這裡的「中斷」依實際建立指標用的**夜間**窗口判斷
+    # （NIGHT_HOURS_UTC，該測站＋通道 >= MIN_NIGHT_MINUTES 個有效分鐘），
+    # 而不是整天的 pct_missing：一個測站可能 24 小時內缺漏 >5%，
+    # 夜間窗口卻完整，反之亦然。正是這種
+    # 不一致讓這個檢查標記出 G14/G18 的候選日，而它們的近站或
+    # 遠站中位數其實是用完整的夜間資料算出來的。
     night_ok_cache: dict[tuple[str, str], set[str]] = {}
 
     def night_ok_dates(station, channel):
@@ -346,15 +346,15 @@ def check_candidates_not_in_outage_windows(cfg):
 
 
 def check_quiet_day_smoothness(cfg):
-    """Proxy for a visual sanity check: on the quiet days used for the
-    timezone check, the parsed curve should be free of PARSING artifacts.
-    We do not require every second to be near-flat -- brief (1-2 sample)
-    simultaneous jumps up to ~O(100nT) are physically real (e.g.
-    sudden-commencement-type impulses) and expected occasionally even on an
-    otherwise-quiet day; n_spikes==0 already confirms nothing crossed the
-    300nT structural-glitch threshold used elsewhere in the pipeline (see
-    build_daily_features.SPIKE_THRESHOLD_NT). This check instead just
-    confirms no pervasive corruption (many large jumps, as seen on twu)."""
+    """目視健全性檢查的代理：在時區檢查用的
+    平靜日上，解析出的曲線不應該有**解析**造成的假象。
+    我們不要求每一秒都接近平坦——短暫（1-2 個樣本）
+    同時跳動、最高約 O(100nT) 在物理上是真實的（例如
+    急始型脈衝），即使在
+    其他方面平靜的日子也偶爾會出現；n_spikes==0 已經確認沒有任何東西超過
+    流程其他地方使用的 300nT 結構性故障門檻（見
+    build_daily_features.SPIKE_THRESHOLD_NT）。這個檢查只是
+    確認沒有普遍的損壞（許多大跳動，像 twu 那樣）。"""
     tz = json.loads((cfg.interim_dir / "timezone_check.json").read_text())
     station = tz.get("station")
     quiet_days = tz["quiet_days_used"][:5]
@@ -371,15 +371,15 @@ def check_quiet_day_smoothness(cfg):
 
 
 def check_no_spikes_adjacent_to_missing_data(cfg):
-    """Regression test for a historical bug where a NaN diff (from an
-    outage-sentinel gap) was miscounted as a spike, which would have skewed
-    n_spikes and inflated apparent anomaly counts. build_daily_features.py's
-    _despike() now relies on NaN comparisons being False to exclude gap
-    boundaries (see its docstring) -- this test does NOT call _despike()
-    itself (that would be tautological), it independently re-parses every
-    station/day that has any missing samples and recomputes the diff/
-    threshold check from scratch, then asserts no flagged spike sits next to
-    a NaN sample."""
+    """歷史 bug 的回歸測試：NaN 差分（來自
+    中斷哨兵值缺口）曾被誤算成突波，那會扭曲
+    n_spikes 並灌大表面上的異常數。build_daily_features.py 的
+    _despike() 現在依靠「和 NaN 比較為 False」來排除缺口
+    邊界（見它的 docstring）——這個測試**不**呼叫 _despike()
+    本身（那會是同義反覆），而是獨立重新解析每個
+    有任何缺漏樣本的測站／日，從頭重算差分／
+    門檻檢查，再斷言沒有任何被標記的突波緊鄰
+    NaN 樣本。"""
     daily = pd.read_csv(cfg.interim_dir / "daily_features.csv", dtype={"date": str})
     partial = daily[(daily.n_valid > 0) & (daily.n_valid < daily.n_total)]
 
@@ -388,7 +388,7 @@ def check_no_spikes_adjacent_to_missing_data(cfg):
         station, date = row["station"], row["date"]
         ref = resolve_day_ref(cfg.gdms_dir, station, date)
         df = parse_day_file(ref, station)
-        for col in df.columns:  # ["F"] for a scalar file, ["X","Y","Z"] for a vector file
+        for col in df.columns:  # 純量檔是 ["F"]，向量檔是 ["X","Y","Z"]
             s = df[col]
             d = s.diff().abs()
             flagged = np.where((d > SPIKE_THRESHOLD_NT).values)[0]
@@ -405,32 +405,32 @@ def check_no_spikes_adjacent_to_missing_data(cfg):
 
 
 def check_baseline_window_excludes_storms(cfg):
-    """Regression test for a historical bug (found on the G10/2024 data)
-    where a too-short trailing baseline window let a magnetic storm
-    contaminate (or entirely starve) the reference used to judge candidate
-    anomaly days in the critical pre-anchor-event window. Independently of
-    compute_indices.mad_zscore, reconstructs the TRAILING_WINDOW_DAYS
-    calendar window for every day in the critical window (anchor event date
-    -8..+1 days -- the offset that mattered for G10's 2024-04-03 mainshock
-    and 2024-03-30 candidate day, reused as a dataset-wide constant since the
-    failure mode -- a storm sitting just before the window -- is generic)
-    and checks (a) at least one of those windows does overlap real storm
-    dates -- confirming this test actually exercises the failure scenario
-    rather than being vacuous -- and (b) every one of those windows still
-    has enough clean (non-storm, non-outage) days to support a real baseline
-    (>= MIN_CLEAN_POINTS, compute_indices.py's own threshold below which
-    mad_zscore returns NaN, i.e. no baseline at all).
+    """歷史 bug 的回歸測試（在 G10/2024 資料上發現）：
+    太短的滑動基準窗口讓磁暴
+    汙染（或完全餓死）在錨點事件前關鍵窗口中
+    判斷候選異常日所用的參考。不依賴
+    compute_indices.mad_zscore，獨立為關鍵窗口中的每一天重建
+    TRAILING_WINDOW_DAYS 個日曆天的窗口（錨點事件日期
+    -8..+1 天——這是對 G10 2024-04-03 主震
+    和 2024-03-30 候選日有影響的偏移，因為
+    失效模式——磁暴剛好落在窗口之前——是通用的，所以當成全資料集共用的常數重用）
+    並檢查 (a) 那些窗口中至少有一個真的和實際磁暴
+    日期重疊——確認這個測試確實觸及失效情境，
+    而不是空洞的——以及 (b) 那些窗口中的每一個都仍
+    有足夠的乾淨（非磁暴、非中斷）日來支撐真正的基準
+    （>= MIN_CLEAN_POINTS，compute_indices.py 自己的門檻，低於它
+    mad_zscore 會回傳 NaN，也就是完全沒有基準）。
 
-    "Outage" here means the day's near_index (or far_index) would have been
-    NaN -- i.e. EVERY near station (or every far station) was out that day
-    -- matching compute_indices.py's clean_overall definition (a median
-    across 3 near stations tolerates one of them being down; it only really
-    goes NaN when all of them are). A day with just one out of three near
-    stations down is not an outage for this purpose. Days outside the data
-    (before its first file) are never clean. This check does not
-    call into compute_indices.py itself (that would be tautological), it
-    independently rebuilds the same all-of-a-pool-down condition from
-    daily_features.csv."""
+    這裡的「中斷」指那天的 near_index（或 far_index）會是
+    NaN——也就是**每一個**近站（或每一個遠站）那天都中斷
+    ——和 compute_indices.py 的 clean_overall 定義一致（3 個近站
+    取中位數可以容忍其中一個停擺；只有全部都停擺時
+    才真的變成 NaN）。三個近站中只有一個
+    停擺的日子，在這裡不算中斷。資料範圍以外的日子
+    （第一個檔案之前）永遠不算乾淨。這個檢查不
+    呼叫 compute_indices.py 本身（那會是同義反覆），而是
+    從 daily_features.csv 獨立重建同樣的「整個測站池停擺」
+    條件。"""
     storm_path = cfg.interim_dir / "storm_days.csv"
     if not storm_path.exists():
         checks["baseline_window_excludes_storms"] = {"pass": None, "note": "inconclusive -- storm_days.csv missing"}
@@ -459,8 +459,8 @@ def check_baseline_window_excludes_storms(cfg):
             d - pd.Timedelta(days=TRAILING_WINDOW_DAYS), d - pd.Timedelta(days=1)
         ).strftime("%Y%m%d").tolist()
         storm_in_window = sorted(set(window) & storm_dates)
-        # only days that exist in the data can be baseline days (G12's data starts 16 days
-        # before its anchor; the days before that used to count as clean)
+        # 只有資料中存在的日子才能當基準日（G12 的資料只在錨點前 16 天
+        # 開始；那之前的日子以前被算成乾淨日）
         clean_days = [w for w in window if w in data_days and w not in storm_dates and w not in outage_dates]
         results.append(
             {

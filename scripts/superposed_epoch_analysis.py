@@ -1,22 +1,22 @@
-"""Superposed epoch analysis (SEA): the professor's "把一次地震變成很多次"
-suggestion. Instead of looking at G10's single 2024-04-03 mainshock, take
-every independent M>=5.5 earthquake near the network across the 8 groups
-that have ULF near/far data (13 hand-picked M>=6.0 anchor/sub-events from
-events.py, plus whatever `fetch_earthquake_catalog.py` additionally found),
-align each group's pc3/pc4 near-far polarization z-score series on "days
-relative to that earthquake's origin time", and stack (average) across all
-events. If the kind of dip seen 4 days before G10's mainshock (2024-03-30)
-is a real, reproducible precursor signature rather than a one-off, it should
-survive averaging and stand out against a null band built the same way from
-random, earthquake-unrelated reference dates.
+"""疊加時間分析（SEA）：教授「把一次地震變成很多次」的
+建議。不只看 G10 單一個 2024-04-03 主震，而是拿
+8 個有 ULF 近站／遠站資料的組別中，觀測網附近每一起獨立的 M>=5.5 地震
+（events.py 中人工挑選的 13 起 M>=6.0 錨點／子事件，
+加上 `fetch_earthquake_catalog.py` 另外找到的），
+把每組的 pc3/pc4 近站–遠站極化 z-score 序列對齊到「相對於
+該地震發震時間的天數」，再對所有事件疊加（平均）。
+如果 G10 主震前 4 天（2024-03-30）看到的那種低谷
+是真實、可重現的前兆特徵，而不是一次性的，它應該能
+撐過平均，並在用同樣方法、以隨機且與地震無關的參考日期
+建立的虛無帶中凸顯出來。
 
-Per-group z-scoring (via stat_utils.mad_zscore, same formula used
-throughout this validation suite) happens BEFORE stacking, since raw
-diff_zh magnitudes aren't on a comparable scale across groups/stations with
-different noise floors -- stacking raw nT-order differences across groups
-would be meaningless.
+逐組的 z-score 化（透過 stat_utils.mad_zscore，和這整套驗證
+使用相同公式）在疊加**之前**進行，因為原始
+diff_zh 大小在雜訊底不同的組別／測站之間
+沒有可比較的尺度——直接跨組疊加 nT 等級的原始差值
+沒有意義。
 
-Usage:
+用法：
   superposed_epoch_analysis.py --catalog data/external/extended_catalog_m5.5.csv --label m5.5 --min-mag 5.5
   superposed_epoch_analysis.py --catalog data/external/extended_catalog_m5.0.csv --label m5.0 --min-mag 5.0
 """
@@ -40,9 +40,9 @@ ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G
 BANDS = ("pc3", "pc4")
 WINDOW_BEFORE_DAYS = 30
 WINDOW_AFTER_DAYS = 10
-N_BOOTSTRAP = 2000       # CI on the real stack (resample events with replacement)
-N_NULL = 1000            # null realizations (resample the EPOCH DATE at random)
-NULL_EXCLUSION_BUFFER_DAYS = 30  # keep fake epochs this far from any real event
+N_BOOTSTRAP = 2000       # 真實疊加的信賴區間（對事件做有放回重抽）
+N_NULL = 1000            # 虛無實現次數（隨機重抽時期日期）
+NULL_EXCLUSION_BUFFER_DAYS = 30  # 假時期要離任何真實事件至少這麼遠
 SEED = 20260805
 
 
@@ -59,7 +59,7 @@ def load_group_series(group_id: str) -> dict | None:
             continue
         vals = df[col].to_numpy(dtype=float)
         z, med, mad = mad_zscore(vals[~np.isnan(vals)]) if np.any(~np.isnan(vals)) else (None, None, None)
-        # re-expand z back to full (with-NaN) length, aligned to df rows
+        # 把 z 展開回完整（含 NaN）長度，對齊 df 的列
         z_full = np.full(len(vals), np.nan)
         if med is not None:
             mask = ~np.isnan(vals)
@@ -88,12 +88,12 @@ def valid_date_range(series: dict) -> tuple[pd.Timestamp, pd.Timestamp]:
 
 
 def _eligible_null_days(band: str, events: list[dict], group_series: dict) -> dict[str, list[pd.Timestamp]]:
-    """Candidate fake epochs per group: every day whose full window fits the data AND that is at
-    least NULL_EXCLUSION_BUFFER_DAYS from every real date -- this tier's events plus every
-    registered event in the group's raw-data folder (siblings see the same days). Drawing from
-    this set, instead of retrying random days and falling back to the last try, guarantees no
-    null epoch sits near a real earthquake. Dense groups (e.g. G11's 32 events) can end up with
-    no eligible day at all."""
+    """每組的候選假時期：完整窗口落在資料內**且**距離
+    每個真實日期至少 NULL_EXCLUSION_BUFFER_DAYS 的每一天——真實日期包括這個級距的事件，以及
+    該組原始資料夾中所有已登錄的事件（兄弟組看到的是同樣的日子）。從
+    這個集合抽樣，而不是隨機重試日期、最後退回最後一次嘗試，可以保證沒有
+    虛無時期落在真實地震附近。密集的組別（例如 G11 的 32 起事件）可能
+    完全沒有符合條件的日子。"""
     real_dates_by_group: dict[str, list[pd.Timestamp]] = {}
     for ev in events:
         real_dates_by_group.setdefault(ev["group"], []).append(ev["date"])
@@ -128,9 +128,9 @@ def _event_windows(band: str, events: list[dict], group_series: dict) -> tuple[l
 
 
 def merge_same_day(events: list[dict]) -> list[dict]:
-    """One stack entry per (group, day): same-day events of a group (e.g. G8's three
-    2022-03-22 M6s) share the exact same daily window, so stacking each would count that
-    window 2-3 times. Keeps the largest event's row, like backtest_rule.py's per-date set."""
+    """每個（組, 日）一筆疊加項：同一組同一天的事件（例如 G8 的三起
+    2022-03-22 M6）共用完全相同的每日窗口，所以逐一疊加會讓那個
+    窗口被算 2-3 次。保留最大事件那一列，和 backtest_rule.py 的逐日集合一樣。"""
     best: dict[tuple, dict] = {}
     for ev in events:
         key = (ev["group"], ev["date"])
@@ -144,11 +144,11 @@ def _r4(a) -> list:
 
 
 def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.Generator) -> dict:
-    """The stack compared against the null band uses only groups that have eligible null days,
-    so real stack and null band are built from the same groups -- otherwise a dense group
-    missing from the null (G11's stack sits ~2 z above the others) shifts the real stack
-    outside the band at every lag. The stack over all of this tier's events is kept alongside
-    as `*_all_events`, descriptive only."""
+    """和虛無帶比較的疊加只用有符合條件虛無日的組別，
+    讓真實疊加和虛無帶由相同的組別建立——否則一個密集組
+    缺席虛無分布（G11 的疊加比其他組高約 2 個 z）會讓真實疊加
+    在每個延遲都跑出虛無帶。這個級距所有事件的疊加另外
+    保留為 `*_all_events`，只作描述用。"""
     lags = np.arange(-WINDOW_BEFORE_DAYS, WINDOW_AFTER_DAYS + 1)
     all_matrix, all_used = _event_windows(band, events, group_series)
     if not all_matrix:
@@ -162,13 +162,13 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
     if not matrix:
         return {"band": band, "error": "no events in groups with eligible null days",
                 "null_groups_without_eligible_days": groups_without_eligible}
-    M = np.array(matrix)  # n_events x n_lags
+    M = np.array(matrix)  # n_events x n_lags 矩陣
 
     real_stack_mean = np.nanmean(M, axis=0)
     real_stack_median = np.nanmedian(M, axis=0)
     n_contributing = np.sum(~np.isnan(M), axis=0)
 
-    # bootstrap CI on the real stack (resample events with replacement)
+    # 真實疊加的 bootstrap 信賴區間（對事件做有放回重抽）
     n_events = M.shape[0]
     boot = np.empty((N_BOOTSTRAP, M.shape[1]))
     for b in range(N_BOOTSTRAP):
@@ -177,8 +177,8 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
     ci_lo = np.nanpercentile(boot, 5, axis=0)
     ci_hi = np.nanpercentile(boot, 95, axis=0)
 
-    # null band: repeat the whole stacking procedure with random, earthquake-unrelated epoch
-    # dates (one fake epoch per comparable event, drawn from that event's group)
+    # 虛無帶：用隨機、與地震無關的時期日期重複整個疊加程序
+    # （每個可比較的事件抽一個假時期，從該事件所屬的組抽）
     null_stacks = np.empty((N_NULL, M.shape[1]))
     for r in range(N_NULL):
         null_matrix = []

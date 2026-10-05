@@ -1,34 +1,34 @@
-"""Dose-response test: does the coseismic geomagnetic anomaly grow with the
-ground shaking at the magnetometer?
+"""劑量反應檢定：同震地磁異常會不會隨磁力儀處的
+地動強度增加？
 
-If what the 1Hz magnetometers record near the origin second is the housing
-being shaken, anomaly size should rise with peak ground acceleration (PGA)
-at a seismic station near the magnetometer. This needs no noise/signal labels,
-unlike coseismic_joint_analysis.py -- and those labels turned out to be mostly
-meaningless: only 7 of 93 events have a significant (D7 p < 0.05) anomaly to
-time against the shaking in the first place (2026-09-25).
+如果 1Hz 磁力儀在發震秒附近記錄到的是儀器外殼
+被震動，異常大小應該會隨磁力儀附近地震站的
+最大地動加速度（PGA）上升。這不需要雜訊／訊號標籤，
+和 coseismic_joint_analysis.py 不同——而那些標籤後來證明大多
+沒有意義：93 起事件中只有 7 起有顯著（D7 p < 0.05）的異常，
+能拿來和震動比對時間（2026-09-25）。
 
-Unit: one row per event that seismometer_comparison.py compared successfully
-(comparison_summary.csv, status == "ok", PGA available).
+單位：seismometer_comparison.py 成功比對的每個事件一列
+（comparison_summary.csv，status == "ok"，有 PGA）。
 
-  x  = log10 PGA (gal), max horizontal, at the seismic station nearest the
-       magnetometer (<= 12 km, median 7 km) -- seismometer_comparison.py
-  y1 = |step30 peak z| within +-180 s (geomag_obs_peak_z; already scaled by
-       each station's own off-event noise, so comparable across stations)
-  y2 = 1Hz first-difference RMS during shaking / 10 min before
-       (geomag_noise_ratio; the shaking-noise signature of the G10 pilot)
-  y3 = -log10 of the event's calibrated step30 p-value (geomag_step30_p)
+  x  = log10 PGA（gal），水平最大值，取離
+       磁力儀最近的地震站（<= 12 km，中位數 7 km）——seismometer_comparison.py
+  y1 = ±180 秒內 |step30 峰值 z|（geomag_obs_peak_z；已經用
+       各站自己的事件外雜訊縮放過，所以可以跨站比較）
+  y2 = 震動期間 / 震前 10 分鐘的 1Hz 一階差分 RMS
+       （geomag_noise_ratio；G10 試行時看到的震動雜訊特徵）
+  y3 = 事件校準後 step30 p 值的 -log10（geomag_step30_p）
 
-Test: Spearman rho(x, y), one-sided (H1: rho > 0). The p-value comes from
-permuting y *within each group* (N_PERM times): G11 alone is ~a quarter of the
-events, all on the same magnetometer, and a pooled permutation would let one
-group's internal spread drive the result.
+檢定：Spearman rho(x, y)，單尾（H1：rho > 0）。p 值來自
+*在每一組內*置換 y（N_PERM 次）：光是 G11 就佔了約四分之一的
+事件，全部在同一台磁力儀上，合併置換會讓單一
+組內的離散程度主導結果。
 
-Subsets: all; M>=6; seismic station <= 2 km from the magnetometer (the only
-cases where the measured PGA really is the shaking at the magnetometer); and
-all minus WTP (the station with the largest PGAs, near-field Dapu aftershocks).
+子集：全部；M>=6；地震站距磁力儀 <= 2 km（只有
+這些情況量到的 PGA 才真的是磁力儀處的震動）；以及
+全部扣掉 WTP（PGA 最大的測站，大埔近場餘震）。
 
-Usage:
+用法：
   coseismic_dose_response.py --self-test
   coseismic_dose_response.py --all
 """
@@ -51,7 +51,7 @@ from events import GROUPS  # noqa: E402
 N_PERM = 2000
 COLOCATED_KM = 2.0
 PGA_BINS_GAL = (0, 1, 10, 100, np.inf)
-MIN_N = 8  # fewer events than this in a subset and no test is attempted
+MIN_N = 8  # 子集中事件數少於這個就不做檢定
 
 COMPARISON_CSV = common.PROJECT_DIR / "data" / "interim" / "seismometer_comparison" / "comparison_summary.csv"
 OUT_DIR = common.PROJECT_DIR / "data" / "interim" / "coseismic_dose_response"
@@ -77,8 +77,8 @@ def load_events(csv_path: Path = COMPARISON_CSV) -> pd.DataFrame:
 
 def within_group_permutation_test(x: np.ndarray, y: np.ndarray, groups: np.ndarray,
                                    rng: np.random.Generator, n_perm: int = N_PERM) -> dict:
-    """Spearman rho and a one-sided (rho > 0) p-value from shuffling y only
-    among events of the same group."""
+    """Spearman rho 和單尾（rho > 0）p 值，只在
+    同一組的事件之間打亂 y。"""
     rho = float(spearmanr(x, y).statistic)
     idx_by_group = [np.flatnonzero(groups == g) for g in np.unique(groups)]
     null = np.empty(n_perm)
@@ -128,7 +128,7 @@ def run_all() -> dict:
         "m6": df[df.magnitude >= 6],
         "colocated_le_2km": df[df.seismic_colocation_km <= COLOCATED_KM],
         "all_minus_WTP": df[df.seismic_station != "WTP"],
-        "all_minus_dropout": df[df.geomag_dropout != True],  # noqa: E712 -- keeps NaN (unknown) rows
+        "all_minus_dropout": df[df.geomag_dropout != True],  # noqa: E712 -- 保留 NaN（未知）的列
     }
     summary = {"seed": SEED, "n_perm": N_PERM, "tail": "one-sided, H1: rho > 0",
                "subsets": {k: test_subset(v, rng) for k, v in subsets.items()},

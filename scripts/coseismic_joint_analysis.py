@@ -1,103 +1,103 @@
-"""Joint statistical test combining the two, until now independent,
-coseismic evidence lines:
+"""聯合統計檢定，結合兩條到目前為止互相獨立的
+同震證據線：
 
-  - `coseismic_stacking_analysis.py`: does the geomagnetic 1Hz data show a
-    consistent origin-second step/spike signature when stacked across
-    events? (says nothing about whether that signature is a real field
-    change or shaking-induced instrument noise)
-  - `seismometer_comparison.py`: for the subset of events with independent
-    seismometer/accelerometer data, does that per-event signature's timing
-    line up with real ground shaking (`aligned_with_shaking`, consistent
-    with instrument noise) or does it lead/outlast the shaking
-    (`leads_shaking` / `persists_after_shaking_ends`, consistent with a
-    real mechanism)?
+  - `coseismic_stacking_analysis.py`：跨事件疊加時，地磁 1Hz 資料
+    是否在發震秒顯示一致的階躍／突波特徵？
+    （完全沒說明這個特徵是真實的磁場
+    變化，還是震動造成的儀器雜訊）
+  - `seismometer_comparison.py`：在有獨立
+    地震儀／加速度儀資料的事件子集中，每個事件特徵的時間
+    是和真實地動對齊（`aligned_with_shaking`，和
+    儀器雜訊一致），還是領先／比震動持續更久
+    （`leads_shaking` / `persists_after_shaking_ends`，和
+    真實機制一致）？
 
-## The question this script asks
+## 這支腳本問的問題
 
-Restricted to the events where BOTH lines have data, does the *stacked*
-geomagnetic signature actually track the seismometer-derived noise-vs-signal
-distinction? If the coseismic signal is mostly shaking noise, events
-independently classified `aligned_with_shaking` should stack to a signature
-at least as strong as (arguably stronger than, since noise scales with
-ground-motion amplitude) the `leads_shaking`/`persists_after_shaking_ends`
-events. If a real geophysical mechanism is also present, the
-leads/persists group should stack to something visibly stronger and/or
-longer-lived than the aligned group.
+只限兩條線**都**有資料的事件，*疊加後的*
+地磁特徵是否真的跟著地震儀推出的雜訊 vs 訊號
+區分走？如果同震訊號大多是震動雜訊，被獨立
+分類為 `aligned_with_shaking` 的事件疊加出來的特徵，
+應該至少和 `leads_shaking`/`persists_after_shaking_ends`
+事件一樣強（甚至可以說更強，因為雜訊會隨
+地動振幅放大）。如果也存在真實的地球物理機制，
+領先／持續組疊加出來的應該明顯更強及／或
+比對齊組持續更久。
 
-## Data snapshot (2026-08-16, read directly off
-`data/interim/seismometer_comparison/comparison_summary.csv` -- re-derive
-rather than hardcode if that file gets regenerated)
+## 資料快照（2026-08-16，直接讀自
+`data/interim/seismometer_comparison/comparison_summary.csv`——如果那個檔案
+重新產生，請重新推導，不要寫死）
 
-27 events have seismic data; 23 also have usable geomag data
-(`status == "ok"`; the other 4 -- G2_G3's two events, G4, G16 -- fail with
-`no_geomag_data` because their near station's own `.sec` file is missing
-for that calendar day, a real historical gap, not a bug). Of those 23:
-`aligned_with_shaking`=12, `leads_shaking`=9, `persists_after_shaking_ends`=2.
-`persists_after_shaking_ends` alone is too thin (n=2) to stack on its own,
-so this script uses a **two-arm** split, not three:
-  - `noise_arm`  = alignment_verdict == "aligned_with_shaking"        (12)
+27 起事件有地震資料；其中 23 起也有可用的地磁資料
+（`status == "ok"`；另外 4 起——G2_G3 的兩起、G4、G16——失敗並回報
+`no_geomag_data`，因為它們近站自己那個日曆天的 `.sec` 檔不存在，
+是真實的歷史缺口，不是 bug）。這 23 起中：
+`aligned_with_shaking`=12、`leads_shaking`=9、`persists_after_shaking_ends`=2。
+光是 `persists_after_shaking_ends`（n=2）太少，無法單獨疊加，
+所以這支腳本用**兩組**拆分，而不是三組：
+  - `noise_arm`  = alignment_verdict == "aligned_with_shaking"        （12）
   - `signal_arm` = alignment_verdict in ("leads_shaking",
-                                          "persists_after_shaking_ends") (11)
-This directly reuses `seismometer_comparison.py::alignment_verdict`'s own
-framing (its docstring already groups leads/persists together as "favors a
-real geophysical mechanism").
+                                          "persists_after_shaking_ends") （11）
+這直接沿用 `seismometer_comparison.py::alignment_verdict` 自己的
+框架（它的 docstring 已經把領先／持續歸在一起，視為「傾向
+真實的地球物理機制」）。
 
-(Counts above are from the original 27-event pass. As of 2026-09-24 the arms
-are 14 noise / 12 signal = 26 events. The 2026-09-23 registry backfill to 117
-events -- 68 M5.0-5.9 non-anchor events from the CWA GDMS export -- added no
-arm members, since none of the new events has seismometer data; the only newly
-matchable one, G11 2025-01-21b, is `insufficient_data`. It still nudges the
-results slightly: the new events widen the off-event exclusion around the 6 arm
-events in G11/G12/G13/G19/G20, which shifts their baselines. Rerun 2026-09-24:
-far-H deltas moved in the third decimal, min p_tail stayed 0.069, min p_peak
-went 0.095 -> 0.093.)
+（上面的數字來自最初 27 起事件那一輪。截至 2026-09-24，兩組
+是 14 雜訊／12 訊號 = 26 起。2026-09-23 把登錄表補到 117
+起事件——68 起來自 CWA GDMS 匯出檔的 M5.0-5.9 非錨點事件——沒有增加
+任何組員，因為新事件都沒有地震儀資料；唯一新
+可配對的 G11 2025-01-21b 是 `insufficient_data`。它仍會稍微影響
+結果：新事件擴大了 G11/G12/G13/G19/G20 中 6 個組員
+事件周圍的事件外排除範圍，改變了它們的基準。2026-09-24 重跑：
+遠站 H 的差值在小數第三位變動，最小 p_tail 維持 0.069，最小 p_peak
+從 0.095 -> 0.093。）
 
-(2026-09-25: after the 80-event seismometer batch, all verdicts give 94 armed
-events (48 noise / 46 signal), 38 of them M>=6 (18 / 20). Use --min-mag 6 for
-the M>=6-only run; the M5 labels are close to coin flips -- see run_all().
-All events: 3 of 32 p-values < 0.05 (far-H spike peak 0.010 and tail 0.048,
-both with the NOISE arm stronger; near-H step30 tail 0.024, signal arm
-stronger), none surviving Bonferroni. M>=6 only: none below 0.05, min 0.062.)
+（2026-09-25：80 起事件的地震儀批次到齊後，全部判定共給出 94 起分組
+事件（48 雜訊／46 訊號），其中 38 起 M>=6（18／20）。只跑 M>=6
+用 --min-mag 6；M5 的標籤接近擲硬幣——見 run_all()。
+全部事件：32 個 p 值中有 3 個 < 0.05（遠站 H 突波峰值 0.010 和尾段 0.048，
+兩者都是**雜訊組**較強；近站 H step30 尾段 0.024，訊號組
+較強），沒有一個撐過 Bonferroni 校正。只看 M>=6：沒有低於 0.05 的，最小 0.062。）
 
-## Method
+## 方法
 
-1. Build `EventSeries` objects (`coseismic_stacking_analysis.py`'s own
-   dataclass + loader machinery, unmodified) for exactly the 23-event
-   allowlist via a new loader (`load_event_series_for_events`) that mirrors
-   `load_all_event_series` but restricts to explicit (group_id, event_date)
-   pairs instead of every event in a group -- added here, not in
-   `coseismic_stacking_analysis.py` itself, so that already-published
-   script stays untouched.
-2. For each (channel_type_pool, station_tier, stat_name) combo (mirrors
-   `coseismic_stacking_analysis.py::run_group_ids`'s own combo loop):
-   observed Delta = arm difference in TWO statistics (not peak alone,
-   because a `persists`-type signal's distinguishing feature is the
-   post-shaking TAIL, not necessarily the peak):
-     - `delta_peak` = peak_abs_z(signal_arm) - peak_abs_z(noise_arm)
-     - `delta_tail` = mean(|stack_mean| for lag>0)(signal_arm) - same(noise_arm)
-3. Null distribution: label-permutation test -- shuffle the noise/signal
-   arm labels across the same events (keeping both arm sizes fixed)
-   N_PERM=2000 times, recomputing both deltas each time via a lightweight
-   stack-mean-only helper (`_lightweight_stack_delta`) that skips
-   `stack_series()`'s own bootstrap CI + null band (2000+1000 resamples --
-   redoing that on every one of 2000 permutation draws would be off by
-   several orders of magnitude too slow). The full `stack_series()` (with
-   its bootstrap CI and null band) is still called exactly twice per combo
-   -- once per arm -- purely for reporting/plotting the two arms' own stack
-   shapes, not for the permutation test itself.
-4. p-value = (1 + #{|delta_perm| >= |delta_obs|}) / (N_PERM + 1), same
-   one-sided-on-|.| convention as every other resampling test in this
-   codebase.
+1. 建立 `EventSeries` 物件（`coseismic_stacking_analysis.py` 自己的
+   dataclass + 載入機制，未修改），只針對 23 起事件的
+   允許清單，透過新的載入器（`load_event_series_for_events`），它仿照
+   `load_all_event_series`，但限制在明確的 (group_id, event_date)
+   配對，而不是一組中的每個事件——加在這裡而不是
+   `coseismic_stacking_analysis.py` 本身，讓那支已經發布的
+   腳本保持不動。
+2. 對每個 (channel_type_pool, station_tier, stat_name) 組合（仿照
+   `coseismic_stacking_analysis.py::run_group_ids` 自己的組合迴圈）：
+   觀測 Delta = 兩組在**兩個**統計量上的差（不只看峰值，
+   因為 `persists` 型訊號的區別特徵是
+   震動後的**尾段**，不一定是峰值）：
+     - `delta_peak` = peak_abs_z(訊號組) - peak_abs_z(雜訊組)
+     - `delta_tail` = mean(|stack_mean|，lag>0)(訊號組) - 同上(雜訊組)
+3. 虛無分布：標籤置換檢定——在同一批事件間打亂雜訊／訊號
+   組標籤（兩組大小固定）
+   N_PERM=2000 次，每次用輕量的
+   只算疊加平均的輔助函式（`_lightweight_stack_delta`）重算兩個差值，跳過
+   `stack_series()` 自己的 bootstrap 信賴區間 + 虛無帶（2000+1000 次重抽——
+   在 2000 次置換抽樣的每一次都重做那個，會慢上
+   好幾個數量級）。完整的 `stack_series()`（含
+   bootstrap 信賴區間和虛無帶）每個組合仍然剛好呼叫兩次
+   ——每組一次——純粹用來報告／畫出兩組各自的疊加
+   形狀，不用於置換檢定本身。
+4. p 值 = (1 + #{|delta_perm| >= |delta_obs|}) / (N_PERM + 1)，和這個
+   程式庫其他所有重抽檢定一樣，採用對 |.| 的單尾
+   慣例。
 
-## Honest caveat (stated up front, not after the fact)
+## 誠實的注意事項（事先說明，不是事後補述）
 
-N=94 events split 48/46 (noise/signal, 2026-09-28; fewer at M>=6) is an
-exploratory sample size, not a high-power one. Results here should be reported as suggestive at most,
-never as a confirmatory finding on their own.
+N=94 起事件分成 48/46（雜訊／訊號，2026-09-28；M>=6 更少）是
+探索性的樣本數，不是高檢定力的。這裡的結果最多只能報告成有提示性，
+絕不能單獨當作確認性的發現。
 
-Usage:
-  coseismic_joint_analysis.py --self-test    # synthetic sanity check only
-  coseismic_joint_analysis.py --all          # real data, all 16 combos
+用法：
+  coseismic_joint_analysis.py --self-test    # 只做合成資料健全性檢查
+  coseismic_joint_analysis.py --all          # 真實資料，全部 16 個組合
 """
 from __future__ import annotations
 
@@ -141,16 +141,16 @@ COMPARISON_CSV = common.PROJECT_DIR / "data" / "interim" / "seismometer_comparis
 
 
 # ---------------------------------------------------------------------------
-# Arm assignment: read seismometer_comparison.py's own output rather than
-# recomputing alignment_verdict here -- single source of truth.
+# 分組：讀 seismometer_comparison.py 自己的輸出，而不是
+# 在這裡重算 alignment_verdict——唯一的真相來源。
 # ---------------------------------------------------------------------------
 
 def load_arm_assignment(csv_path: Path = COMPARISON_CSV, verdict_col: str = "alignment_verdict") -> dict[str, str]:
-    """Returns {"<group_id>__<event_date>": "noise"|"signal"} for every row
-    with status=="ok" and a verdict in one of the two known arms. Rows with
-    any other status (e.g. no_geomag_data) or verdict (insufficient_data)
-    are simply absent from the returned dict -- not an error, just excluded
-    from the joint analysis, exactly as documented in the module docstring."""
+    """回傳 {"<group_id>__<event_date>": "noise"|"signal"}，涵蓋每一列
+    status=="ok" 且判定屬於兩個已知組之一的資料。任何其他
+    status（例如 no_geomag_data）或判定（insufficient_data）的資料列
+    就不會出現在回傳的 dict 中——不是錯誤，只是從
+    聯合分析中排除，和模組 docstring 寫的完全一樣。"""
     df = pd.read_csv(csv_path)
     arm_of: dict[str, str] = {}
     for _, row in df.iterrows():
@@ -166,16 +166,16 @@ def load_arm_assignment(csv_path: Path = COMPARISON_CSV, verdict_col: str = "ali
 
 
 # ---------------------------------------------------------------------------
-# EventSeries loader restricted to an explicit event allowlist (new here --
-# coseismic_stacking_analysis.py::load_all_event_series is untouched).
+# 限制在明確事件允許清單的 EventSeries 載入器（這裡新加的——
+# coseismic_stacking_analysis.py::load_all_event_series 沒有動）。
 # ---------------------------------------------------------------------------
 
 def load_event_series_for_events(event_keys: list[tuple[str, str]]) -> dict[tuple[str, str, str], EventSeries]:
-    """Same loading logic as coseismic_stacking_analysis.py::
-    load_all_event_series, restricted to an explicit (group_id, event_date)
-    allowlist instead of every event in a requested group -- needed because
-    the arms are defined per-event (from seismometer_comparison.py's
-    per-event alignment_verdict), not per-group."""
+    """和 coseismic_stacking_analysis.py::
+    load_all_event_series 相同的載入邏輯，限制在明確的 (group_id, event_date)
+    允許清單，而不是所要求組別中的每個事件——需要這樣是因為
+    兩組是逐事件定義的（來自 seismometer_comparison.py 的
+    逐事件 alignment_verdict），不是逐組。"""
     wanted: dict[str, set[str]] = {}
     for group_id, event_date in event_keys:
         wanted.setdefault(group_id, set()).add(event_date)
@@ -209,9 +209,9 @@ def load_event_series_for_events(event_keys: list[tuple[str, str]]) -> dict[tupl
 
 
 # ---------------------------------------------------------------------------
-# Lightweight stack-mean-only path for the permutation loop (skips
-# stack_series()'s own bootstrap CI + null band -- see module docstring for
-# why: 2000 permutation draws x that machinery would be far too slow).
+# 置換迴圈用的輕量、只算疊加平均的路徑（跳過
+# stack_series() 自己的 bootstrap 信賴區間 + 虛無帶——原因見模組 docstring：
+# 2000 次置換抽樣 x 那套機制會慢得太多）。
 # ---------------------------------------------------------------------------
 
 def _lightweight_stack_delta(events: list[EventSeries], stat_name: str) -> dict | None:
@@ -280,10 +280,10 @@ def permutation_test(events: list[EventSeries], arm_labels: np.ndarray, stat_nam
 
 
 # ---------------------------------------------------------------------------
-# Synthetic self-test (no real data): confirms the permutation machinery
-# itself (a) detects a real injected arm difference and (b) does not
-# false-positive when there is none -- same two-sided sanity pattern as
-# coseismic_stacking_analysis.py::self_test.
+# 合成資料自我測試（不用真實資料）：確認置換機制
+# 本身 (a) 能偵測到真實注入的組間差異，(b) 沒有差異時
+# 不會產生偽陽性——和 coseismic_stacking_analysis.py::self_test
+# 相同的雙向健全性檢查模式。
 # ---------------------------------------------------------------------------
 
 def _make_synth_series(rng: np.random.Generator, amplitude: float, tag: str) -> EventSeries:
@@ -313,7 +313,7 @@ def self_test() -> bool:
     n_each = 12
     ok = True
 
-    # Case (a): real arm difference (signal arm gets a stronger injection)
+    # 情況 (a)：真實的組間差異（訊號組注入較強的訊號）
     noise_events = [_make_synth_series(rng, 2.0, "noise") for _ in range(n_each)]
     signal_events = [_make_synth_series(rng, 15.0, "signal") for _ in range(n_each)]
     events_a = noise_events + signal_events
@@ -326,7 +326,7 @@ def self_test() -> bool:
           f"p_value_peak={result_a.get('p_value_peak')}  {status_a}")
     ok = ok and detected
 
-    # Case (b): no true arm difference (both arms same amplitude) -- false-positive check
+    # 情況 (b)：沒有真實組間差異（兩組振幅相同）——偽陽性檢查
     rng2 = np.random.default_rng(SEED + 1)
     events_b = ([_make_synth_series(rng2, 5.0, "noise") for _ in range(n_each)]
                 + [_make_synth_series(rng2, 5.0, "signal") for _ in range(n_each)])
@@ -342,22 +342,22 @@ def self_test() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Real-data orchestration
+# 真實資料的統籌
 # ---------------------------------------------------------------------------
 
 def run_all(min_mag: float | None = None, gated: bool = False) -> dict:
-    """min_mag restricts both arms to events.py events of at least that
-    magnitude, written to a separate directory (coseismic_joint_analysis_m<min_mag>).
-    Worth running alongside the full set since the 2026-09-25 M5 batch: for a
-    small event the magnetometer mostly records noise, and a noise peak anywhere
-    in the +-180s search window lands before shaking onset about half the time,
-    so M5 "leads_shaking" labels are close to coin flips.
+    """min_mag 把兩組都限制在規模至少那麼大的 events.py 事件，
+    寫到另一個目錄（coseismic_joint_analysis_m<min_mag>）。
+    自 2026-09-25 的 M5 批次以來，值得和完整集合一起跑：對
+    小事件來說，磁力儀記錄到的大多是雜訊，而雜訊峰值落在
+    ±180 秒搜尋窗口中任何地方，約有一半的機率會在震動開始之前，
+    所以 M5 的 "leads_shaking" 標籤接近擲硬幣。
 
-    gated uses seismometer_comparison.py's alignment_verdict_gated (a verdict
-    only where the event's own step30 anomaly has p < 0.05), written to
-    coseismic_joint_analysis_gated[_m<mag>]/. On 2026-09-25 that leaves 7 events
-    (5 aligned, 1 leads, 1 persists) -- too few to test; the run exists to make
-    that explicit rather than to be read as a result."""
+    gated 使用 seismometer_comparison.py 的 alignment_verdict_gated（只有
+    該事件自己的 step30 異常 p < 0.05 時才有判定），寫到
+    coseismic_joint_analysis_gated[_m<mag>]/。2026-09-25 這樣只剩 7 起事件
+    （5 對齊、1 領先、1 持續）——太少無法檢定；跑這個是為了把
+    這件事明確呈現，而不是要當成結果解讀。"""
     name = OUT_DIR.name + ("_gated" if gated else "") + ("" if min_mag is None else f"_m{min_mag:g}")
     out_dir = OUT_DIR.with_name(name)
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -1,51 +1,51 @@
-"""Cross-method comparison: night-mean residual vs. diurnal range ratio.
+"""跨方法比較：夜間平均值殘差 vs. 日變幅比值。
 
-Asks which of two daily-scale anomaly indices gives the smaller empirical
-p-value under the same 2000-surrogate test surrogate_test.py uses:
+問的是：在 surrogate_test.py 使用的同一套 2000 組替代資料檢定下，
+兩種日尺度異常指標中哪一個給出較小的經驗 p 值：
 
-- **Night-mean residual** -- the existing `local_anomaly_index_{H,F}` from
-  compute_indices.py (near-pool night mean MAD z, far-pool common mode
-  removed by Theil-Sen regression). H for vector groups, F for scalar ones,
-  matching which pool compute_indices.py actually ran.
-- **Diurnal range ratio** (Liu et al., 2006) -- new here. Daily range of the
-  total field, dB_i = max(F_i) - min(F_i) over one UTC day, and
-  R_or = dB_o / dB_r between an observation station o near the epicenter and
-  a reference station r no more than 100 km from o. Under quiet conditions
-  global disturbances hit both stations alike and R stays near constant; a
-  local crustal conductivity change would push it off in either direction.
-  The series tested is log(R), so increases and decreases are symmetric.
+- **夜間平均值殘差**——compute_indices.py 既有的 `local_anomaly_index_{H,F}`
+  （近站池夜間平均 MAD z，遠站池的共模由
+  Theil-Sen 迴歸扣除）。向量組用 H，純量組用 F，
+  和 compute_indices.py 實際跑的測站池一致。
+- **日變幅比值**（Liu et al., 2006）——這裡新加的。總磁場的
+  每日變幅，dB_i = 一個 UTC 日內的 max(F_i) - min(F_i)，以及
+  R_or = dB_o / dB_r，o 是震央附近的觀測站、
+  r 是距離 o 不超過 100 km 的參考站。平靜條件下，
+  全球擾動對兩站的影響相同，R 大致維持常數；
+  局部地殼導電度的變化會把它往任一方向推離。
+  檢定的序列是 log(R)，所以增加和減少是對稱的。
 
-Station pair (fixed per group, from the anchor epicenter): o = the pool's
-nearest station; r = among stations within 100 km of o and farther from the
-epicenter than o, the one farthest from the epicenter. Groups whose o is
-itself more than 100 km from the epicenter are flagged low_confidence.
+測站配對（每組固定，由錨點震央決定）：o = 測站池中
+最近的測站；r = 在距 o 100 km 以內、且比 o 離
+震央更遠的測站中，離震央最遠的那一個。如果 o
+本身離震央超過 100 km，該組標記為 low_confidence。
 
-F for vector stations is reported as a placeholder, so it's rebuilt from
-the 1-minute series (minute_series_<sta>.parquet) as sqrt(X^2+Y^2+Z^2).
-Minute means slightly understate the 1Hz range, but identically at both
-stations, so the ratio is unaffected.
+向量站的 F 回報的是佔位值，所以用
+1 分鐘序列（minute_series_<sta>.parquet）重建為 sqrt(X^2+Y^2+Z^2)。
+分鐘平均會略微低估 1Hz 的變幅，但兩站低估的程度
+相同，所以比值不受影響。
 
-Both indices go through the identical test, on clean days only (not a storm
-day, neither station in an outage -- the same criteria as compute_indices.py's
-is_clean_day), concatenated the way surrogate_test.py does. Statistics are
-two-sided max |z| -- the ratio can deviate either way and compute_indices.py's
-candidate flag also uses |index|:
+兩種指標都經過完全相同的檢定，只用乾淨日（不是磁暴
+日、兩站都沒有中斷——和 compute_indices.py 的
+is_clean_day 標準相同），串接方式和 surrogate_test.py 一樣。統計量是
+雙尾最大 |z|——比值可能往任一方向偏離，而 compute_indices.py 的
+候選旗標也是用 |index|：
 
-  (B) pre-event window (the main result): max |z| over the clean days in the
-      30 days before the anchor (cross_group_analysis.pre_event_window),
-      against a leave-window-out null built from the background days only --
-      block-bootstrap and phase-randomized. See surrogate_test() for why the
-      window must be left out of its own null.
-  (A) whole series: max |z| of the whole-series MAD z-score, phase
-      randomization only. Not tied to earthquake timing, and phase
-      randomization is known to be liberal on heavy-tailed data; reported
-      only as a reference point next to surrogate_test.py.
+  (B) 震前窗口（主要結果）：錨點前 30 天內乾淨日的
+      最大 |z|（cross_group_analysis.pre_event_window），
+      對照只用背景日建立的留一窗虛無分布——
+      區塊 bootstrap 和相位隨機化。為什麼窗口必須排除在
+      自己的虛無分布之外，見 surrogate_test()。
+  (A) 整條序列：整條序列 MAD z-score 的最大 |z|，只用相位
+      隨機化。和地震時間無關，而且已知相位
+      隨機化在厚尾資料上偏寬鬆；只當作
+      surrogate_test.py 旁邊的參考點報告。
 
-N_SURROGATES each, p = (1 + #{null >= obs}) / (N + 1). Across
-groups: count of p < 0.05 per index with a binomial test against 5%, and a
-paired Wilcoxon signed-rank test on -log10(p) between the two indices.
+各 N_SURROGATES 組，p = (1 + #{null >= obs}) / (N + 1)。跨
+組：每個指標 p < 0.05 的組數，對 5% 做二項檢定，以及
+兩個指標之間 -log10(p) 的配對 Wilcoxon 符號等級檢定。
 
-Usage:
+用法：
   method_comparison.py --self-test
   method_comparison.py --group G10
   method_comparison.py --all
@@ -74,29 +74,29 @@ from stat_utils import (  # noqa: E402
 
 N_SURROGATES = 2000
 SEED = 20260805
-PAIR_MAX_KM = 100.0          # Liu et al. (2006): the two stations should be close
+PAIR_MAX_KM = 100.0          # Liu et al. (2006)：兩站應該靠近
 PRE_WINDOW_DAYS = 30
-MIN_MINUTES_PER_DAY = 1296   # 90% of 1440; a day with a big gap would understate its range
-MIN_SERIES_DAYS = 20         # same floor as surrogate_test.py
-MIN_WINDOW_DAYS = 5          # fewer clean pre-event days than this and (B) isn't attempted
-# Placebo calibration: re-run (B) at fake anchors every PLACEBO_STEP_DAYS whose
-# 30-day window doesn't overlap the real one. A calibrated test gives p < 0.05 at
-# ~5% of them; on this data the leave-window-out null is liberal (~13-15% block
-# bootstrap, ~22-25% phase randomization, 2026-09-24), so the cross-group
-# binomial tests compare against the placebo rate, not 5%.
+MIN_MINUTES_PER_DAY = 1296   # 1440 的 90%；有大缺口的日子會低估它的變幅
+MIN_SERIES_DAYS = 20         # 和 surrogate_test.py 相同的下限
+MIN_WINDOW_DAYS = 5          # 震前乾淨日少於這個就不嘗試 (B)
+# 安慰劑校準：在每 PLACEBO_STEP_DAYS 天一個、30 天窗口
+# 不和真實窗口重疊的假錨點上重跑 (B)。校準良好的檢定在
+# 約 5% 的假錨點上給出 p < 0.05；在這份資料上留一窗虛無分布偏寬鬆（區塊
+# bootstrap 約 13-15%，相位隨機化約 22-25%，2026-09-24），所以跨組
+# 二項檢定是和安慰劑比例比較，而不是 5%。
 PLACEBO_STEP_DAYS = 7
 N_PLACEBO_SURROGATES = 500
-PLACEBO_PRIOR_WINDOWS = 10   # shrinkage strength toward the pooled rate, see shrunk_placebo_rate()   # per placebo window; only feeds a pooled rate, so fewer draws suffice
+PLACEBO_PRIOR_WINDOWS = 10   # 往合併比例收縮的強度，見 shrunk_placebo_rate()   # 每個安慰劑窗口；只用來算合併比例，所以抽樣次數少一點就夠
 INDICES = ("night_residual", "range_ratio")
-# (statistic, surrogate) combinations actually run -- see surrogate_test() for why
-# the whole-series statistic has no block-bootstrap version
+# 實際跑的（統計量, 替代資料）組合——為什麼整條序列統計量
+# 沒有區塊 bootstrap 版本，見 surrogate_test()
 TESTS = (("window", "block_bootstrap"), ("window", "phase_randomization"), ("whole", "phase_randomization"))
 
 OUT_DIR = common.PROJECT_DIR / "data" / "interim" / "method_comparison"
 
 
 # ---------------------------------------------------------------------------
-# Diurnal range ratio
+# 日變幅比值
 # ---------------------------------------------------------------------------
 
 def pick_station_pair(cfg) -> dict:
@@ -120,8 +120,8 @@ def pick_station_pair(cfg) -> dict:
 
 
 def daily_f_range(cfg, station: str) -> pd.Series:
-    """Per-UTC-day max(F) - min(F) from the 1-minute series, NaN for days
-    with fewer than MIN_MINUTES_PER_DAY valid minutes."""
+    """從 1 分鐘序列算每個 UTC 日的 max(F) - min(F)，有效分鐘數
+    少於 MIN_MINUTES_PER_DAY 的日子為 NaN。"""
     m = pd.read_parquet(cfg.interim_dir / f"minute_series_{station}.parquet")
     f = m["F"] if "F" in m.columns else np.sqrt(m["X"] ** 2 + m["Y"] ** 2 + m["Z"] ** 2)
     day = f.index.strftime("%Y%m%d")
@@ -131,7 +131,7 @@ def daily_f_range(cfg, station: str) -> pd.Series:
 
 
 def range_ratio_series(cfg, pair: dict, storm_dates: set[str], outages: dict[str, set[str]]) -> pd.Series:
-    """log(dB_obs / dB_ref) on clean days, indexed by YYYYMMDD."""
+    """乾淨日上的 log(dB_obs / dB_ref)，以 YYYYMMDD 為索引。"""
     o, r = pair["obs_station"], pair["ref_station"]
     df = pd.concat([daily_f_range(cfg, o), daily_f_range(cfg, r)], axis=1).dropna()
     df = df[(df[o] > 0) & (df[r] > 0)]
@@ -148,12 +148,12 @@ def night_residual_series(cfg, field: str) -> pd.Series:
 
 
 # ---------------------------------------------------------------------------
-# Shared surrogate test
+# 共用的替代資料檢定
 # ---------------------------------------------------------------------------
 
 def _extreme(z: np.ndarray, tail: str) -> float:
-    """Test statistic oriented so that larger = more extreme: max|z| for a
-    two-sided test, -min(z) for a lower-tail one (a dip)."""
+    """方向調整成越大 = 越極端的檢定統計量：雙尾檢定用 max|z|，
+    下尾檢定（低谷）用 -min(z)。"""
     return float(np.nanmax(np.abs(z))) if tail == "two" else float(-np.nanmin(z))
 
 
@@ -164,28 +164,28 @@ def _p(null: np.ndarray, obs: float) -> float:
 
 def surrogate_test(values: np.ndarray, window_pos: np.ndarray, rng: np.random.Generator,
                    n_surr: int | None = None, tail: str = "two") -> dict:
-    """(B) pre-window max|z| against leave-window-out surrogates, plus (A)
-    whole-series max|z| against phase-randomized surrogates. window_pos
-    indexes into `values`.
+    """(B) 震前窗口的 max|z| 對照留一窗替代資料，加上 (A)
+    整條序列的 max|z| 對照相位隨機化替代資料。window_pos
+    是 `values` 的索引。
 
-    (B) builds everything from the background (non-window) days only: their
-    median/MAD standardize both the observed window and every surrogate, and
-    each surrogate is a window-length stretch resampled from the background.
-    Resampling the whole observed series instead (as surrogate_test.py does)
-    lets the tested extreme leak into its own null -- block bootstrap then has
-    a p-value floor of roughly 0.2-0.4 at this project's series lengths, no
-    matter how large the anomaly (checked by simulation 2026-09-24).
-    (A) has no separate background to resample, so block bootstrap is
-    structurally invalid there and only phase randomization is reported.
+    (B) 完全只用背景（非窗口）日建立：它們的
+    中位數／MAD 同時用來標準化觀測窗口和每一組替代資料，
+    每組替代資料都是從背景重抽出的一段窗口長度序列。
+    如果改成重抽整條觀測序列（像 surrogate_test.py 那樣），
+    被檢定的極值會漏進它自己的虛無分布——區塊 bootstrap 在
+    本專案的序列長度下就會有大約 0.2-0.4 的 p 值下限，不管
+    異常多大（2026-09-24 已用模擬確認）。
+    (A) 沒有另外的背景可以重抽，所以區塊 bootstrap 在那裡
+    結構上無效，只報告相位隨機化。
 
-    tail="two" tests max|z| (this script's default); tail="lower" tests the
-    most negative z, for surrogate_test.py's original "pre-event dip" question.
-    Reported obs_* values are max|z| or min z accordingly."""
-    sign = 1.0 if tail == "two" else -1.0  # converts _extreme() back to the reported min z
+    tail="two" 檢定 max|z|（這支腳本的預設）；tail="lower" 檢定
+    最負的 z，對應 surrogate_test.py 原本的「震前低谷」問題。
+    回報的 obs_* 值相應地是 max|z| 或 min z。"""
+    sign = 1.0 if tail == "two" else -1.0  # 把 _extreme() 轉回回報用的 min z
     n_surr = n_surr or N_SURROGATES
     out: dict = {"n_days": int(len(values)), "n_window_days": int(len(window_pos))}
 
-    # (A) whole series, phase randomization only
+    # (A) 整條序列，只用相位隨機化
     z, _, _ = mad_zscore(values)
     obs_a = _extreme(z, tail)
     null_a = np.full(n_surr, np.nan)
@@ -196,7 +196,7 @@ def surrogate_test(values: np.ndarray, window_pos: np.ndarray, rng: np.random.Ge
     out["obs_whole_max_abs_z" if tail == "two" else "obs_whole_min_z"] = round(sign * obs_a, 4)
     out["p_whole_phase_randomization"] = round(_p(null_a, obs_a), 5)
 
-    # (B) pre-event window vs. background-only null
+    # (B) 震前窗口 vs. 只用背景的虛無分布
     in_win = np.zeros(len(values), dtype=bool)
     in_win[window_pos] = True
     bg = values[~in_win]
@@ -240,7 +240,7 @@ def run_group(group_id: str) -> dict:
     series = {"night_residual": night_residual_series(cfg, pair["field"]),
               "range_ratio": range_ratio_series(cfg, pair, storm_dates, outages)}
     for name, s in series.items():
-        rng = np.random.default_rng(SEED)  # same draws per index, so the two are tested on equal footing
+        rng = np.random.default_rng(SEED)  # 每個指標用相同的抽樣，讓兩者在同樣基礎上檢定
         if len(s) < MIN_SERIES_DAYS:
             row[f"{name}__error"] = f"only {len(s)} clean days"
             continue
@@ -254,8 +254,8 @@ def run_group(group_id: str) -> dict:
 
 
 def placebo_counts(s: pd.Series, real_window: set[str], rng: np.random.Generator, tail: str = "two") -> dict:
-    """Run (B) at fake anchors that don't overlap the real pre-event window and
-    count how often each surrogate type gives p < 0.05."""
+    """在不和真實震前窗口重疊的假錨點上跑 (B)，
+    計算每種替代資料給出 p < 0.05 的頻率。"""
     dates = pd.to_datetime(s.index)
     values = s.to_numpy(dtype=float)
     anchors = pd.date_range(dates.min() + pd.Timedelta(days=PRE_WINDOW_DAYS + 1), dates.max(), freq=f"{PLACEBO_STEP_DAYS}D")
@@ -275,30 +275,30 @@ def placebo_counts(s: pd.Series, real_window: set[str], rng: np.random.Generator
 
 
 def _window_extreme(values: np.ndarray, center: float, tail: str) -> float:
-    """Larger = more extreme: -min for the lower tail, max|x - center| for two."""
+    """越大 = 越極端：下尾用 -min，雙尾用 max|x - center|。"""
     return float(-values.min()) if tail == "lower" else float(np.abs(values - center).max())
 
 
 def rank_window_test(s: pd.Series, real_window: set[str], tail: str = "lower") -> dict:
-    """Rank the real pre-event window's extreme among the other PRE_WINDOW_DAYS
-    blocks of the same series, tiled back and forward from the real window so no
-    two blocks overlap (each needs >= MIN_WINDOW_DAYS clean days). Under H0 the
-    blocks are exchangeable, so p = (1 + #{fake >= obs}) / (n_fake + 1) is exact
-    up to the day-to-day correlation across block edges.
+    """把真實震前窗口的極值，和同一序列中其他 PRE_WINDOW_DAYS 天
+    區段排名，這些區段從真實窗口往前、往後鋪排，讓任兩個
+    區段都不重疊（每段需要 >= MIN_WINDOW_DAYS 個乾淨日）。在 H0 下
+    各區段可交換，所以 p = (1 + #{fake >= obs}) / (n_fake + 1) 是精確的，
+    只差區段邊界之間的逐日相關。
 
-    Replaces (B)'s resampling p-value as the primary pre-event test (2026-09-25):
-    block bootstrap can only reuse background values, so whenever the window's
-    minimum is below the background minimum (G11 pc3: z = -1.2 vs -0.73) its p
-    sits at the floor 1/(N+1) however small the gap -- the chance of that under
-    H0 is about w/(w+n), not 0.0005. Sliding (overlapping) fake windows don't fix
-    it either: one low day then sits in up to 30 of them, so the real window
-    ranks first far more often than 1/(n+1) (14 % at nominal 5 % in
-    rank_self_test before the switch to tiling). Honest cost: a 150-day series
-    has ~4 fake blocks, so no single group can go below p = 0.2; significance
-    has to come from combining groups (fisher_across_groups).
+    取代 (B) 的重抽 p 值，成為主要的震前檢定（2026-09-25）：
+    區塊 bootstrap 只能重用背景值，所以只要窗口的
+    最小值低於背景最小值（G11 pc3：z = -1.2 vs -0.73），它的 p
+    就落在下限 1/(N+1)，不管差距多小——而在 H0 下發生這種事的機率
+    大約是 w/(w+n)，不是 0.0005。滑動（重疊）的假窗口也修不好：
+    一個低值日會同時落在最多 30 個假窗口裡，所以真實窗口
+    排第一的頻率遠高於 1/(n+1)（改成鋪排之前，
+    rank_self_test 在名目 5% 下是 14%）。誠實的代價：150 天的序列
+    只有約 4 個假區段，所以單一組不可能低於 p = 0.2；顯著性
+    必須來自跨組合併（fisher_across_groups）。
 
-    `null_ps` is every block's p against all the others (real block included):
-    the exact per-group null distribution fisher_across_groups() draws from."""
+    `null_ps` 是每個區段對照其他所有區段的 p（包含真實區段）：
+    也就是 fisher_across_groups() 抽樣用的精確逐組虛無分布。"""
     dates = pd.to_datetime(s.index)
     values = s.to_numpy(dtype=float)
     idx = s.index.to_numpy()
@@ -336,9 +336,9 @@ def rank_window_test(s: pd.Series, real_window: set[str], tail: str = "lower") -
 
 def fisher_across_groups(ps: list[float], null_ps: list[list[float]], rng: np.random.Generator,
                          n_sim: int = 20000) -> dict:
-    """Fisher's X = -2 sum log p over groups, calibrated by drawing one fake
-    window's p per group (so the discreteness of short series is built into the
-    null instead of assuming uniform p)."""
+    """Fisher 的 X = -2 sum log p，跨組加總，校準方式是每組抽一個假
+    窗口的 p（所以短序列的離散性直接放進
+    虛無分布，而不是假設 p 是均勻分布）。"""
     obs = float(-2 * np.sum(np.log(ps)))
     sims = np.zeros(n_sim)
     for nps in null_ps:
@@ -350,11 +350,11 @@ def fisher_across_groups(ps: list[float], null_ps: list[list[float]], rng: np.ra
 
 
 # ---------------------------------------------------------------------------
-# Cross-group summary
+# 跨組摘要
 # ---------------------------------------------------------------------------
 
 def poisson_binomial_sf(k: int, ps: list[float]) -> float:
-    """P(K >= k) for K a sum of independent Bernoulli(p_i)."""
+    """K 為獨立 Bernoulli(p_i) 之和時的 P(K >= k)。"""
     dist = np.array([1.0])
     for p in ps:
         dist = np.convolve(dist, [1 - p, p])
@@ -362,10 +362,10 @@ def poisson_binomial_sf(k: int, ps: list[float]) -> float:
 
 
 def shrunk_placebo_rate(k: int, n: int, pooled: float) -> float:
-    """A group's own placebo p<0.05 rate k/n, shrunk toward the pooled rate with
-    PLACEBO_PRIOR_WINDOWS pseudo-windows. The pooled rate alone is dominated by
-    long series (G6/G7/G8) and can understate a short group's false-positive
-    rate; the raw k/n is too noisy when a group has only 0-5 placebo windows."""
+    """一組自己的安慰劑 p<0.05 比例 k/n，用
+    PLACEBO_PRIOR_WINDOWS 個虛擬窗口往合併比例收縮。合併比例本身由
+    長序列（G6/G7/G8）主導，可能低估短序列組的偽陽性
+    比例；原始的 k/n 在一組只有 0-5 個安慰劑窗口時又太吵。"""
     return (k + PLACEBO_PRIOR_WINDOWS * pooled) / (n + PLACEBO_PRIOR_WINDOWS)
 
 
@@ -463,13 +463,13 @@ def render_markdown(rows: list[dict], summ: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Self-test
+# 自我測試
 # ---------------------------------------------------------------------------
 
 def self_test() -> bool:
     rng = np.random.default_rng(SEED)
     n, w = 150, np.arange(110, 140)
-    noise = np.cumsum(rng.normal(0, 0.3, n)) * 0.1 + rng.normal(0, 1, n)  # mild autocorrelation
+    noise = np.cumsum(rng.normal(0, 0.3, n)) * 0.1 + rng.normal(0, 1, n)  # 輕微的自相關
     shifted = noise.copy()
     shifted[w[10:14]] += 8.0
 
@@ -485,8 +485,8 @@ def self_test() -> bool:
         N_SURROGATES = saved
     ok1 = sig["p_window_block_bootstrap"] < 0.05 and sig["p_window_phase_randomization"] < 0.05
     ok2 = nul["p_window_block_bootstrap"] > 0.05 and nul["p_window_phase_randomization"] > 0.05
-    # the tested extreme must not leak into its own null: a 100-sigma spike in the
-    # window has to reach the p-value floor, 1/(N+1)
+    # 被檢定的極值不能漏進它自己的虛無分布：窗口中 100 個 sigma 的突波
+    # 必須達到 p 值下限 1/(N+1)
     ok3 = leak["p_window_block_bootstrap"] <= 2 / 501 and leak["p_window_phase_randomization"] <= 2 / 501
     print(f"[self-test] injected shift: p_window = {sig['p_window_block_bootstrap']} / "
           f"{sig['p_window_phase_randomization']}  {'PASS' if ok1 else 'FAIL'}", file=sys.stderr)
@@ -498,16 +498,16 @@ def self_test() -> bool:
 
 
 def rank_self_test(n_rep: int = 100, n_groups: int = 12) -> bool:
-    """rank_window_test + fisher_across_groups on 12 synthetic 150-day groups
-    (window ending on day 93, the project's typical fetch layout). Under H0 the
-    combined p must be < 0.05 in about 5 % of replicates; the leave-window-out
-    block bootstrap it replaces is shown per group for reference (printed, not
-    asserted). A dip injected in half the groups must be detected. Single groups
-    can't be tested for power: with ~4 fake blocks their p can't go below 0.2."""
+    """在 12 個合成的 150 天組別上跑 rank_window_test + fisher_across_groups
+    （窗口結束在第 93 天，本專案典型的下載配置）。在 H0 下，
+    合併 p 應該在約 5% 的重複中 < 0.05；它所取代的留一窗
+    區塊 bootstrap 逐組列出供參考（印出，不做
+    斷言）。在一半組別注入的低谷必須被偵測到。單一組別
+    無法檢定檢定力：只有約 4 個假區段，它們的 p 不可能低於 0.2。"""
     global N_SURROGATES
     rng = np.random.default_rng(SEED)
     dates = pd.date_range("2024-01-01", periods=150).strftime("%Y%m%d")
-    window = set(pre_event_window(pd.Timestamp("2024-04-03"), PRE_WINDOW_DAYS))  # day 93 = 2024-04-03
+    window = set(pre_event_window(pd.Timestamp("2024-04-03"), PRE_WINDOW_DAYS))  # 第 93 天 = 2024-04-03
     w_pos = np.flatnonzero(np.isin(dates, list(window)))
 
     def series() -> np.ndarray:

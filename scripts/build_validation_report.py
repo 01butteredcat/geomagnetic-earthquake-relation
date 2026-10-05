@@ -1,8 +1,8 @@
-"""Embed data/interim/validation_report_data.json into scripts/report_
-template_validation.html and write the final self-contained artifact to
-output/ -- the cross-group counterpart of build_artifact.py.
+"""把 data/interim/validation_report_data.json 嵌入 scripts/report_
+template_validation.html，並把最終的單檔 artifact 寫到
+output/——是 build_artifact.py 的跨組版本。
 
-Usage: build_validation_report.py
+用法：build_validation_report.py
 """
 from __future__ import annotations
 

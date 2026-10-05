@@ -1,31 +1,31 @@
-"""Basic statistical screening: build a candidate 'local anomaly index' that
-attempts to isolate a near-epicenter-only geomagnetic signal from the
-common-mode (Sq/storm-driven) variation shared by the whole network.
+"""基本統計篩檢：建立候選的「局部異常指標」，
+嘗試從整個觀測網共有的共模（Sq／磁暴驅動）變化中，
+分離出只在震央附近的地磁訊號。
 
-Runs on whichever of the group's two station pools (see common.py's
-GroupConfig) is sufficient: the XYZ pool gives H and Z fields (vector data);
-the F pool (scalar-only stations) gives a single F field -- there is no Z/D
-analog for scalar data, that's a structural limitation of total-field-only
-instruments, not a bug. A group may run one, both, or (if neither pool has
-enough stations) no fields at all.
+在該組兩個測站池中足夠的那一個上執行（見 common.py 的
+GroupConfig）：XYZ 測站池提供 H 和 Z 場（向量資料）；
+F 測站池（只有純量的測站）提供單一的 F 場——純量資料沒有 Z/D
+的對應量，這是只量總磁場儀器的結構性限制，
+不是 bug。一組可能跑其中一種、兩種，或（如果兩個測站池都
+測站不足）完全不跑。
 
-Night window: raw UTC hour in {17,18,19} == Taiwan local time {01,02,03},
-confirmed quiet by timezone_check.py for the 2024/G10 data (assumed to hold
-across groups, same station/data convention). We deliberately do NOT relabel
-this onto a shifted local calendar date -- everything stays keyed by the UTC
-file date the samples were read from, which is also how daily_features.csv
-and storm_days.csv are keyed.
+夜間窗口：原始 UTC 時 in {17,18,19} == 台灣當地時間 {01,02,03}，
+已由 timezone_check.py 在 2024/G10 資料上確認是安靜的（假設在
+各組都成立，因為測站／資料慣例相同）。我們刻意**不**把
+它重新標到平移後的當地日曆日期——所有東西都以讀取樣本的 UTC
+檔案日期為鍵，daily_features.csv
+和 storm_days.csv 也是這樣。
 
-Method (plan Section 3, generalized to any field/station-pool):
-  1. night_mean/std per station/day from the 1-minute series.
-  2. MAD z-score of night_mean vs. a trailing TRAILING_WINDOW_DAYS-day
-     median (built only from clean -- non-storm, non-outage -- days).
-  3. near_index = median dev_z across the pool's near stations; far_index =
-     median dev_z across the pool's far stations.
-  4. Theil-Sen robust regression near_index ~ far_index on clean days only;
-     residual = local_anomaly_index (the candidate local-only signal).
-  5. Flag candidate days where |local_anomaly_index| exceeds ~2.5x the MAD
-     of its own clean-day distribution.
+方法（計畫第 3 節，推廣到任何場／測站池）：
+  1. 從 1 分鐘序列算出每站每日的 night_mean/std。
+  2. night_mean 相對於滑動 TRAILING_WINDOW_DAYS 天
+     中位數的 MAD z-score（只用乾淨日——非磁暴、非中斷——建立）。
+  3. near_index = 測站池近站的 dev_z 中位數；far_index =
+     測站池遠站的 dev_z 中位數。
+  4. 只在乾淨日上做 Theil-Sen 穩健迴歸 near_index ~ far_index；
+     殘差 = local_anomaly_index（候選的局部訊號）。
+  5. 標出 |local_anomaly_index| 超過自己乾淨日分布
+     MAD 約 2.5 倍的候選日。
 """
 from __future__ import annotations
 
@@ -41,25 +41,25 @@ from scipy.stats import theilslopes
 sys.path.insert(0, str(Path(__file__).parent))
 from common import auto_outage_dates, load_group_config  # noqa: E402
 
-NIGHT_HOURS_UTC = {17, 18, 19}  # == local 01:00-03:59
-# A station-night with fewer valid minutes than this (out of 180) contributes
-# no index value that day. Before this, a single valid minute was enough, so a
-# day whose whole-day pct_missing exceeded OUTAGE_PCT_MISSING_THRESHOLD could
-# still be flagged as a candidate from a near-empty night window (e.g. G18
-# 2016-02-29: kmn had 68/180 night minutes and hcn 0, and that thin far_index
-# produced a candidate). 90 (50% of the window) is a judgment call: 30-60
-# leaves that G18 day in, 90-150 all give the same set of removed candidates.
+NIGHT_HOURS_UTC = {17, 18, 19}  # == 當地 01:00-03:59
+# 一個測站–夜的有效分鐘數少於這個（滿分 180）時，當天
+# 不提供指標值。在此之前只要有一分鐘有效就夠，所以
+# 整天 pct_missing 超過 OUTAGE_PCT_MISSING_THRESHOLD 的日子
+# 仍可能因為幾乎全空的夜間窗口被標成候選日（例如 G18
+# 2016-02-29：kmn 夜間只有 68/180 分鐘、hcn 是 0，那個很薄的 far_index
+# 產生了一個候選日）。90（窗口的 50%）是判斷值：30-60
+# 會留下那個 G18 的日子，90-150 去掉的候選日集合都一樣。
 MIN_NIGHT_MINUTES = 90
-# 7 days was too short for the G10/2024 case: the 2024-03-21..27 storm +
-# 2-day recovery consumed the entire trailing window for dates through early
-# April, leaving the most important pre-quake days (03-26..04-04) with no
-# baseline at all. 21 days reaches back past that storm into a clean stretch.
-# 21 -> 28 on 2026-09-28: storm-dense stretches (G6 2021-10, G11 2025-01, G19
-# 2024-08) still left the days around those anchors with 2-4 clean days (< 5)
-# in 21, so the anchor-day index was NaN; 28 is the shortest window that gives
-# all three >= 8 (30/35 rescue nothing more).
-# Kept as one dataset-wide constant (not per-group) since it's a property of
-# "how long a storm+recovery can plausibly run", not of any one group's data.
+# 7 天對 G10/2024 的情況太短：2024-03-21..27 的磁暴 +
+# 2 天恢復期把到四月初為止的整個滑動窗口都吃掉，
+# 讓最重要的震前日子（03-26..04-04）完全沒有
+# 基準。21 天可以往回越過那次磁暴，延伸到一段乾淨期。
+# 2026-09-28 從 21 改成 28：磁暴密集的期間（G6 2021-10、G11 2025-01、G19
+# 2024-08）在 21 天下，那些錨點附近的日子仍只有 2-4 個乾淨日（< 5），
+# 所以錨點日的指標是 NaN；28 是讓三者
+# 都 >= 8 的最短窗口（30/35 也救不回更多）。
+# 保留為一個全資料集共用的常數（不逐組設定），因為它是
+# 「磁暴＋恢復期合理上可以持續多久」的性質，不是某一組資料的性質。
 TRAILING_WINDOW_DAYS = 28
 MIN_CLEAN_POINTS = 5
 CANDIDATE_Z_THRESHOLD = 2.5
@@ -86,10 +86,10 @@ def night_features_for_station(cfg, station: str, channel: str) -> pd.DataFrame:
 
 
 def mad_zscore(series: pd.Series, clean_mask: pd.Series) -> pd.Series:
-    """Rolling trailing-window MAD z-score, baseline built from clean days only.
-    The window is the TRAILING_WINDOW_DAYS calendar days before each day, not the
-    previous TRAILING_WINDOW_DAYS rows: a folder with missing day files (G6_G7_G8
-    lacks 2021-12-30 and 2022-01-01) would otherwise reach further back."""
+    """滾動滑動窗口 MAD z-score，基準只用乾淨日建立。
+    窗口是每一天之前的 TRAILING_WINDOW_DAYS 個日曆天，而不是
+    前 TRAILING_WINDOW_DAYS 列：缺日檔的資料夾（G6_G7_G8
+    缺 2021-12-30 和 2022-01-01）否則會往回延伸得更遠。"""
     z = pd.Series(index=series.index, dtype="float64")
     vals = series.values
     clean = clean_mask.values
@@ -127,21 +127,21 @@ def build_field_index(cfg, field: str, near_stations, far_stations, storm_dates,
     near_index = dev_z[list(near_stations)].median(axis=1)
     far_index = dev_z[list(far_stations)].median(axis=1)
 
-    # A day counts as "clean" (eligible for the regression fit / candidate
-    # flagging) if it's not a storm day AND near_index/far_index actually
-    # computed a value -- i.e. the station-level median had at least one
-    # non-outage contributor, not "every single pool station must
-    # individually be outage-free". The stricter all-or-nothing version was
-    # fine for G10 (no near/far station there ever had an extended full
-    # outage), but a group with e.g. a 3-week total dropout on one near
-    # station (seen in G11's zbn right before its anchor event) would
-    # otherwise have zero clean days for the whole dropout window even
-    # though the median-of-3 near_index remained perfectly computable from
-    # the other two stations for that entire stretch.
+    # 一天算「乾淨」（可用於迴歸擬合／候選
+    # 標記）的條件是：不是磁暴日，**且** near_index/far_index 真的
+    # 算出了值——也就是測站層級的中位數至少有一個
+    # 非中斷的貢獻者，而不是「測站池中每一個測站
+    # 都必須各自沒有中斷」。比較嚴格的全有或全無版本對
+    # G10 沒問題（那裡沒有任何近站／遠站曾長時間完全
+    # 中斷），但如果某組的一個近站有例如 3 週的完全中斷
+    # （G11 的 zbn 就在錨點事件前出現過），
+    # 整段中斷期間就會一個乾淨日都沒有，即使
+    # 3 站取中位數的 near_index 在那整段期間都能
+    # 由另外兩站完整算出。
     clean_overall = pd.Series(
         [d not in storm_dates for d in all_dates], index=all_dates
     ) & near_index.notna() & far_index.notna()
-    fit_mask = clean_overall  # already requires near/far to be non-NaN, see clean_overall above
+    fit_mask = clean_overall  # 已經要求 near/far 非 NaN，見上面的 clean_overall
     if fit_mask.sum() >= 10:
         slope, intercept, _, _ = theilslopes(near_index[fit_mask], far_index[fit_mask])
     else:

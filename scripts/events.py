@@ -1,87 +1,87 @@
-"""Earthquake event / group registry for the 24-group multi-event
-geomagnetic precursor pipeline (originally 13 groups; see the dated entries
-below for how it grew to 24).
+"""24 組多事件地磁前兆流程的地震事件／組別
+登錄表（原本 13 組；它如何成長到 24 組，見下面
+依日期記錄的條目）。
 
-Epicenter coordinates/depth/magnitude are from the CWA (Central Weather
-Administration) earthquake catalog / CWA GDMS -- every event has
-`coord_source="CWA"`. USGS/JMA magnitudes appear only as reference values in
-some events' `note`. `coord_confidence` records lower-precision entries
-explicitly rather than silently treating them as equally precise.
+震央座標／深度／規模來自 CWA（中央
+氣象署）地震目錄／CWA GDMS——每個事件都是
+`coord_source="CWA"`。USGS/JMA 規模只在部分事件的 `note` 裡
+當參考值出現。`coord_confidence` 明確記錄精度較低的條目，
+而不是默默把它們當成一樣精確。
 
-Each group's `anchor` event is the single largest-magnitude event in that
-group among events within 150 km of the nearest magnetometer -- the one test
-point used for cross-group statistics (§7 of the G1-G13 plan), to avoid
-treating a foreshock/mainshock/aftershock sequence's members as
-pseudo-independent samples. The 150 km radius (added 2026-09-27; every anchor
-before that already satisfied it) keeps distant or deep offshore M6 events,
-registered only so analyses can exclude them, from becoming a group's test
-point.
+每組的 `anchor` 事件是該組中、距離最近磁力儀
+150 km 以內的事件裡規模最大的那一個——也就是跨組統計
+使用的唯一檢定點（G1-G13 計畫第 7 節），避免把
+前震／主震／餘震序列的成員當成
+偽獨立樣本。150 km 半徑（2026-09-27 加入；在那之前
+每個錨點本來就符合）讓遠距或深的外海 M6 事件——
+登錄它們只是為了讓分析能排除——不會變成某組的檢定
+點。
 
-2026-09-27: 20 M>=6 events from `GDMScatalog.json` that fall inside a group's
-data window but had never been registered were added with their CWA catalog
-values (to G4, G5, G6, G8, G9, G10, G14, G15, G16, G18, G21 and G24). 11 of
-them lie 169-397 km from the nearest magnetometer; 4 of those (G5, G16, G21,
-G24) are larger than the group's anchor, which stays unchanged under the
-150 km rule above. One of the 20 is G8's 2022-03-22 17:43:25 UTC ML6.21,
-previously dismissed as a duplicate location of the anchor; USGS lists it as
-a separate event 18 km away, so it is registered as its own aftershock.
+2026-09-27：`GDMScatalog.json` 中有 20 起 M>=6 事件落在某組的
+資料窗口內卻從未登錄，現以它們的 CWA 目錄
+數值加入（加到 G4、G5、G6、G8、G9、G10、G14、G15、G16、G18、G21 和 G24）。其中 11 起
+距離最近的磁力儀 169-397 km；這 11 起中有 4 起（G5、G16、G21、
+G24）比該組錨點大，但依上面的 150 km 規則，錨點
+維持不變。20 起中有一起是 G8 的 2022-03-22 17:43:25 UTC ML6.21，
+先前被當成錨點位置的重複而略過；USGS 把它列為
+相距 18 km 的另一個事件，所以登錄為它自己的餘震。
 
-2026-09-23: 68 non-anchor events added to G11 (30), G12 (13), G13 (12), G19 (2),
-and G20 (11) from a user-supplied CWA GDMS regional magnitude-report export
-(`GDMScatalog.txt`, container-root-relative, M>=5.0, 2024-09-01~2026-07-31) --
-this is a plain magnitude-report dump (date/time/lat/lon/depth/ML/nstn/.../
-quality columns), a different export than `GDMScatalog.json`'s used elsewhere
-in this file's history. Cross-checked programmatically against every existing
-event in the five affected groups' `folder_events()` (+-6h / +-0.3 magnitude
-tolerance, the same rule `fetch_earthquake_catalog.py::flag_known_events()`
-uses) -- 7 catalog rows matched already-registered events (including all 4 of
-this window's pre-existing anchors) and were skipped; the remaining 68 were
-new. One of those, 2025-08-07 ML6.32 in G12's window, is a real M6+ event this
-registry had not previously recorded at all (not flagged in any prior
-candidate doc) but does not exceed G12's 2025-06-11 ML6.42 anchor, so no
-anchor reassignment is triggered anywhere in this batch. 15 further catalog
-rows fall in calendar gaps between these groups' fetch windows (no raw
-geomagnetic data covers them) and were left out entirely -- not registered
-here, and not a "candidate" list either since this note isn't itself a
-candidate-groups doc; see `docs/candidate_events_gdms_2024_2026.md`.
+2026-09-23：從使用者提供的 CWA GDMS 區域規模報告匯出檔
+（`GDMScatalog.txt`，相對於容器根目錄，M>=5.0，2024-09-01~2026-07-31），把 68 起非錨點事件加到 G11（30）、G12（13）、G13（12）、G19（2）
+和 G20（11）——
+這是單純的規模報告傾印（date/time/lat/lon/depth/ML/nstn/.../
+quality 欄位），和這個檔案歷史中其他地方用到的 `GDMScatalog.json`
+是不同的匯出檔。已用程式和五個受影響組別 `folder_events()` 中
+每一個既有事件交叉比對（±6 小時／±0.3 規模
+容差，和 `fetch_earthquake_catalog.py::flag_known_events()` 當時
+使用的規則相同）——7 列目錄資料對到已登錄的事件（包括
+這段窗口全部 4 個原有錨點）而略過；其餘 68 起是
+新的。其中一起，G12 窗口內的 2025-08-07 ML6.32，是這份
+登錄表先前完全沒記錄的真實 M6+ 事件（之前任何
+候選文件都沒標出），但沒有超過 G12 的 2025-06-11 ML6.42 錨點，所以
+這一批在任何地方都沒有觸發錨點重新指定。另外 15 列目錄
+資料落在這些組別下載窗口之間的日曆空檔（沒有原始
+地磁資料涵蓋），完全沒有納入——沒有在這裡
+登錄，也不算「候選」清單，因為這段說明本身不是
+候選組別文件；見 `docs/candidate_events_gdms_2024_2026.md`。
 
-2026-08-20 (yet later same day): 3 new standalone groups (G21, G22, G23) were
-added, plus one non-anchor event each to G11, G17, and G6_G7_G8 -- all from
-raw .sec data the user fetched from GDMS covering the candidate fetch ranges
-proposed in `docs/candidate_fetch_ranges_from_GDMScatalog.md` (itself derived
-from `GDMScatalog.json`'s Table 2). G21/G22/G23 are single-baseline-window
-groups that didn't overlap any existing group's fetch range; G23 merges two
-events (2020-06-14, 2020-07-26) whose windows overlapped each other, per the
-usual mechanical merge rule. None of the three appended events (G11's
-2025-04-08, G17's 2015-03-23, G6_G7_G8's 2022-05-09) exceed their group's
-existing anchor magnitude, so no further anchor reassignment is triggered.
+2026-08-20（同一天更晚）：新增 3 個獨立組別（G21、G22、G23），
+另外 G11、G17 和 G6_G7_G8 各加一起非錨點事件——全部來自
+使用者從 GDMS 下載、涵蓋
+`docs/candidate_fetch_ranges_from_GDMScatalog.md` 所提候選下載範圍的原始 .sec 資料（該文件本身由
+`GDMScatalog.json` 的表 2 推出）。G21/G22/G23 是單一基準窗口的
+組別，沒有和任何既有組別的下載範圍重疊；G23 合併了兩起
+窗口互相重疊的事件（2020-06-14、2020-07-26），依照
+一般的機械式合併規則。三起附加事件（G11 的
+2025-04-08、G17 的 2015-03-23、G6_G7_G8 的 2022-05-09）都沒有超過該組
+既有錨點的規模，所以沒有觸發進一步的錨點重新指定。
 
-2026-08-20 (later same day): 11 additional non-anchor events, plus one anchor
-reassignment (G12), were added from the same user-supplied CWA GDMS regional
-catalog export (`GDMScatalog.json`) -- these are events the catalog contains
-that this registry had never recorded at all (as opposed to the earlier same-day
-update below, which only replaced coordinate/magnitude precision on events
-already known). See `docs/candidate_groups_from_GDMScatalog.md` for the full
-cross-check. G12's anchor moved from 2025-08-27 (ML6.05) to the newly-added
-2025-06-11 (ML6.42), since the mechanical "largest magnitude in group" rule
-(see below) applies to it too, mirroring the G17/G18 precedent.
-**`data/interim/G12/` was regenerated under the new anchor 2026-08-21**
-(confirmed via `data/interim/all_groups_run_summary.json`'s recorded
-`anchor_date`/`anchor_magnitude`, which already show 2025-06-11/ML6.42) --
-this is no longer stale, superseding an earlier version of this note that
-said otherwise.
+2026-08-20（同一天稍晚）：從同一份使用者提供的 CWA GDMS 區域
+目錄匯出檔（`GDMScatalog.json`）新增 11 起非錨點事件，外加一次錨點
+重新指定（G12）——這些是目錄中有、
+但這份登錄表從未記錄過的事件（和下面同一天較早的
+更新不同，那次只是替已知事件提高座標／規模
+精度）。完整的交叉比對見 `docs/candidate_groups_from_GDMScatalog.md`。
+G12 的錨點從 2025-08-27（ML6.05）移到新加入的
+2025-06-11（ML6.42），因為機械式的「組內規模最大」規則
+（見下面）也適用於它，和 G17/G18 的先例一樣。
+**`data/interim/G12/` 已在 2026-08-21 依新錨點重新產生**
+（由 `data/interim/all_groups_run_summary.json` 記錄的
+`anchor_date`/`anchor_magnitude` 確認，已經是 2025-06-11/ML6.42）——
+現在不再過時，取代這段說明先前
+相反說法的版本。
 
-2026-08-20: 12 previously `coord_confidence="low"` (USGS-substitute) events
-were upgraded to CWA-sourced coordinates/magnitudes using a user-supplied CWA
-GDMS regional catalog export (see each event's note for per-event detail).
-This changed G17's and G18's anchor events (2015-02-14 -> 2014-12-11 for
-G17; 2016-02-06 -> 2016-05-31 for G18), since the anchor rule above is
-applied mechanically to whichever event has the highest confirmed magnitude.
-**`data/interim/G17/` and `data/interim/G18/` were regenerated under their
-new anchors 2026-08-21** (confirmed via `all_groups_run_summary.json`'s
-recorded `anchor_date`/`anchor_magnitude` for both groups) -- no longer
-stale, superseding an earlier version of this note that said otherwise (see
-geomag_precursor/README.md).
+2026-08-20：12 起原本是 `coord_confidence="low"`（USGS 替代值）的事件，
+用使用者提供的 CWA GDMS 區域目錄匯出檔升級成 CWA 來源的
+座標／規模（逐事件細節見各事件的 note）。
+這改變了 G17 和 G18 的錨點事件（G17 從 2015-02-14 -> 2014-12-11；
+G18 從 2016-02-06 -> 2016-05-31），因為上面的錨點規則是
+機械式地套用在確認規模最高的事件上。
+**`data/interim/G17/` 和 `data/interim/G18/` 已在 2026-08-21 依它們的
+新錨點重新產生**（由 `all_groups_run_summary.json` 對兩組
+記錄的 `anchor_date`/`anchor_magnitude` 確認）——不再
+過時，取代這段說明先前相反說法的版本（見
+geomag_precursor/README.md）。
 """
 from __future__ import annotations
 
@@ -91,16 +91,16 @@ from datetime import datetime, timedelta
 
 @dataclass(frozen=True)
 class Event:
-    date: str  # Taiwan local calendar date commonly used to reference this event, YYYY-MM-DD
-    time_local: str  # Taiwan local time (UTC+8), "YYYY-MM-DD HH:MM:SS"
+    date: str  # 通常用來稱呼這個事件的台灣當地日曆日期，YYYY-MM-DD
+    time_local: str  # 台灣當地時間（UTC+8），"YYYY-MM-DD HH:MM:SS"
     lat: float
     lon: float
     depth_km: float
     magnitude: float
-    magnitude_type: str  # as reported by magnitude_source, e.g. "ML", "M"
-    magnitude_source: str  # "CWA" (this dataset's primary convention) or other
-    coord_source: str  # "CWA" or "USGS"
-    coord_confidence: str  # "high" (CWA's own coordinates) or "low" (CWA coords not found, using USGS)
+    magnitude_type: str  # 依 magnitude_source 的回報，例如 "ML"、"M"
+    magnitude_source: str  # "CWA"（本資料集的主要慣例）或其他
+    coord_source: str  # "CWA" 或 "USGS"
+    coord_confidence: str  # "high"（CWA 自己的座標）或 "low"（找不到 CWA 座標，用 USGS）
     anchor: bool = False
     note: str = ""
 
@@ -113,7 +113,7 @@ class Event:
 @dataclass(frozen=True)
 class Group:
     group_id: str
-    folder: str  # subdirectory name under this project's root
+    folder: str  # 本專案根目錄下的子目錄名稱
     events: tuple[Event, ...]
 
     @property
@@ -134,11 +134,11 @@ GROUPS: dict[str, Group] = {
               coord_source="CWA", coord_confidence="high", anchor=True,
               note="2026-09-26: corrected to the CWA GDMS catalog (GDMScatalog.json; was 23:50:00, 24.10N/121.73E, 6.3km, ML6.2). Hualien. Mw 6.4 (USGS) / Mj 6.7 (JMA)."),
     )),
-    # G2 and G3 share one raw-data folder (`G2_G3/`) purely because they were fetched together for
-    # convenience -- they are independent events (112 days and ~45km apart), so each is its own
-    # group with its own anchor. Split 2026-09-20 (previously one merged "G2_G3" group whose only
-    # anchor was G2, leaving G3 out of every cross-group test). See folder_events() below for how
-    # analyses that must exclude "every real event in this data" still see both.
+    # G2 和 G3 共用一個原始資料夾（`G2_G3/`），純粹是因為當初為了方便一起
+    # 下載——它們是獨立事件（相隔 112 天、約 45km），所以各自是
+    # 有自己錨點的組別。2026-09-20 拆分（之前是一個合併的 "G2_G3" 組，唯一
+    # 錨點是 G2，讓 G3 被排除在所有跨組檢定之外）。必須排除「這份資料中每一個真實事件」的
+    # 分析如何仍然看得到兩者，見下面的 folder_events()。
     "G2": Group("G2", "G2_G3", (
         Event("2019-04-18", "2019-04-18 13:01:07", 24.0543, 121.5592, 20.33, 6.32, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
@@ -206,9 +206,9 @@ GROUPS: dict[str, Group] = {
                    "missed. 253 km from the nearest magnetometer (ncg) -- beyond the 150 km anchor radius, so it is"
                    " registered for exclusion/known-event purposes only and cannot be the anchor."),
     )),
-    # G6, G7, G8 share one raw-data folder (`G6_G7_G8/`) for fetch convenience only (71 and 79 days
-    # apart, different epicenters); split into three groups 2026-09-20. G8 keeps its own aftershock
-    # sequence (2022-03-23b, 2022-05-09) as non-anchor events.
+    # G6、G7、G8 共用一個原始資料夾（`G6_G7_G8/`）只是為了下載方便（相隔 71 和 79 天，
+    # 震央不同）；2026-09-20 拆成三組。G8 保留它自己的餘震
+    # 序列（2022-03-23b、2022-05-09）作為非錨點事件。
     "G6": Group("G6", "G6_G7_G8", (
         Event("2021-10-24", "2021-10-24 13:11:34", 24.53, 121.78, 65.6, 6.5, "M", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
@@ -750,11 +750,11 @@ GROUPS: dict[str, Group] = {
                    "falling within G13's existing fetch window. Does not exceed this group's anchor magnitude, so no "
                    "anchor reassignment is triggered."),
     )),
-    # --- G14-G20: added 2026-08-08. Candidate events were pre-researched (relative-bearing
-    # locations + USGS-sourced approximate magnitudes only) in docs/candidate_groups_G14_G20.md;
-    # the coordinates/depths/magnitudes below are CWA catalog values (all CWA-sourced since the
-    # 2026-08-20 GDMS catalog upgrade), registered after the user manually fetched G14-G20's raw
-    # .tgz data from GDMS on 2026-08-07.
+    # --- G14-G20：2026-08-08 加入。候選事件先在 docs/candidate_groups_G14_G20.md
+    # 做過初步研究（只有相對方位位置 + USGS 來源的近似規模）；
+    # 下面的座標／深度／規模是 CWA 目錄數值（自
+    # 2026-08-20 升級到 GDMS 目錄後全部來自 CWA），在使用者 2026-08-07 從 GDMS 手動下載
+    # G14-G20 的原始 .tgz 資料後登錄。
     "G14": Group("G14", "G14", (
         Event("2009-07-14", "2009-07-14 02:05:02", 24.0228, 122.2193, 18.08, 6.00, "ML", "CWA",
               coord_source="CWA", coord_confidence="high",
@@ -1080,10 +1080,10 @@ GROUPS: dict[str, Group] = {
                    "falling within G20's existing fetch window. Does not exceed this group's anchor magnitude, so no "
                    "anchor reassignment is triggered."),
     )),
-    # --- G21-G23: added 2026-08-20. New standalone candidate groups proposed in
-    # docs/candidate_fetch_ranges_from_GDMScatalog.md (itself derived from GDMScatalog.json's Table 2),
-    # whose baseline/aftermath fetch windows did not overlap any of G1-G20's existing windows. The user
-    # fetched each group's raw .sec data from GDMS on 2026-08-20, matching the proposed windows exactly.
+    # --- G21-G23：2026-08-20 加入。docs/candidate_fetch_ranges_from_GDMScatalog.md
+    # 提出的新獨立候選組別（該文件本身由 GDMScatalog.json 的表 2 推出），
+    # 它們的基準期／震後下載窗口和 G1-G20 既有窗口都不重疊。使用者
+    # 在 2026-08-20 從 GDMS 下載了每組的原始 .sec 資料，和提出的窗口完全一致。
     "G21": Group("G21", "G21", (
         Event("2010-11-21", "2010-11-21 20:31:45", 23.8525, 121.6857, 46.87, 6.14, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
@@ -1108,12 +1108,12 @@ GROUPS: dict[str, Group] = {
                    "2010-12-13) or G15's (starts 2013-03-01). Raw .sec data fetched by the user from GDMS "
                    "2026-08-20, matching that proposed window exactly (1276 files)."),
     )),
-    # G23 and G24 share one raw-data folder (`G23/`) purely because they were fetched together for
-    # convenience -- confirmed no foreshock/mainshock/aftershock relationship (42 days, ~1.6km apart),
-    # so each is its own group with its own anchor. Split 2026-09-22, mirroring the G2_G3/G6_G7_G8
-    # precedent. Unlike G2/G3 (each has a confirmed CWA place name), NEITHER event here does -- both
-    # are coordinate-derived only; do not add a place name to either note. See folder_events() below
-    # for how analyses that must exclude "every real event in this data" still see both.
+    # G23 和 G24 共用一個原始資料夾（`G23/`），純粹是因為當初為了方便一起
+    # 下載——已確認沒有前震／主震／餘震關係（相隔 42 天、約 1.6km），
+    # 所以各自是有自己錨點的組別。2026-09-22 拆分，仿照 G2_G3/G6_G7_G8 的
+    # 先例。和 G2/G3（各有確認過的 CWA 地名）不同，這裡**兩起都沒有**——兩者
+    # 都只有由座標推得的位置；不要在任何一起的 note 裡加地名。必須排除「這份資料中每一個真實事件」的
+    # 分析如何仍然看得到兩者，見下面的 folder_events()。
     "G23": Group("G23", "G23", (
         Event("2020-07-26", "2020-07-26 20:52:29", 24.2552, 122.4215, 53.59, 6.24, "ML", "CWA",
               coord_source="CWA", coord_confidence="high", anchor=True,
@@ -1157,31 +1157,31 @@ def get_group(group_id: str) -> Group:
 
 
 def sibling_group_ids(group_id: str) -> tuple[str, ...]:
-    """Every group (including `group_id` itself) whose raw data lives in the same
-    `folder`. Groups normally have a folder of their own, so this is just
-    `(group_id,)`; G2/G3 share `G2_G3/`, G6/G7/G8 share `G6_G7_G8/` (both split
-    2026-09-20), and G23/G24 share `G23/` (split 2026-09-22) -- each from what used
-    to be one merged group."""
+    """原始資料放在同一個 `folder` 的每一組（包括 `group_id` 自己）。
+    組別通常有自己的資料夾，所以這通常就是
+    `(group_id,)`；G2/G3 共用 `G2_G3/`、G6/G7/G8 共用 `G6_G7_G8/`（都在
+    2026-09-20 拆分），G23/G24 共用 `G23/`（2026-09-22 拆分）——每一個都來自
+    原本合併的一組。"""
     folder = get_group(group_id).folder
     return tuple(gid for gid, g in GROUPS.items() if g.folder == folder)
 
 
 def folder_events(group_id: str) -> tuple[Event, ...]:
-    """Every registered event in `group_id`'s raw-data folder, i.e. its own events plus
-    its sibling groups'. Use this wherever the question is "which real earthquakes are in
-    this data?" (excluding them from null/random reference draws, flagging catalog rows as
-    already known, capping a search window at the nearest other event) rather than "which
-    events belong to this group's analysis?" -- for the latter use `get_group(id).events`.
-    Identical to `get_group(id).events` for every group that has a folder to itself."""
+    """`group_id` 原始資料夾中的每一個已登錄事件，也就是它自己的事件加上
+    兄弟組的事件。只要問題是「這份資料中有哪些真實地震？」就用這個
+    （把它們從虛無／隨機參考時間抽樣中排除、把目錄資料列標記為
+    已知、把搜尋窗口限制在最近的另一個事件），而不是「哪些
+    事件屬於這組的分析？」——後者用 `get_group(id).events`。
+    對有自己資料夾的組別，結果和 `get_group(id).events` 完全相同。"""
     return tuple(ev for gid in sibling_group_ids(group_id) for ev in GROUPS[gid].events)
 
 
 def assign_group_for_time(group_id: str, when) -> str:
-    """Which of `group_id`'s folder-sharing groups an extra (non-registered) earthquake at
-    time `when` (UTC datetime/Timestamp, naive or tz-aware) should be attributed to: the one
-    whose anchor is nearest in time (ties go to the earlier anchor). Sibling groups query the
-    same date range, so without this rule the same catalog event would be counted once per
-    sibling."""
+    """在 `when`（UTC datetime/Timestamp，不含或含時區皆可）發生的額外（未登錄）地震，
+    應該歸給 `group_id` 共用資料夾的哪一組：錨點在時間上
+    最近的那一組（同分時歸給較早的錨點）。兄弟組查詢的是
+    同樣的日期範圍，所以沒有這條規則，同一起目錄事件會在每個
+    兄弟組各被算一次。"""
     when = when.replace(tzinfo=None) if getattr(when, "tzinfo", None) is not None else when
     def key(gid: str):
         a = datetime.strptime(GROUPS[gid].anchor_event.time_utc, "%Y-%m-%d %H:%M:%S")

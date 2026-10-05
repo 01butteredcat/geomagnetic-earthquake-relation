@@ -1,8 +1,8 @@
-"""Shared loader for the expanded earthquake catalog (`fetch_earthquake_
-catalog.py`'s output) + events.py's 20 hand-curated events, merged into one
-event list without double-counting -- used by both
-`superposed_epoch_analysis.py` and `backtest_rule.py` so their event
-population definitions can't silently drift apart."""
+"""擴充地震目錄（`fetch_earthquake_
+catalog.py` 的輸出）＋ events.py 中 20 起人工整理事件的共用載入器，合併成一份
+不重複計算的事件清單——
+`superposed_epoch_analysis.py` 和 `backtest_rule.py` 都用它，這樣兩者的
+事件母體定義就不會默默分歧。"""
 from __future__ import annotations
 
 import csv
@@ -14,15 +14,15 @@ from events import get_group
 
 
 def load_extended_events(catalog_path: Path, group_ids: tuple[str, ...], min_mag: float) -> list[dict]:
-    """Union of events.py's events (for group_ids) and the extended catalog's
-    declustered/not-already-known rows, both restricted to magnitude >=
-    min_mag -- events.py holds M5 events too since the 2026-09-23 backfill,
-    so without this filter every tier silently included them (an "M>=6.0"
-    stack of 99 events, 67 of them M<6). Each item: group, date (pd.Timestamp
-    at day resolution), mag, source ("events.py", "USGS", or "CWA_GDMS" --
-    the latter two per-row from fetch_earthquake_catalog.py's own "source"
-    column; "usgs_catalog" as a fallback for catalogs fetched before that
-    column existed)."""
+    """events.py 的事件（用於 group_ids）和延伸目錄中
+    去叢集後、尚未登錄的列的聯集，兩者都限制在規模 >=
+    min_mag——2026-09-23 補登後 events.py 也含 M5 事件，
+    所以沒有這個篩選的話，每個級距都會默默把它們算進去（一個「M>=6.0」的
+    疊加有 99 起事件，其中 67 起 M<6）。每一項：group、date（pd.Timestamp，
+    日解析度）、mag、source（"events.py"、"USGS" 或 "CWA_GDMS"——
+    後兩者逐列取自 fetch_earthquake_catalog.py 自己的 "source"
+    欄位；在那個欄位存在之前抓的目錄，則以 "usgs_catalog"
+    作為備用值）。"""
     events: list[dict] = []
     for group_id in group_ids:
         for ev in get_group(group_id).events:

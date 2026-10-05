@@ -1,96 +1,96 @@
-"""Onset moveout test: does the coseismic geomagnetic anomaly start later at
-stations farther from the hypocenter?
+"""起始時間走時差檢定：同震地磁異常在離震源越遠的測站
+是否越晚開始？
 
-This test needs neither seismometer data nor noise/signal labels. Three
-candidate sources predict different onset patterns across the network:
+這個檢定既不需要地震儀資料，也不需要雜訊／訊號標籤。三種
+候選來源預測的全網起始型態各不相同：
 
-  - external disturbance (SSC, substorm onset, Pi2): simultaneous everywhere,
-    onset independent of distance (slope ~ 0 s/km);
-  - magnetometer shaken by ground motion: onset follows the seismic waves,
-    onset ~ R / V with V ~ 6 km/s (P) or ~ 3.5 km/s (S), i.e. a slope of
-    ~0.17-0.29 s/km. A 20 -> 200 km spread is ~30-50 s, well resolved at 1 Hz;
-  - a lithospheric source at the hypocenter: earliest near the epicenter,
-    possibly ahead of the P wave, but no reason to travel at seismic speed.
+  - 外部擾動（SSC、亞暴開始、Pi2）：各處同時發生，
+    起始時間和距離無關（斜率 ~ 0 s/km）；
+  - 磁力儀被地動震到：起始時間跟著震波走，
+    起始 ~ R / V，V ~ 6 km/s（P）或 ~ 3.5 km/s（S），也就是斜率約
+    0.17-0.29 s/km。20 -> 200 km 的差距約 30-50 秒，在 1 Hz 下可以清楚分辨；
+  - 震源處的岩石圈來源：震央附近最早，
+    可能比 P 波還早，但沒有理由以地震波速傳播。
 
-## Onset detector
+## 起始偵測器
 
-On each station's raw 1 Hz first difference (H = sqrt(X^2+Y^2) for vector
-stations, F for scalar ones -- same channels as coseismic_step_analysis.py's
-`_build_channels`):
+在每個測站原始的 1 Hz 一階差分上（向量站用 H = sqrt(X^2+Y^2)，
+純量站用 F——和 coseismic_step_analysis.py 的
+`_build_channels` 相同的通道）：
 
-  sigma  = 1.4826 * MAD of the first difference over NOISE_PRE_LAGS
-           (-660..-60 s, same pre-event reference as
-           seismometer_comparison.py::geomag_noise_ratio)
+  sigma  = 1.4826 * NOISE_PRE_LAGS 內一階差分的 MAD
+           （-660..-60 秒，和
+           seismometer_comparison.py::geomag_noise_ratio 相同的震前參考）
   exceed = |diff| > K_SIGMA * sigma
-  onset  = first second t in SEARCH_LAGS (-60..+180 s, capped per event by
-           coseismic_step_analysis._effective_half_sec) where exceed[t] holds
-           and at least MIN_EXCEED of the MIN_EXCEED_WINDOW seconds t..t+4 exceed.
+  onset  = SEARCH_LAGS（-60..+180 秒，每個事件再由
+           coseismic_step_analysis._effective_half_sec 設上限）中第一個 exceed[t] 成立、
+           且 t..t+4 這 MIN_EXCEED_WINDOW 秒中至少 MIN_EXCEED 秒 exceed 的秒 t。
 
-This is the shaking-noise signature of the G10 pilot (first-difference noise
-~11.6x the pre-event level), timed at its first sample rather than at the
-step30 peak, which can sit anywhere inside the burst.
+這是 G10 試行時看到的震動雜訊特徵（一階差分雜訊
+約是震前水準的 11.6 倍），計時取它的第一個樣本，而不是
+step30 峰值，後者可能落在爆發段中的任何地方。
 
-## Null calibration
+## 虛無校準
 
-The same detector is run at N_NULL random reference times in the same loaded
-data (every real event in the raw-data folder kept NULL_EXCLUSION_SEC away, so
-the whole -660..+180 s window stays clear). Since 2026-09-28 the reference
-times are **shared by every station of an event** (one draw per event, kept
-only where every station tested at the origin also gets a valid result there;
-with fewer than MIN_SHARED_NULL such times the event falls back to counting
-invalid draws as "no trigger" and is flagged `shared_null_fallback`). Before
-that each station drew its own times, which hides the fact that an external
-disturbance hits the whole network at once. The fraction that trigger is the
-station's false-trigger rate for this detector; `trigger_p` = (1 + #null
-triggers at least as early) / (N_NULL + 1) is not used for anything below, but
-lets a trigger be read against its own station's noise.
+同一個偵測器在同一份已載入資料中的 N_NULL 個隨機參考時間上執行
+（原始資料夾中每個真實事件都保持 NULL_EXCLUSION_SEC 的距離，讓
+整個 -660..+180 秒窗口都乾淨）。2026-09-28 起，參考
+時間由**同一事件的所有測站共用**（每個事件抽一次，只保留
+發震時被檢定的每個測站在該時間也都得到有效結果的；
+這樣的時間少於 MIN_SHARED_NULL 個時，該事件退回把
+無效的抽樣算成「未觸發」，並標記 `shared_null_fallback`）。在
+那之前每個測站各自抽時間，這掩蓋了外部
+擾動會同時打到整個測站網的事實。觸發的比例就是該
+測站在這個偵測器下的誤觸發率；`trigger_p` = (1 + #虛無觸發
+至少一樣早的次數) / (N_NULL + 1)，下面沒有拿來做任何事，但
+可以讓一次觸發對照它自己測站的雜訊來解讀。
 
-## Moveout statistics
+## 走時差統計量
 
-Hypocentral distance R = sqrt(epicentral^2 + depth^2).
+震源距離 R = sqrt(震央距^2 + 深度^2)。
 
-  - Per event (>= MIN_STATIONS_FOR_FIT triggered stations): Theil-Sen slope of
-    onset lag vs. R, with its 90 % CI, and the apparent velocity 1/slope.
-    `simultaneous` if the CI contains 0 and lies below the P slowness;
-    `seismic_moveout` if the CI is above 0 and overlaps [1/V_P_KMS, 1/V_S_KMS];
-    otherwise `indeterminate`.
-  - Pooled over events: Theil-Sen slope of (onset lag vs. R) after removing
-    each event's own median lag and median R (so events with different origin
-    offsets don't masquerade as moveout), p-value from shuffling onsets among
-    stations of the *same event* (one-sided, H1: slope > 0). Reported
-    separately for M >= 6 and M < 6 (the 68 backfilled M5 events), and for
-    all triggers vs. only stations whose own false-trigger rate is below
-    CLEAN_FALSE_RATE.
-  - Arrival-window test (primary, event-level null since 2026-09-28): T = the
-    number of stations whose onset lands in [R/V_P - 5 s, R/V_S + 30 s]. The
-    null evaluates the whole event at one shared random reference time: each
-    simulation draws one shared index per event and counts that event's
-    stations whose null trigger lands in their own window, summed over events.
-    This keeps the correlation between stations of the same event (a substorm
-    triggers them all at once), which the older per-trigger Poisson-binomial
-    (observed count vs. the sum of each trigger's null in-window fraction, kept
-    as `arrival_window_all_triggers` for reference) treats as independent.
-    This is the direct "tied to the seismic waves" test; the slope fits are
-    easily dragged by a single noisy station.
-  - Cross-check against seismometer_comparison.py's co-located seismic onset
-    (`shaking_onset_lag_sec`): geomagnetic onset minus seismic onset, for the
-    one station per event that script compared.
+  - 逐事件（>= MIN_STATIONS_FOR_FIT 個觸發測站）：起始延遲對 R 的
+    Theil-Sen 斜率，附 90% 信賴區間，以及視速度 1/slope。
+    信賴區間包含 0 且低於 P 波慢度時為 `simultaneous`；
+    信賴區間高於 0 且和 [1/V_P_KMS, 1/V_S_KMS] 重疊時為 `seismic_moveout`；
+    其他為 `indeterminate`。
+  - 跨事件合併：扣掉每個事件自己的延遲中位數和 R 中位數後，
+    （起始延遲 vs. R）的 Theil-Sen 斜率（讓發震偏移
+    不同的事件不會假裝成走時差），p 值來自在*同一事件*的
+    測站間打亂起始時間（單尾，H1：slope > 0）。M >= 6 和 M < 6
+    （補登的 68 起 M5 事件）分開報告，也分成
+    全部觸發 vs. 只看自己誤觸發率低於
+    CLEAN_FALSE_RATE 的測站。
+  - 到時窗檢定（主要檢定，2026-09-28 起用事件層級虛無分布）：T =
+    起始時間落在 [R/V_P - 5 s, R/V_S + 30 s] 內的測站數。
+    虛無分布在一個共用的隨機參考時間上評估整個事件：每次
+    模擬每個事件抽一個共用索引，計算該事件
+    虛無觸發落在自己窗口內的測站數，再對事件加總。
+    這保留了同一事件測站之間的相關性（一次亞暴
+    會讓它們同時觸發），而較舊的逐觸發 Poisson-二項檢定
+    （觀測計數 vs. 每次觸發虛無落窗比例之和，保留
+    為 `arrival_window_all_triggers` 供參考）把它們當成獨立。
+    這是「和震波綁在一起」的直接檢定；斜率擬合
+    很容易被單一個雜訊大的測站拉走。
+  - 和 seismometer_comparison.py 的同址地震起始時間交叉檢查
+    （`shaking_onset_lag_sec`）：地磁起始減地震起始，針對
+    那支腳本每個事件比對的那一個測站。
 
-## Prior-event shaking (sensitivity only)
+## 前一事件的震動（只做敏感度分析）
 
-An event that follows another registered event in the same raw-data folder by
-<= PRIOR_EVENT_EXCLUSION_SEC (900 s: the -660 s noise reference plus a few
-minutes of the earlier event's shaking) has its noise reference and search
-window inside that earlier shaking, so its onsets are not timed against a
-quiet baseline. Such events get `prior_event_shaking` = True. The main subsets
-(`m6`, `m5`) keep them -- the main test was fixed before this was noticed --
-and `m6_no_prior_shaking` / `m5_no_prior_shaking` repeat every statistic
-without them, each on its own keyed rng stream so the main numbers do not
-move. Only registered events are checked: M5 events are registered only from
-2024-09 on and the GDMS json export is M>=6 only, so smaller aftershocks
-(e.g. inside G10 2024-04-03c, 2 h after the M7.2) cannot be ruled out.
+在同一原始資料夾中、緊接在另一個已登錄事件之後
+<= PRIOR_EVENT_EXCLUSION_SEC（900 秒：-660 秒的雜訊參考加上
+前一事件幾分鐘的震動）發生的事件，它的雜訊參考和搜尋
+窗口都在前一次震動之中，所以它的起始時間不是對照
+平靜基準計時的。這類事件會得到 `prior_event_shaking` = True。主要子集
+（`m6`、`m5`）保留它們——主要檢定是在注意到這件事之前定下的——
+`m6_no_prior_shaking` / `m5_no_prior_shaking` 則在排除它們後重算每一個統計量，
+各自用自己的逐鍵 rng 亂數流，所以主要數字不會
+變動。只能檢查已登錄的事件：M5 事件只從
+2024-09 起有登錄，GDMS json 匯出檔只有 M>=6，所以較小的餘震
+（例如 G10 2024-04-03c 內、M7.2 後 2 小時的）無法排除。
 
-Usage:
+用法：
   coseismic_onset_moveout.py --self-test
   coseismic_onset_moveout.py --all [--min-mag 6] [--group G10 ...]
 """
@@ -122,15 +122,15 @@ MIN_PRE_SAMPLES = 300
 MAX_SEARCH_MISSING = 0.2
 LOAD_BUFFER_SEC = 6 * 3600
 N_NULL = 200
-MIN_SHARED_NULL = 50  # below this many all-valid shared null times, fall back (see docstring)
+MIN_SHARED_NULL = 50  # 全部有效的共用虛無時間少於這個數就退回（見 docstring）
 NULL_EXCLUSION_SEC = -NOISE_PRE_LAGS[0] + 600
 V_P_KMS, V_S_KMS = 6.0, 3.5
 MIN_STATIONS_FOR_FIT = 3
 CI_ALPHA = 0.90
 CLEAN_FALSE_RATE = 0.05
 CROSSCHECK_FALSE_RATE = 0.2
-PRIOR_EVENT_EXCLUSION_SEC = 900  # -660 s noise reference + the earlier event's shaking
-ARRIVAL_PAD_SEC = (-5, 30)  # "arrival window" = [R/V_P - 5, R/V_S + 30] s after origin
+PRIOR_EVENT_EXCLUSION_SEC = 900  # -660 秒的雜訊參考 + 前一事件的震動
+ARRIVAL_PAD_SEC = (-5, 30)  # 「到時窗」= 發震後 [R/V_P - 5, R/V_S + 30] 秒
 N_SIM = 20000
 N_PERM = 2000
 N_WORKERS = 8
@@ -140,12 +140,12 @@ OUT_DIR = common.PROJECT_DIR / "data" / "interim" / "coseismic_onset_moveout"
 
 
 # ---------------------------------------------------------------------------
-# Detector
+# 偵測器
 # ---------------------------------------------------------------------------
 
 def detect_onset(values: np.ndarray, p0: int, search_hi: int) -> dict:
-    """values: gap-free 1 Hz grid (NaN = missing); p0: array position of the
-    reference time; search window is SEARCH_LAGS[0]..min(SEARCH_LAGS[1], search_hi)."""
+    """values：無缺口的 1 Hz 網格（NaN = 缺值）；p0：參考時間在陣列中的
+    位置；搜尋窗口是 SEARCH_LAGS[0]..min(SEARCH_LAGS[1], search_hi)。"""
     lo_pre, hi_pre = p0 + NOISE_PRE_LAGS[0], p0 + NOISE_PRE_LAGS[1]
     lo_s, hi_s = p0 + SEARCH_LAGS[0], p0 + min(SEARCH_LAGS[1], search_hi)
     if lo_pre < 1 or hi_s + MIN_EXCEED_WINDOW >= len(values):
@@ -164,7 +164,7 @@ def detect_onset(values: np.ndarray, p0: int, search_hi: int) -> dict:
         return {"status": "gappy_search", "sigma_nt": sigma}
     exceed = np.nan_to_num(np.abs(tail), nan=0.0) > K_SIGMA * sigma
     counts = np.convolve(exceed.astype(int), np.ones(MIN_EXCEED_WINDOW, dtype=int), "full")[
-        MIN_EXCEED_WINDOW - 1:]  # counts[i] = exceed[i..i+4]
+        MIN_EXCEED_WINDOW - 1:]  # counts[i] = exceed[i..i+4] 的個數
     hits = np.flatnonzero(exceed[:len(search)] & (counts[:len(search)] >= MIN_EXCEED))
     peak = float(np.nanmax(np.abs(search))) / sigma if not np.all(np.isnan(search)) else None
     if len(hits) == 0:
@@ -181,7 +181,7 @@ def arrival_window(hypocentral_km: float) -> tuple[float, float]:
 
 
 def prior_event_gap(event_utc: pd.Timestamp, others: list[pd.Timestamp]) -> float | None:
-    """Seconds since the nearest earlier registered event (None if there is none)."""
+    """距離最近一個較早的已登錄事件的秒數（沒有則為 None）。"""
     gaps = [(event_utc - t).total_seconds() for t in others]
     gaps = [g for g in gaps if g > 0]
     return min(gaps) if gaps else None
@@ -194,11 +194,11 @@ def _grid(series: pd.Series) -> pd.Series:
 def shared_null_outcomes(stations: dict[str, tuple[np.ndarray, pd.Timestamp]], event_utc: pd.Timestamp,
                          exclude: list[pd.Timestamp], rng: np.random.Generator,
                          search_hi: int) -> tuple[dict[str, list[int | None]], bool]:
-    """Detector outcome of every station at the same N_NULL random reference
-    times (None = no trigger). stations: name -> (gridded values, first
-    timestamp). A time is kept only if every station gets a valid result there;
-    with fewer than MIN_SHARED_NULL such times, the first N_NULL candidates are
-    used with invalid results counted as no trigger (fallback = True)."""
+    """每個測站在同樣 N_NULL 個隨機參考時間的偵測結果
+    （None = 未觸發）。stations：名稱 -> (網格化的值, 第一個
+    時間戳)。只保留每個測站都得到有效結果的時間；
+    這樣的時間少於 MIN_SHARED_NULL 個時，改用前 N_NULL 個候選時間，
+    無效結果算成未觸發（fallback = True）。"""
     lo = -LOAD_BUFFER_SEC - NOISE_PRE_LAGS[0] + 1
     hi = LOAD_BUFFER_SEC - SEARCH_LAGS[1] - MIN_EXCEED_WINDOW - 2
     ex = np.array([(e - event_utc).total_seconds() for e in exclude])
@@ -227,13 +227,13 @@ def shared_null_outcomes(stations: dict[str, tuple[np.ndarray, pd.Timestamp]], e
 
 
 # ---------------------------------------------------------------------------
-# Per event / per group
+# 逐事件／逐組
 # ---------------------------------------------------------------------------
 
 def process_group(group_id: str, min_mag: float | None = None) -> tuple[list[dict], dict]:
-    """Rows (one per event x station) plus, per event, each tested station's
-    null in-window indicator at the shared reference times (for the
-    event-level arrival-window test)."""
+    """資料列（每個事件 x 測站一列），加上每個事件中每個被檢定測站
+    在共用參考時間上的虛無落窗指標（給
+    事件層級到時窗檢定用）。"""
     cfg = common.load_group_config(group_id)
     group = GROUPS[group_id]
     exclude = [pd.Timestamp(e.time_utc) for e in folder_events(group_id)]
@@ -263,7 +263,7 @@ def process_group(group_id: str, min_mag: float | None = None) -> tuple[list[dic
                 ev_rows.append({**base, "status": "no_data"})
                 continue
             channels = _build_channels(df)
-            if base["channel"] not in channels:  # header says F but the day file carries XYZ, or vice versa
+            if base["channel"] not in channels:  # 檔頭說是 F 但日檔帶的是 XYZ，或反過來
                 base["channel"] = next(iter(channels)) if len(channels) == 1 else "H"
             series = _grid(channels[base["channel"]])
             if not (series.index[0] <= event_utc <= series.index[-1]):
@@ -292,8 +292,8 @@ def process_group(group_id: str, min_mag: float | None = None) -> tuple[list[dic
             if row["status"] == "onset":
                 null_on = [v for v in null if v is not None]
                 row["in_arrival_window"] = bool(lo_a <= row["onset_lag_sec"] <= hi_a)
-                # chance of landing in the same window for a trigger of this station's own noise;
-                # uniform over the search window if the null never triggered
+                # 以這個測站自己的雜訊觸發時，落在同一窗口的機率；
+                # 如果虛無分布從未觸發，就用搜尋窗口上的均勻分布
                 row["null_q_arrival"] = round(float(np.mean([lo_a <= v <= hi_a for v in null_on])) if null_on else
                                               max(0.0, min(hi_a, search_hi) - max(lo_a, SEARCH_LAGS[0]) + 1)
                                               / (search_hi - SEARCH_LAGS[0] + 1), 4)
@@ -313,7 +313,7 @@ def process_group(group_id: str, min_mag: float | None = None) -> tuple[list[dic
 
 
 # ---------------------------------------------------------------------------
-# Moveout statistics
+# 走時差統計量
 # ---------------------------------------------------------------------------
 
 def classify_slope(lo: float, hi: float) -> str:
@@ -350,8 +350,8 @@ def per_event_moveout(onsets: pd.DataFrame) -> pd.DataFrame:
 
 
 def pooled_moveout(trig: pd.DataFrame, rng: np.random.Generator, n_perm: int = N_PERM) -> dict:
-    """Theil-Sen on within-event centered (R, onset); p from shuffling onsets
-    among stations of the same event, one-sided H1: slope > 0."""
+    """在事件內置中的 (R, onset) 上做 Theil-Sen；p 值來自在同一事件的
+    測站間打亂起始時間，單尾 H1：slope > 0。"""
     trig = trig.groupby(["group", "event_date"]).filter(lambda e: len(e) >= 2)
     if len(trig) < 6:
         return {"n_onsets": int(len(trig)), "note": "too few multi-station events"}
@@ -375,9 +375,9 @@ def pooled_moveout(trig: pd.DataFrame, rng: np.random.Generator, n_perm: int = N
 
 
 def arrival_window_test(trig: pd.DataFrame, rng: np.random.Generator) -> dict:
-    """Do onsets land in the seismic arrival window more often than the same
-    stations' own noise triggers do? Observed count vs. a Poisson-binomial
-    null with per-trigger probability null_q_arrival (one-sided)."""
+    """起始時間落在地震到時窗的頻率，是否比同一批
+    測站自己的雜訊觸發更高？觀測計數 vs. 以逐觸發機率
+    null_q_arrival 建立的 Poisson-二項虛無分布（單尾）。"""
     if trig.empty:
         return {"n_onsets": 0}
     q = trig.null_q_arrival.to_numpy(dtype=float)
@@ -389,10 +389,10 @@ def arrival_window_test(trig: pd.DataFrame, rng: np.random.Generator) -> dict:
 
 
 def arrival_window_event_level(tested: pd.DataFrame, nulls: dict, rng: np.random.Generator) -> dict:
-    """Primary arrival-window test. tested: rows with status onset/no_onset.
-    T = onsets inside their own arrival window. Null: per simulation, one shared
-    reference time per event; count that event's stations whose null trigger
-    lands in their own window, sum over events (one-sided)."""
+    """主要的到時窗檢定。tested：status 為 onset/no_onset 的資料列。
+    T = 落在自己到時窗內的起始時間數。虛無分布：每次模擬每個事件
+    一個共用參考時間；計算該事件虛無觸發
+    落在自己窗口內的測站數，再對事件加總（單尾）。"""
     if tested.empty:
         return {"n_events": 0}
     obs = int((tested.status.eq("onset") & tested.get("in_arrival_window", pd.Series(False, index=tested.index))
@@ -414,18 +414,18 @@ def arrival_window_event_level(tested: pd.DataFrame, nulls: dict, rng: np.random
     return {"n_events": len(counts), "n_stations_tested": int(len(tested)), "n_in_window": obs,
             "expected_by_chance": round(float(sum(c.mean() for c in counts)), 2),
             "null_sd": round(float(sims.std()), 2),
-            # null variance of the event sums over what independent stations would give:
-            # > 1 means stations of an event fire together (external disturbances)
+            # 事件加總的虛無變異數相對於測站獨立時應有的值：
+            # > 1 代表同一事件的測站會一起觸發（外部擾動）
             "dispersion_ratio": round(event_var / indep_var, 3) if indep_var > 0 else None,
             "p_one_sided": round(float((1 + np.sum(sims >= obs)) / (N_SIM + 1)), 5)}
 
 
 def timing_test_dispersion_adjusted(trig: pd.DataFrame, dispersion: float | None) -> dict:
-    """The per-trigger timing question (given that a station triggered, does
-    the onset land in its arrival window more often than its own null
-    triggers?) with the Poisson-binomial variance inflated by the event-level
-    dispersion ratio, so that stations of one event firing together are not
-    counted as independent evidence. Normal approximation, one-sided."""
+    """逐觸發的時間問題（已知一個測站觸發了，它的
+    起始時間落在到時窗的頻率是否比它自己的虛無
+    觸發更高？），Poisson-二項變異數乘上事件層級的
+    離散比，讓同一事件一起觸發的測站不會被
+    當成獨立證據。常態近似，單尾。"""
     if trig.empty or not dispersion:
         return {"n_onsets": int(len(trig))}
     q = trig.null_q_arrival.to_numpy(dtype=float)
@@ -457,10 +457,10 @@ def seismometer_crosscheck(onsets: pd.DataFrame) -> dict:
     m = onsets[onsets.status == "onset"].merge(
         cmp_[["group", "date", "geomag_station", "seismic_station", "seismic_colocation_km", "shaking_onset_lag_sec"]],
         left_on=["group", "event_date", "station"], right_on=["group", "date", "geomag_station"])
-    # seismometer traces start at origin-60 s; an onset at the trace start is a truncated pick, not an arrival
+    # 地震儀波形從發震前 60 秒開始；起始時間落在波形開頭是被截斷的挑選，不是到時
     m = m[m.shaking_onset_lag_sec > -55]
     return {"all_triggers": _crosscheck_stats(m),
-            # xcg triggers at ~80 % of random times, so its "onset" is mostly the first noise sample of the window
+            # xcg 在約 80% 的隨機時間都會觸發，所以它的「起始」大多只是窗口中第一個雜訊樣本
             f"null_false_rate_lt_{CROSSCHECK_FALSE_RATE:g}": _crosscheck_stats(m[m.null_false_rate < CROSSCHECK_FALSE_RATE])}
 
 
@@ -502,16 +502,16 @@ def summarize(onsets: pd.DataFrame, per_event: pd.DataFrame, nulls: dict) -> dic
         out["subsets"][name] = {
             "n_events": int(len(pe)),
             "event_verdicts": pe.verdict.value_counts().to_dict(),
-            # primary: event-level null (stations of an event share reference times)
+            # 主要：事件層級虛無分布（同一事件的測站共用參考時間）
             "arrival_window_event_level_all": ev_all,
             "arrival_window_event_level_clean": ev_clean,
-            # timing only (conditional on triggering), variance inflated by the event-level dispersion
+            # 只看時間（以有觸發為條件），變異數乘上事件層級離散比
             "timing_dispersion_adjusted_all": timing_test_dispersion_adjusted(t, ev_all.get("dispersion_ratio")),
             "timing_dispersion_adjusted_clean": timing_test_dispersion_adjusted(
                 t[t.null_false_rate < CLEAN_FALSE_RATE], ev_clean.get("dispersion_ratio")),
             "n_events_shared_null_fallback": int(onsets[mask & onsets.shared_null_fallback.eq(True)]
                                                  .drop_duplicates(["group", "event_date"]).shape[0]),
-            # reference: per-trigger Poisson-binomial (treats stations as independent)
+            # 參考：逐觸發 Poisson-二項（把測站當成獨立）
             "arrival_window_all_triggers": arrival_window_test(t, keyed_rng("onset", name, "window_all")),
             "arrival_window_clean_stations": arrival_window_test(t[t.null_false_rate < CLEAN_FALSE_RATE],
                                                                  keyed_rng("onset", name, "window_clean")),
@@ -570,7 +570,7 @@ def run_all(group_ids: list[str] | None, min_mag: float | None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Self-test
+# 自我測試
 # ---------------------------------------------------------------------------
 
 def _synthetic(delays: list[float], rng: np.random.Generator) -> list[int | None]:
@@ -586,10 +586,10 @@ def _synthetic(delays: list[float], rng: np.random.Generator) -> list[int | None
 
 
 def _correlated_null_trial(rng: np.random.Generator, n_ev: int = 30, n_st: int = 6, k: int = N_NULL):
-    """One H0 dataset where half of all reference times carry a network-wide
-    disturbance (every station triggers at the same lag) and otherwise each
-    station triggers alone 10 % of the time -- the origin is just another
-    reference time. Returns (rows, nulls) shaped like process_group's."""
+    """一份 H0 資料集，所有參考時間中有一半帶有全網
+    擾動（每個測站在同一延遲觸發），其他時候每個
+    測站有 10% 的機率單獨觸發——發震時間只是另一個
+    參考時間。回傳形狀和 process_group 相同的 (rows, nulls)。"""
     rows, nulls = [], {}
     for e in range(n_ev):
         R = rng.uniform(20, 300, n_st)
@@ -625,7 +625,7 @@ def self_test() -> bool:
         s, _, lo, hi = theilslopes(on, R, alpha=CI_ALPHA)
         verdict = classify_slope(lo, hi)
         err = max(abs(o - d) for o, d in zip(on, delays))
-        good = verdict == want and err <= 6  # emergent burst: first samples can sit below K_SIGMA
+        good = verdict == want and err <= 6  # 逐漸增強的爆發：最初幾個樣本可能低於 K_SIGMA
         print(f"[self-test] {name}: slope={s:.3f} s/km CI=[{lo:.3f},{hi:.3f}] -> {verdict}, "
               f"max onset error {err:.1f}s  {'PASS' if good else 'FAIL'}", file=sys.stderr)
         ok &= good

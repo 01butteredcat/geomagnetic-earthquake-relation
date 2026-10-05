@@ -1,9 +1,9 @@
-"""The tested window/event must never feed its own null distribution.
+"""被檢定的窗口／事件絕不能進入它自己的虛無分布。
 
-Regression for the whole-series block bootstrap (fixed 2026-09-24, 32cc9cb): the
-tested extreme was resampled into its own surrogates, flooring p at ~0.2-0.4.
-The property tests below check every null builder that is supposed to be
-leave-window-out / leave-event-out."""
+整條序列區塊 bootstrap 的回歸測試（2026-09-24 修正，32cc9cb）：被檢定的
+極值會被重抽進它自己的替代序列，讓 p 有約 0.2–0.4 的下限。
+下面的性質測試會檢查每一個應該是
+留一窗／留一事件的虛無分布產生器。"""
 import numpy as np
 import pytest
 import pandas as pd
@@ -13,7 +13,7 @@ import coseismic_step_analysis as csa
 import method_comparison as mc
 from cross_group_analysis import pre_event_window
 
-SENTINEL = 1e6  # values no background day can take
+SENTINEL = 1e6  # 任何背景日都不可能出現的值
 
 
 def _series(n_days, seed, start="2024-01-01"):
@@ -22,11 +22,11 @@ def _series(n_days, seed, start="2024-01-01"):
     return pd.Series(rng.normal(size=n_days), index=idx)
 
 
-# --- surrogate_test (B): leave-window-out ---------------------------------------
+# --- surrogate_test (B)：留一窗 ---------------------------------------
 
 def test_huge_window_anomaly_reaches_min_attainable_p():
-    """With the window left out of the null, a 50-sigma dip gets p = 1/(N+1),
-    not the ~0.2-0.4 floor the whole-series bootstrap had."""
+    """窗口不放進虛無分布時，50 個 sigma 的下凹會得到 p = 1/(N+1)，
+    而不是整條序列 bootstrap 的約 0.2–0.4 下限。"""
     s = _series(150, 0)
     pos = np.arange(100, 130)
     values = s.to_numpy().copy()
@@ -56,8 +56,8 @@ def test_window_values_never_reach_window_surrogates(n_days, win_start, seed, ta
             return fn(x, *a, **k)
         return wrapped
 
-    # (A) whole-series phase randomization legitimately uses everything; only (B) is leave-window-out,
-    # and (B) is the only caller that passes a series shorter than `values`.
+    # (A) 整條序列的相位隨機化本來就可以用全部資料；只有 (B) 是留一窗，
+    # 而且 (B) 是唯一會傳入比 `values` 短的序列的呼叫者。
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(mc, "block_bootstrap_surrogate", spy(real_bb))
         mp.setattr(mc, "phase_randomize_surrogate", spy(real_pr))
@@ -67,7 +67,7 @@ def test_window_values_never_reach_window_surrogates(n_days, win_start, seed, ta
         assert not np.any(x >= SENTINEL)
 
 
-# --- rank_window_test: fake blocks never overlap the real window ----------------
+# --- rank_window_test：假區段絕不和真實窗口重疊 ----------------
 
 @settings(max_examples=40, deadline=None)
 @given(n_days=st.integers(70, 400), anchor_offset=st.integers(31, 400), seed=st.integers(0, 10_000))
@@ -88,7 +88,7 @@ def test_rank_fake_blocks_disjoint_from_real_window(n_days, anchor_offset, seed)
         out = mc.rank_window_test(s, real, tail="lower")
     for w in windows:
         assert not (w & real)
-    # fake blocks are tiled, so they don't overlap each other either
+    # 假區段是鋪排的，所以彼此之間也不重疊
     for i in range(len(windows)):
         for j in range(i + 1, len(windows)):
             assert not (windows[i] & windows[j])
@@ -96,7 +96,7 @@ def test_rank_fake_blocks_disjoint_from_real_window(n_days, anchor_offset, seed)
         assert out["rank_p"] >= out["rank_min_attainable_p"]
 
 
-# --- coseismic null reference times -----------------------------------------------
+# --- 同震虛無參考時間 -----------------------------------------------
 
 @settings(max_examples=50, deadline=None)
 @given(seed=st.integers(0, 2**32 - 1), n_events=st.integers(1, 6), span_h=st.integers(2, 48))
@@ -111,12 +111,12 @@ def test_coseismic_null_centers_stay_off_every_real_event(seed, n_events, span_h
 
 
 def test_coseismic_null_search_window_cannot_reach_the_origin():
-    """A null center >= EXCLUSION_BUFFER_SEC away scans +-SCAN_HALF_SEC and its
-    step statistic reads another max(STEP_WINDOWS_SEC) beyond that."""
+    """距離 ≥ EXCLUSION_BUFFER_SEC 的虛無中心會掃描 ±SCAN_HALF_SEC，而它的
+    階躍統計量會再往外讀 max(STEP_WINDOWS_SEC)。"""
     assert csa.EXCLUSION_BUFFER_SEC > csa.SCAN_HALF_SEC + max(csa.STEP_WINDOWS_SEC)
 
 
-# --- SEA fake epochs (15b2842) -------------------------------------------------------
+# --- SEA 假時期（15b2842） -------------------------------------------------------
 
 @settings(max_examples=30, deadline=None)
 @given(group=st.sampled_from(["G10", "G11", "G13", "G6"]), offsets=st.lists(st.integers(0, 150), max_size=4))

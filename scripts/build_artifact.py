@@ -1,7 +1,7 @@
-"""Embed data/interim/<group>/report_data.json into scripts/report_template.html
-and write the final self-contained artifact to output/.
+"""把 data/interim/<group>/report_data.json 嵌入 scripts/report_template.html，
+並把最終的單檔 artifact 寫到 output/。
 
-Usage: build_artifact.py --group G10
+用法：build_artifact.py --group G10
 """
 from __future__ import annotations
 

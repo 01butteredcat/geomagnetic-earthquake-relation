@@ -1,13 +1,13 @@
-"""Per-group configuration loader for the multi-event geomagnetic precursor
-analysis pipeline.
+"""多事件地磁前兆分析流程的逐組設定
+載入器。
 
-Originally this module held fixed constants (GDMS_DIR/EQ_*/STATIONS/
-SCALAR_ONLY_STATIONS/NEAR_STATIONS/FAR_STATIONS/KNOWN_OUTAGE_WINDOWS) that
-only worked for the single G10 (2024-04-03 M7.2) event. `load_group_config`
-replaces all of that with a per-group loader driven by `events.py` (event
-metadata) and each file's own IAGA-2002 header (station metadata + scalar-
-vs-vector status, via `parser.parse_header`), so it works uniformly across
-all 13 groups without a hand-maintained per-era station table.
+這個模組原本放的是固定常數（GDMS_DIR/EQ_*/STATIONS/
+SCALAR_ONLY_STATIONS/NEAR_STATIONS/FAR_STATIONS/KNOWN_OUTAGE_WINDOWS），
+只適用於單一 G10（2024-04-03 M7.2）事件。`load_group_config`
+用逐組載入器取代了這一切，由 `events.py`（事件
+中繼資料）和每個檔案自己的 IAGA-2002 檔頭（測站中繼資料 + 純量
+vs 向量狀態，透過 `parser.parse_header`）驅動，所以在
+全部 13 組上都能一致運作，不需要人工維護的分年代測站表。
 """
 from __future__ import annotations
 
@@ -26,38 +26,38 @@ from parser import DayFileRef, parse_header  # noqa: E402
 _TGZ_MEMBER_RE = re.compile(r"([a-z]{3})(\d{8})dsec\.sec$")
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
-GX_DATA_ROOT = PROJECT_DIR  # moved 2026-09-14: G1..G23 now live inside geomag_precursor/, not one level up
+GX_DATA_ROOT = PROJECT_DIR  # 2026-09-14 搬家：G1..G23 現在放在 geomag_precursor/ 裡，不在上一層
 OUTPUT_DIR = PROJECT_DIR / "output"
 
-# Confirmed empirically by timezone_check.py (Sq diurnal curve + industrial
-# noise diurnal curve both corroborate, for the G10/2024 data) that the raw
-# TIME column is UTC. Same CWA IAGA-2002 source/format across all groups, so
-# treated as a dataset-wide constant rather than re-verified per group.
+# 已由 timezone_check.py 實際確認（Sq 日變化曲線 + 工業
+# 雜訊日變化曲線，在 G10/2024 資料上互相印證）原始
+# TIME 欄位是 UTC。所有組別都是同一個 CWA IAGA-2002 來源／格式，所以
+# 當成全資料集共用的常數，不逐組重驗。
 DATA_TIMEZONE = "UTC"
 LOCAL_UTC_OFFSET_HOURS = 8
 
-# Minimum station count in a channel-type pool (F-only or XYZ) to attempt the
-# near/far common-mode-regression screening method at all; below this the
-# pool is marked insufficient and that method is skipped for the group.
+# 一個通道類型測站池（只有 F 或 XYZ）至少要有這麼多測站，才會嘗試
+# 近站／遠站共模迴歸篩檢方法；低於這個數字，
+# 測站池標記為不足，該組就跳過這個方法。
 MIN_STATIONS_FOR_METHOD = 5
 N_NEAR_STATIONS = 3
 N_FAR_STATIONS = 2
 
-# A station/day with more than this fraction of samples missing is excluded
-# from "clean" baseline days -- this auto-detected-from-data mechanism
-# replaces the old hand-curated KNOWN_OUTAGE_WINDOWS list as the general
-# per-group outage-exclusion logic (see auto_outage_dates below), since
-# hand-curating a windows list for 13 groups x up to 19 stations doesn't
-# scale the way it did for one group.
+# 一個測站–日缺漏樣本比例超過這個值，就從
+# 「乾淨」基準日中排除——這個從資料自動偵測的機制
+# 取代舊的人工整理 KNOWN_OUTAGE_WINDOWS 清單，作為通用的
+# 逐組中斷排除邏輯（見下面的 auto_outage_dates），因為
+# 替 13 組 x 最多 19 站人工整理窗口清單，無法像
+# 只有一組時那樣擴展。
 OUTAGE_PCT_MISSING_THRESHOLD = 0.05
 
-# G10's originally hand-curated outage list (with per-incident notes, e.g.
-# "twu ~86% missing on 2024-04-23"). Kept here as a documented historical
-# record of what was manually verified for the single-event 2024 pipeline --
-# no longer consulted by the general multi-group logic (auto_outage_dates
-# below covers G10 the same way it covers every other group), but retained
-# since G10/NOTES.md references it and the specific incident notes are
-# useful context that pct_missing alone doesn't carry.
+# G10 原本人工整理的中斷清單（附逐次說明，例如
+# "twu ~86% missing on 2024-04-23"）。保留在這裡，作為
+# 單一事件 2024 流程當時人工確認內容的歷史紀錄——
+# 通用的多組邏輯已不再查詢它（下面的 auto_outage_dates
+# 處理 G10 的方式和其他組完全相同），但仍保留，
+# 因為 G10/NOTES.md 有引用它，而且這些逐次說明
+# 提供了光看 pct_missing 得不到的脈絡。
 G10_KNOWN_OUTAGE_WINDOWS = [
     {"station": "ALL", "start": "2024-01-04 23:20:00", "end": "2024-01-04 23:59:59",
      "note": "network-wide brief outage"},
@@ -83,23 +83,23 @@ G10_KNOWN_OUTAGE_WINDOWS = [
 
 
 def list_tgz_files(gdms_dir: Path) -> list[Path]:
-    """All GDMS batch-download archives directly inside a group folder,
-    sorted by filename. This sort order is what "first .tgz wins" means
-    when the same station+date turns up in more than one .tgz (their
-    filenames don't reliably reflect their date-range contents, so this is
-    just a deterministic tie-break, not a claim about which archive is
-    "newer")."""
+    """組資料夾內直接放著的所有 GDMS 批次下載壓縮檔，
+    依檔名排序。同一測站＋日期出現在多個 .tgz 時，
+    「第一個 .tgz 優先」指的就是這個排序（它們的
+    檔名不能可靠地反映日期範圍內容，所以這只是
+    一個決定性的同分處理，不代表哪個壓縮檔
+    「比較新」）。"""
     return sorted(gdms_dir.glob("*.tgz"))
 
 
 def _tgz_member_index(tgz_path: Path) -> list[dict]:
-    """List every <station><YYYYMMDD>dsec.sec member inside a .tgz, without
-    extracting any file content -- just tarfile's own member headers.
-    Gzip doesn't support random access, so a full pass over a large archive
-    (confirmed ~30s for a 276MB/481-file sample) is not cheap; the result is
-    cached to a `<name>.tgz.idx.json` sidecar next to the archive, keyed on
-    (size, mtime) so replacing a .tgz with a different file of the same name
-    invalidates the cache automatically."""
+    """列出 .tgz 內每一個 <station><YYYYMMDD>dsec.sec 成員，不
+    取出任何檔案內容——只讀 tarfile 自己的成員標頭。
+    gzip 不支援隨機存取，所以完整掃過一個大壓縮檔
+    （實測一個 276MB／481 檔的樣本約 30 秒）並不便宜；結果會
+    快取到壓縮檔旁邊的 `<name>.tgz.idx.json` 附屬檔，以
+    (size, mtime) 為鍵，所以用同名但內容不同的檔案替換 .tgz
+    會自動讓快取失效。"""
     idx_path = tgz_path.with_name(tgz_path.name + ".idx.json")
     st = tgz_path.stat()
     if idx_path.exists():
@@ -112,7 +112,7 @@ def _tgz_member_index(tgz_path: Path) -> list[dict]:
 
     members = []
     with tarfile.open(tgz_path, "r:gz") as tf:
-        for m in tf:  # header-only walk; does not decompress member bodies
+        for m in tf:  # 只走標頭；不解壓成員內容
             if not m.isfile():
                 continue
             match = _TGZ_MEMBER_RE.search(m.name)
@@ -123,16 +123,16 @@ def _tgz_member_index(tgz_path: Path) -> list[dict]:
 
 
 def list_day_refs(gdms_dir: Path, station: str = "*") -> list[DayFileRef]:
-    """List DayFileRefs for a station (or all stations, with the default
-    '*') across both loose .sec/.sec.gz files and any *.tgz batch archives
-    directly inside gdms_dir -- the one place this precedence is defined, so
-    every script that lists day files picks up .tgz support the same way.
+    """列出一個測站（或用預設的 '*' 列出所有測站）的 DayFileRef，
+    涵蓋零散的 .sec/.sec.gz 檔和 gdms_dir 內直接放著的任何 *.tgz 批次
+    壓縮檔——這是唯一定義優先順序的地方，所以
+    每支列出日檔的腳本都會以同樣方式支援 .tgz。
 
-    Precedence when the same station+date exists in more than one source:
-    loose .sec/.sec.gz always wins over .tgz content (silently -- this is
-    the expected steady state, not worth warning about); between multiple
-    .tgz archives, the first one encountered in list_tgz_files() order wins,
-    and a warning is printed so overlapping batch downloads are noticeable.
+    同一測站＋日期出現在多個來源時的優先順序：
+    零散的 .sec/.sec.gz 永遠優先於 .tgz 內容（不出聲——這是
+    預期的常態，不值得警告）；多個
+    .tgz 壓縮檔之間，依 list_tgz_files() 順序先遇到的優先，
+    並印出警告，讓重疊的批次下載被注意到。
     """
     by_key: dict[tuple[str, str], DayFileRef] = {}
 
@@ -144,7 +144,7 @@ def list_day_refs(gdms_dir: Path, station: str = "*") -> list[DayFileRef]:
         st, date_str = stem[:3], stem[3:11]
         key = (st, date_str)
         cur = by_key.get(key)
-        # Prefer plain .sec over .sec.gz if both somehow exist.
+        # 如果 .sec 和 .sec.gz 都存在，優先用一般 .sec。
         if cur is None or (cur.source_path.suffix == ".gz" and p.suffix == ".sec"):
             by_key[key] = DayFileRef(st, date_str, p, None)
 
@@ -169,7 +169,7 @@ def list_day_refs(gdms_dir: Path, station: str = "*") -> list[DayFileRef]:
                     f"{existing.source_path.name}:{existing.member}",
                     file=sys.stderr,
                 )
-            # else: existing is a loose file, which always wins silently.
+            # 否則：既有的是零散檔，永遠不出聲地優先。
 
     if n_tgz or n_dup:
         print(
@@ -181,9 +181,9 @@ def list_day_refs(gdms_dir: Path, station: str = "*") -> list[DayFileRef]:
 
 
 def resolve_day_ref(gdms_dir: Path, station: str, date_str: str) -> DayFileRef | None:
-    """Return the DayFileRef for one station-day, preferring plain .sec if
-    it exists, else .sec.gz, else searching every .tgz in gdms_dir; None if
-    not found anywhere."""
+    """回傳一個測站–日的 DayFileRef，有一般 .sec 就優先用，
+    否則用 .sec.gz，再不然就搜尋 gdms_dir 內每一個 .tgz；哪裡都
+    找不到則回傳 None。"""
     plain = gdms_dir / f"{station}{date_str}dsec.sec"
     if plain.exists():
         return DayFileRef(station, date_str, plain, None)
@@ -198,7 +198,7 @@ def resolve_day_ref(gdms_dir: Path, station: str, date_str: str) -> DayFileRef |
 
 
 def to_local_hour(utc_index):
-    """Given a UTC DatetimeIndex, return the Taiwan local (UTC+8) hour-of-day (0-23)."""
+    """給定 UTC DatetimeIndex，回傳台灣當地（UTC+8）的時（0-23）。"""
     import pandas as pd
 
     return (utc_index + pd.Timedelta(hours=LOCAL_UTC_OFFSET_HOURS)).hour
@@ -214,12 +214,12 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 
 def auto_outage_dates(daily_features_df, threshold: float = OUTAGE_PCT_MISSING_THRESHOLD) -> dict[str, set[str]]:
-    """Per-station set of dates excluded from 'clean' baseline days, derived
-    from daily_features.csv's own pct_missing column rather than a
-    hand-curated list -- the general per-group replacement for the old
-    G10-only KNOWN_OUTAGE_WINDOWS mechanism. daily_features_df must have
-    'station', 'date', 'pct_missing' columns (as written by
-    build_daily_features.py)."""
+    """每個測站從「乾淨」基準日中排除的日期集合，由
+    daily_features.csv 自己的 pct_missing 欄位推出，而不是
+    人工整理的清單——這是舊的
+    只限 G10 的 KNOWN_OUTAGE_WINDOWS 機制的通用逐組替代品。daily_features_df 必須有
+    'station'、'date'、'pct_missing' 欄位（和
+    build_daily_features.py 寫出的一樣）。"""
     dirty = daily_features_df[daily_features_df["pct_missing"] > threshold]
     out: dict[str, set[str]] = {}
     for station, g in dirty.groupby("station"):
@@ -229,13 +229,13 @@ def auto_outage_dates(daily_features_df, threshold: float = OUTAGE_PCT_MISSING_T
 
 @dataclass(frozen=True)
 class StationPool:
-    """Near/far station split for one channel-type pool (F-only or XYZ) within one group."""
+    """一組內單一通道類型測站池（只有 F 或 XYZ）的近站／遠站劃分。"""
 
-    channel: str  # "F" or "XYZ"
-    all_stations: tuple[str, ...]  # every station code in this pool, present in the group, nearest-first
+    channel: str  # "F" 或 "XYZ"
+    all_stations: tuple[str, ...]  # 這個測站池在該組中出現的每個測站代碼，由近到遠
     near: tuple[str, ...]
     far: tuple[str, ...]
-    sufficient: bool  # True if this pool has enough stations to attempt the near/far method
+    sufficient: bool  # 如果這個測站池的測站數足以嘗試近站／遠站方法則為 True
 
 
 @dataclass(frozen=True)
@@ -246,18 +246,18 @@ class GroupConfig:
     external_dir: Path
     anchor_event: Event
     all_events: tuple[Event, ...]
-    stations: dict  # station code -> {"name","lat","lon","elevation_m","reported","distance_km"}
+    stations: dict  # 測站代碼 -> {"name","lat","lon","elevation_m","reported","distance_km"}
     f_pool: StationPool
     xyz_pool: StationPool
 
 
 def _discover_stations(gdms_dir: Path, anchor_event: Event) -> dict:
-    """Glob distinct station-code prefixes present in this group's folder and
-    read one representative file's header per code for name/lat/lon/
-    elevation/Reported status. Scalar-vs-vector status is constant within a
-    single group -- confirmed empirically across all 13 groups, the F->XYZF
-    upgrade always lands on a group-era boundary, never mid-group -- so one
-    representative file per code is sufficient."""
+    """用 glob 找出這組資料夾中出現的不同測站代碼前綴，
+    每個代碼讀一個代表性檔案的檔頭，取得名稱／緯度／經度／
+    高程／Reported 狀態。純量 vs 向量狀態在
+    單一組內是固定的——已在全部 13 組中實際確認，F->XYZF
+    升級總是落在組別年代的邊界上，從不在組內中途發生——所以每個
+    代碼讀一個代表性檔案就夠了。"""
     codes = sorted({r.station for r in list_day_refs(gdms_dir)})
     stations = {}
     for code in codes:

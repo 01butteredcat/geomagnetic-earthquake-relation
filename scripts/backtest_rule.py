@@ -1,21 +1,21 @@
-"""Backtest the specific z <= -4.1 rule (`stat_utils.FIXED_RULE_THRESHOLD`,
-the number `report_template.html` quotes for G10's 2024-03-30 dip) as an
-actual earthquake-precursor alarm rule, per the professor's third
-suggestion: flag every day across all 8 vector-sufficient groups where the
-whole-series median/MAD z-score of pc3_diff_zh / pc4_diff_zh crosses -4.1,
-then check it against the expanded earthquake catalog (`fetch_earthquake_
-catalog.py` + events.py) -- how many flagged days actually precede a
-qualifying earthquake within N days (hits), and how many don't (false
-alarms)? Uses the same 7/14/30-day window convention as
-`cross_group_analysis.py::WINDOWS_DAYS` (report all three side by side
-rather than picking whichever looks best after the fact).
+"""回測特定的 z <= -4.1 規則（`stat_utils.FIXED_RULE_THRESHOLD`，
+也就是 `report_template.html` 對 G10 2024-03-30 低谷引用的數字），把它當成
+真正的地震前兆警報規則，依教授的第三個
+建議：在全部 8 個向量站足夠的組別中，標出每一個
+pc3_diff_zh / pc4_diff_zh 整條序列中位數／MAD z-score 跨過 -4.1 的日子，
+再拿去和擴充地震目錄（`fetch_earthquake_
+catalog.py` + events.py）比對——有多少個被標記的日子真的在 N 天內
+有符合條件的地震（命中），有多少個沒有（誤
+報）？使用和
+`cross_group_analysis.py::WINDOWS_DAYS` 相同的 7/14/30 天窗口慣例（三者並列報告，
+而不是事後挑看起來最好的那個）。
 
-Also re-uses `cross_group_analysis.py::sliding_baseline_rate` so the
-backtest's observed hit rate can be compared against the SAME empirical
-baseline that script already established, instead of inventing a second,
-inconsistent baseline definition.
+也重用 `cross_group_analysis.py::sliding_baseline_rate`，讓
+回測觀察到的命中率可以和那支腳本已經建立的**同一個**經驗
+基準比較，而不是另外發明第二個
+不一致的基準定義。
 
-Usage:
+用法：
   backtest_rule.py --catalog data/external/extended_catalog_m5.5.csv --label m5.5 --min-mag 5.5
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ def load_events_for_group(group_id: str, catalog_path: Path, min_mag: float) -> 
 
 
 def flagged_dates(group_id: str, band: str) -> tuple[list[str], list[str]]:
-    """Returns (all_dates_in_group, flagged_dates) as YYYYMMDD strings."""
+    """回傳 (all_dates_in_group, flagged_dates)，皆為 YYYYMMDD 字串。"""
     cfg = load_group_config(group_id)
     path = cfg.interim_dir / "ulf_near_far_index.csv"
     df = pd.read_csv(path, dtype={"date": str}).sort_values("date").reset_index(drop=True)
@@ -88,10 +88,10 @@ def run_band(band: str, catalog_path: Path, min_mag: float) -> dict:
             precursor_days: set[str] = set()
             for ev in g["events"]:
                 precursor_days |= precursor_window_dates(ev, w)
-            # Groups sharing a raw-data folder see the same days: another group's real event has a
-            # precursor window of its own, so those days say nothing about THIS group's index --
-            # drop them from the hit/false-alarm/denominator accounting rather than let a flag
-            # before a sibling's earthquake count as a false alarm here.
+            # 共用原始資料夾的組別看到的是同樣的日子：另一組的真實事件有它
+            # 自己的前兆窗口，所以那些日子對**這一組**的指標沒有任何意義——
+            # 把它們從命中／誤報／分母的計算中拿掉，而不是讓兄弟組
+            # 地震之前的旗標在這裡被算成誤報。
             sibling_dates = {pd.Timestamp(e.time_utc.split(" ")[0]) for e in folder_events(group_id)} - set(g["events"])
             sibling_only_days: set[str] = set()
             for sd in sibling_dates:

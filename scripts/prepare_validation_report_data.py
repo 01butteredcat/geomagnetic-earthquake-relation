@@ -1,10 +1,10 @@
-"""Gather surrogate_test.py / superposed_epoch_analysis.py / backtest_rule.py
-outputs (already written under data/interim/) into one JSON blob that
-report_template_validation.html embeds verbatim -- the cross-group
-counterpart of prepare_report_data.py, which does the same thing for a
-single group's descriptive report.
+"""把 surrogate_test.py / superposed_epoch_analysis.py / backtest_rule.py
+的輸出（已寫在 data/interim/ 底下）收集成一個 JSON，
+report_template_validation.html 會原封不動地嵌入——是
+prepare_report_data.py 的跨組版本，後者對單一組的
+描述性報告做同樣的事。
 
-Usage: prepare_validation_report_data.py
+用法：prepare_validation_report_data.py
 """
 from __future__ import annotations
 
@@ -36,9 +36,9 @@ def main():
             if data is not None:
                 surrogate[f"{g}_{band}"] = data
 
-    # Primary pre-event result since 2026-09-25: the rank test in surrogate_test/window_summary.json.
-    # The whole-series surrogate p-values above are kept only so the report can show why they
-    # can't be used (see the template's section 1).
+    # 2026-09-25 起的主要震前結果：surrogate_test/window_summary.json 中的排名檢定。
+    # 上面整條序列的替代資料 p 值只保留給報告用來說明為什麼
+    # 它們不能用（見模板第 1 節）。
     window_test = None
     ws = load_json(interim / "surrogate_test" / "window_summary.json")
     if ws is not None:

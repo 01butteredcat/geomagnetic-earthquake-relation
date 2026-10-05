@@ -1,7 +1,7 @@
-"""verify_pipeline's baseline-window check must not count days outside the data
-as clean baseline days. G12's data starts 2025-05-26, 16 days before its
-2025-06-11 anchor, so its trailing windows reach back before the data -- those
-empty days used to count as clean and the check passed with 1 real clean day."""
+"""verify_pipeline 的基準窗口檢查不能把資料範圍以外的日子
+算成乾淨的基準日。G12 的資料從 2025-05-26 開始，只比它的
+2025-06-11 錨點早 16 天，所以滑動窗口會延伸到資料開始之前——那些
+空白日子以前被算成乾淨日，檢查在只有 1 個真正乾淨日的情況下仍會通過。"""
 import types
 
 import numpy as np

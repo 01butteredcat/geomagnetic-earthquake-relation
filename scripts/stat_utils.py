@@ -1,19 +1,19 @@
-"""Shared statistics helpers for the professor-suggested validation methods:
-the robust median/MAD
-z-score formula (factored out so `surrogate_test.py`, `superposed_epoch_
-analysis.py` and `backtest_rule.py` all use the exact same definition
-`cross_group_analysis.py::ulf_candidate_dates` already established), plus
-two surrogate-series generators for building a null distribution that
-preserves a series' "statistical look" (autocorrelation / spectral shape)
-without any real relationship to earthquake timing.
+"""教授建議的驗證方法所共用的統計輔助函式：
+穩健的中位數／MAD
+z-score 公式（抽出來，讓 `surrogate_test.py`、`superposed_epoch_
+analysis.py` 和 `backtest_rule.py` 都使用
+`cross_group_analysis.py::ulf_candidate_dates` 已建立的完全相同定義），加上
+兩個替代序列產生器，用來建立保留序列
+「統計外觀」（自相關／頻譜形狀）、但
+和地震時間沒有任何真實關係的虛無分布。
 
-FIXED_RULE_THRESHOLD = -4.1 is the number `report_template.html` quotes for
-G10's 2024-03-30 Pc3 near/far polarization dip ("z ~= -4.1 MAD units, the
-most extreme day in the 113-day computable window"). It was never a
-programmatic threshold anywhere in the codebase before this module -- see the
-plan file for the full provenance trail. It's promoted to a named constant
-here specifically so it can be backtested as an actual rule instead of only
-ever appearing as one-off narrative text.
+FIXED_RULE_THRESHOLD = -4.1 是 `report_template.html` 對
+G10 2024-03-30 Pc3 近站／遠站極化低谷引用的數字（「z ~= -4.1 MAD 單位，
+在 113 天可計算窗口中最極端的一天」）。在這個模組之前，它從來不是
+程式碼中任何地方的程式化門檻——完整的來源脈絡見
+計畫檔。這裡把它升格成具名常數，
+就是為了能把它當成真正的規則來回測，而不是只
+出現在一次性的敘述文字裡。
 """
 from __future__ import annotations
 
@@ -21,16 +21,16 @@ from typing import Callable
 
 import numpy as np
 
-MAD_SCALE = 1.4826  # -> normal-equivalent std under a true normal (Cross-group
-                     # analysis's own choice; not a claim the data IS normal)
+MAD_SCALE = 1.4826  # -> 在真正常態下等同常態的標準差（跨組
+                     # 分析自己的選擇；不是宣稱資料**是**常態）
 FIXED_RULE_THRESHOLD = -4.1
 
 
 def mad_zscore(values: np.ndarray) -> tuple[np.ndarray, float, float]:
-    """Whole-series median/MAD z-score, same formula as
-    cross_group_analysis.py::ulf_candidate_dates. Returns (z, median, mad).
-    mad is already scaled by MAD_SCALE. Robust to non-normal/heavy-tailed
-    data by construction (median/MAD instead of mean/std)."""
+    """整條序列中位數／MAD z-score，公式和
+    cross_group_analysis.py::ulf_candidate_dates 相同。回傳 (z, median, mad)。
+    mad 已乘上 MAD_SCALE。由於用中位數／MAD 而非平均／標準差，
+    本質上對非常態／厚尾資料穩健。"""
     med = float(np.median(values))
     mad = float(np.median(np.abs(values - med))) * MAD_SCALE
     if mad <= 1e-9:
@@ -40,13 +40,13 @@ def mad_zscore(values: np.ndarray) -> tuple[np.ndarray, float, float]:
 
 
 def estimate_block_length(x: np.ndarray, max_lag: int = 30) -> int:
-    """Decorrelation-length heuristic for the block bootstrap's block size:
-    first lag where the autocorrelation function drops below 1/e, floored at
-    3 days and capped at n//5 so a single block can't dominate a short
-    series. This is a standard, defensible-but-simple choice (not a fitted
-    optimal block length a la politis-white) -- adequate for "same short-
-    range autocorrelation look", which is all the professor's suggestion
-    asks for."""
+    """區塊 bootstrap 區塊大小的去相關長度經驗法則：
+    自相關函數第一次掉到 1/e 以下的延遲，下限
+    3 天、上限 n//5，避免單一區塊主導很短的
+    序列。這是標準、站得住腳但簡單的選擇（不是像 politis-white
+    那樣擬合出的最佳區塊長度）——足以達到「相同的短
+    程自相關外觀」，而這正是教授的建議
+    所要求的。"""
     n = len(x)
     xc = x - x.mean()
     var = np.dot(xc, xc) / n
@@ -62,12 +62,12 @@ def estimate_block_length(x: np.ndarray, max_lag: int = 30) -> int:
 
 
 def block_bootstrap_surrogate(x: np.ndarray, block_len: int, rng: np.random.Generator) -> np.ndarray:
-    """Circular block bootstrap: reassemble a same-length surrogate from
-    randomly-chosen contiguous blocks (wrapping around the end), preserving
-    local (within-block) autocorrelation while destroying the specific
-    alignment between any dip/spike and calendar date -- exactly the
-    "shuffle the differential series but keep its statistical look" the
-    professor described."""
+    """循環區塊 bootstrap：用隨機挑選的連續區塊（在尾端
+    繞回開頭）重組出等長的替代序列，保留
+    區域（區塊內）自相關，同時破壞任何低谷／突波和日曆日期之間
+    特定的對應關係——正是教授描述的
+    「打亂差值序列，但保留它的統計外觀」。
+    """
     n = len(x)
     out = np.empty(n, dtype=float)
     filled = 0
@@ -81,14 +81,14 @@ def block_bootstrap_surrogate(x: np.ndarray, block_len: int, rng: np.random.Gene
 
 
 def phase_randomize_surrogate(x: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    """FFT phase-randomization surrogate: keeps the exact amplitude spectrum
-    (so the surrogate has the same autocorrelation / "frequency-domain
-    look" as the original) but replaces every phase with an independent
-    uniform random draw, which destroys any localized feature (like a
-    multi-day dip) tied to a specific date. Standard nonlinear-time-series
-    surrogate-data method (Fourier-transform surrogates); Hermitian symmetry
-    is enforced so the inverse transform is real, and DC/Nyquist components
-    are kept real (zero phase) since they have no meaningful phase."""
+    """FFT 相位隨機化替代序列：保留完全相同的振幅頻譜
+    （所以替代序列和原序列有相同的自相關／「頻域
+    外觀」），但把每個相位換成獨立的
+    均勻隨機抽樣，這會破壞任何綁在特定日期上的局部特徵（例如
+    持續數天的低谷）。這是標準的非線性時間序列
+    替代資料方法（Fourier 轉換替代序列）；強制 Hermitian 對稱，
+    讓逆轉換是實數，DC/Nyquist 分量
+    保持實數（零相位），因為它們沒有有意義的相位。"""
     n = len(x)
     mean = x.mean()
     xc = x - mean
@@ -110,34 +110,34 @@ def bootstrap_ci(
     rng: np.random.Generator,
     ci: float = 0.90,
 ) -> dict:
-    """Percentile-bootstrap CI for statistic(*arrays), row-wise PAIRED
-    resampling shared across every array in `arrays` (the same random row
-    indices are applied to all of them) so paired structure -- e.g. a storm
-    day's (|near_index|, |local_anomaly_index|) pair -- survives each
-    replicate instead of shuffling one series against an independently-
-    resampled other. A single-array call degenerates to an ordinary
-    bootstrap, which is what superposed_epoch_analysis.py's hand-written
-    per-event stack bootstrap already does (n_events x n_lags matrix,
-    statistic=lambda m: np.nanmean(m, axis=0)) -- this primitive is general
-    enough that a future refactor of that script (and coseismic_stacking_
-    analysis.py, same pattern) could call it directly with arrays=(M,), no
-    interface change needed.
+    """statistic(*arrays) 的百分位數 bootstrap 信賴區間，逐列**配對**
+    重抽，`arrays` 中每個陣列共用（同一組隨機列
+    索引套用到全部陣列），讓配對結構——例如一個磁暴
+    日的 (|near_index|, |local_anomaly_index|) 配對——在每次
+    重抽中保留，而不是把一條序列和另一條獨立
+    重抽的序列錯開。只傳一個陣列時就退化成普通的
+    bootstrap，也就是 superposed_epoch_analysis.py 手寫的
+    逐事件疊加 bootstrap 已經在做的（n_events x n_lags 矩陣，
+    statistic=lambda m: np.nanmean(m, axis=0)）——這個基本函式夠通用，
+    未來重構那支腳本（以及同樣模式的 coseismic_stacking_
+    analysis.py）時可以直接用 arrays=(M,) 呼叫它，不需要
+    更改介面。
 
-    `statistic` may return a scalar or a fixed-shape ndarray; percentiles
-    are then taken elementwise along the bootstrap axis via nanpercentile,
-    so a replicate where `statistic` returns NaN (e.g. a degenerate
-    resample with a zero denominator) is tolerated rather than poisoning
-    the whole CI -- callers should still check ci_lo/ci_hi for NaN before
-    trusting them, since an all-NaN bootstrap means the statistic is
-    undefined for this data.
+    `statistic` 可以回傳純量或固定形狀的 ndarray；百分位數
+    會用 nanpercentile 沿著 bootstrap 軸逐元素取，
+    所以 `statistic` 回傳 NaN 的重抽（例如分母為零的
+    退化重抽）會被容忍，而不會汙染
+    整個信賴區間——呼叫者在信任 ci_lo/ci_hi 之前仍應檢查它們是否為 NaN，
+    因為全部是 NaN 的 bootstrap 代表這個統計量
+    對這份資料沒有定義。
 
-    Returns {"point_estimate": statistic(*arrays) on the REAL, un-resampled
-    data (not a bootstrap value), "ci_lo", "ci_hi" (at the `ci` level, e.g.
-    0.90 -> 5th/95th percentile), "ci_level": ci, "n_bootstrap": n_bootstrap},
-    all cast to plain float/list so callers can drop them straight into a
-    JSON report. Does not return the raw bootstrap array -- a caller that
-    needs the full distribution should run its own loop; no current caller
-    needs it."""
+    回傳 {"point_estimate": 在**真實**、未重抽資料上的 statistic(*arrays)
+    （不是 bootstrap 值），"ci_lo"、"ci_hi"（在 `ci` 水準，例如
+    0.90 -> 第 5／95 百分位數），"ci_level": ci，"n_bootstrap": n_bootstrap}，
+    全部轉成普通 float/list，讓呼叫者可以直接放進
+    JSON 報告。不回傳原始 bootstrap 陣列——需要
+    完整分布的呼叫者應該自己跑迴圈；目前沒有呼叫者
+    需要它。"""
     n = arrays[0].shape[0]
     if any(a.shape[0] != n for a in arrays):
         raise ValueError("all arrays must share length along axis 0 for paired resampling")
@@ -169,9 +169,9 @@ def bootstrap_ci(
 
 
 def histogram_summary(values: np.ndarray, bins: int = 40) -> dict:
-    """Compact JSON-friendly summary of a surrogate statistic's distribution
-    for report plotting: binned histogram + headline percentiles, instead of
-    dumping thousands of raw floats into report_data.json."""
+    """替代統計量分布的精簡、適合 JSON 的摘要，
+    給報告畫圖用：分組直方圖 + 重點百分位數，而不是
+    把幾千個原始浮點數倒進 report_data.json。"""
     counts, edges = np.histogram(values, bins=bins)
     pct = np.percentile(values, [1, 5, 25, 50, 75, 95, 99])
     return {
@@ -190,24 +190,24 @@ SELF_TEST_SEED = 20260805
 
 
 def self_test() -> bool:
-    """Sanity-checks bootstrap_ci() against synthetic data with a known
-    answer, covering the two shapes this module's callers actually need:
-    a paired-ratio statistic over two same-length arrays (verify_pipeline.
-    py's check_storm_cancellation use), and a single-array per-lag mean
-    (superposed_epoch_analysis.py's existing hand-written bootstrap, which
-    this function could replace without an interface change)."""
+    """用已知答案的合成資料健全性檢查 bootstrap_ci()，
+    涵蓋這個模組的呼叫者實際需要的兩種形狀：
+    兩個等長陣列上的配對比值統計量（verify_pipeline.
+    py 的 check_storm_cancellation 用法），以及單一陣列的逐延遲平均
+    （superposed_epoch_analysis.py 既有的手寫 bootstrap，
+    這個函式可以在不改介面的情況下取代它）。"""
     rng = np.random.default_rng(SELF_TEST_SEED)
     ok = True
 
-    # Case A: paired ratio statistic, large n -- CI should tightly bracket
-    # the true ratio.
+    # 情況 A：配對比值統計量，n 很大——信賴區間應該緊緊包住
+    # 真實比值。
     def _median_ratio(a, b):
         med_a = np.median(a)
         return float(np.median(b) / med_a) if med_a > 0 else float("nan")
 
-    # 20% relative noise on the ratio itself (not a tiny additive term) so
-    # the statistic's sampling variance -- and its shrinkage with n -- is
-    # large enough to detect reliably from a single fixed-seed draw.
+    # 比值本身有 20% 的相對雜訊（不是很小的加法項），讓
+    # 統計量的抽樣變異——以及它隨 n 的縮小——
+    # 大到能從單次固定種子的抽樣可靠地偵測出來。
     true_ratio = 0.4
     n_large = 200
     near = rng.uniform(1, 5, size=n_large)
@@ -220,9 +220,9 @@ def self_test() -> bool:
     print(f"[self-test] paired ratio n={n_large}: point={res_large['point_estimate']:.3f} "
           f"ci=[{res_large['ci_lo']:.3f}, {res_large['ci_hi']:.3f}] (true={true_ratio})  {status}")
 
-    # Case A continued: same true ratio/noise, tiny n -- CI should be
-    # visibly wider than the large-n case (this is the property the
-    # low-bootstrap-power warning in verify_pipeline.py relies on).
+    # 情況 A 續：同樣的真實比值／雜訊，n 很小——信賴區間應該
+    # 明顯比 n 很大的情況寬（這是
+    # verify_pipeline.py 中 bootstrap 檢定力不足警告所依賴的性質）。
     n_small = 5
     near_s = rng.uniform(1, 5, size=n_small)
     local_s = near_s * true_ratio * (1 + rng.normal(0, 0.2, size=n_small))
@@ -235,14 +235,14 @@ def self_test() -> bool:
     print(f"[self-test] paired ratio n={n_small}: ci=[{res_small['ci_lo']:.3f}, {res_small['ci_hi']:.3f}] "
           f"width={width_small:.3f} (expected wider than n={n_large}'s width={width_large:.3f})  {status}")
 
-    # Case B: single-array per-lag mean, mirroring superposed_epoch_
-    # analysis.py's run_band -- M is (n_events x n_lags), statistic reduces
-    # over events, CI should bracket the known injected per-lag mean. Uses a
-    # high (0.999) CI level here specifically to make a single fixed-seed
-    # bracket check robust (a correctly-calibrated 90% CI is *expected* to
-    # miss its target ~10% of the time per lag -- that's not a bug -- so
-    # asserting a 90% CI always brackets truth would itself be a flaky
-    # test; 0.999 makes a spurious miss astronomically unlikely instead).
+    # 情況 B：單一陣列的逐延遲平均，仿照 superposed_epoch_
+    # analysis.py 的 run_band——M 是 (n_events x n_lags)，統計量對
+    # 事件做化約，信賴區間應該包住已知注入的逐延遲平均。這裡
+    # 刻意用很高（0.999）的信賴水準，讓單次固定種子的
+    # 包含檢查穩健（一個校準正確的 90% 信賴區間本來就*預期*
+    # 每個延遲約有 10% 的機率沒包住目標——那不是 bug——所以
+    # 斷言 90% 信賴區間永遠包住真值本身就是不穩定的
+    # 測試；0.999 讓偶然沒包住的機率小到天文數字）。
     n_events, n_lags = 60, 5
     lag_means = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     M = lag_means + rng.normal(0, 0.3, size=(n_events, n_lags))

@@ -1,43 +1,43 @@
-"""Surrogate-data significance test for the ULF near/far polarization
-differential series (`pc3_diff_zh` / `pc4_diff_zh`), per the professor's
-first suggestion: since the raw z-score-looks-normal intuition doesn't
-rigorously apply to an autocorrelated, non-normal geomagnetic series, shuffle
-the series itself (block bootstrap and FFT phase randomization) to get many
-surrogate series that look statistically the same but carry no relationship
-to any earthquake, then ask how often something as extreme as the observed
-dip (or as extreme as the specific z <= -4.1 threshold quoted in
-report_template.html for G10's 2024-03-30) shows up by chance.
+"""ULF 近站／遠站極化
+差值序列（`pc3_diff_zh` / `pc4_diff_zh`）的替代資料顯著性檢定，依教授的
+第一個建議：既然「原始 z-score 看起來像常態」的直覺並不
+嚴格適用於有自相關、非常態的地磁序列，就把
+序列本身打亂（區塊 bootstrap 和 FFT 相位隨機化），得到許多
+統計上看起來一樣、但和任何地震都沒有關係的
+替代序列，再問像觀測到的
+低谷那麼極端的情況（或像 report_template.html 對 G10 2024-03-30
+引用的特定 z <= -4.1 門檻那麼極端）有多常偶然出現。
 
-Runs per (group, band) for every group that has ulf_near_far_index.csv
-(the 8 vector-sufficient groups; see stat_utils.py / the plan file for why
-G1/G2/G3 are out of scope). Reuses the exact whole-series median/MAD
-z-score formula cross_group_analysis.py::ulf_candidate_dates already
-established, via stat_utils.mad_zscore, so results here are directly
-comparable to (and a rigor upgrade of) that existing analysis.
+對每個有 ulf_near_far_index.csv 的組別逐（組, 頻帶）執行
+（8 個向量站足夠的組別；為什麼
+G1/G2/G3 不在範圍內見 stat_utils.py／計畫檔）。透過 stat_utils.mad_zscore 重用
+cross_group_analysis.py::ulf_candidate_dates 已經建立的
+整條序列中位數／MAD z-score 公式，所以這裡的結果可以直接
+和那個既有分析比較（也是它的嚴謹度升級版）。
 
-## Pre-event window test (added 2026-09-24)
+## 震前窗口檢定（2026-09-24 加入）
 
-The whole-series test above has a structural flaw for block bootstrap: its
-surrogates are rebuilt from the observed series' own blocks, so the tested
-extreme leaks into its own null. At this project's series lengths (115-310
-days) that gives block bootstrap a p-value floor of roughly 0.2-0.4 no matter
-how large the dip (checked by simulation; every group's block-bootstrap p here
-sits in 0.23-0.42, e.g. G13's min z = -31 still gets p = 0.35). Those fields
-are kept unchanged for report_template_validation.html, but block bootstrap's
-"not significant" there is not evidence of anything.
+上面的整條序列檢定對區塊 bootstrap 有結構性缺陷：它的
+替代序列是用觀測序列自己的區塊重組的，所以被檢定的
+極值會漏進它自己的虛無分布。在本專案的序列長度（115-310
+天）下，這讓區塊 bootstrap 的 p 值有大約 0.2-0.4 的下限，不管
+低谷多大（已用模擬確認；這裡每組的區塊 bootstrap p
+都落在 0.23-0.42，例如 G13 的最小 z = -31 仍得到 p = 0.35）。那些欄位
+為了 report_template_validation.html 原樣保留，但區塊 bootstrap 在那裡的
+「不顯著」不能當成任何事情的證據。
 
-Each result therefore also carries `pre_event_window`: the most negative z in
-the 30 days before the group's anchor, standardized by and tested against the
-background (non-window) days only -- leave-window-out block bootstrap and
-phase randomization, via method_comparison.surrogate_test(tail="lower") -- plus
-a placebo calibration at non-overlapping fake anchors every 7 days. The
-cross-group binomial test in window_summary.{json,md} compares against the
-placebo rate, not 5%, because the leave-window-out null is itself liberal on
-this data.
+因此每個結果也帶有 `pre_event_window`：該組錨點前
+30 天內最負的 z，只用背景（非窗口）日來標準化
+和檢定——透過 method_comparison.surrogate_test(tail="lower") 做留一窗區塊 bootstrap 和
+相位隨機化——再加上
+每 7 天一個、不重疊的假錨點做安慰劑校準。window_summary.{json,md} 中的
+跨組二項檢定是和安慰劑比例比較，而不是 5%，因為留一窗虛無分布
+在這份資料上本身就偏寬鬆。
 
-Usage:
-  surrogate_test.py --group G10          # single group, both bands
-  surrogate_test.py --all                # every group with ULF data
+
+用法：
+  surrogate_test.py --group G10          # 單一組，兩個頻帶
+  surrogate_test.py --all                # 每個有 ULF 資料的組
 """
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ from stat_utils import (  # noqa: E402
 ULF_GROUPS = ("G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G19", "G20", "G23", "G24")
 BANDS = ("pc3", "pc4")
 N_SURROGATES = 2000
-SEED = 20260805  # fixed so re-running this script reproduces the same p-values
+SEED = 20260805  # 固定種子，重跑這支腳本會得到相同的 p 值
 
 
 def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
@@ -86,11 +86,11 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     if n < 20:
         return {"group": group_id, "band": band, "error": f"only {n} clean days, too few to test"}
 
-    # 1. Normality check -- motivates using median/MAD + surrogates instead
-    # of a parametric normal-theory test in the first place.
+    # 1. 常態性檢查——這正是一開始改用中位數／MAD + 替代資料，
+    # 而不用參數式常態理論檢定的理由。
     shapiro_w, shapiro_p = shapiro(vals)
 
-    # 2. Observed statistic: whole-series median/MAD z-score, most negative day.
+    # 2. 觀測統計量：整條序列中位數／MAD z-score，最負的那一天。
     z_obs, med, mad = mad_zscore(vals)
     min_idx = int(np.nanargmin(z_obs))
     t_obs = float(z_obs[min_idx])
@@ -124,14 +124,14 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
         }
 
     window = set(pre_event_window(pd.to_datetime(cfg.anchor_event.date), mc.PRE_WINDOW_DAYS))
-    # Storm/recovery days are dropped here (not in the legacy test above): with them in,
-    # G9's and G13's pre-event minima sat on storm days and several pre-event windows
-    # were storm-heavier than their background. Same clean-day rule as method_comparison.py.
+    # 這裡去掉磁暴／恢復期日（上面的舊檢定沒有）：如果保留它們，
+    # G9 和 G13 的震前最小值都落在磁暴日，好幾個震前窗口
+    # 的磁暴也比背景期多。乾淨日規則和 method_comparison.py 相同。
     storm = set(pd.read_csv(cfg.interim_dir / "storm_days.csv", dtype={"date": str})["date"])
     keep = ~np.isin(dates, list(storm))
     series = pd.Series(vals[keep], index=dates[keep])
-    # own generator, so adding this section leaves the legacy whole-series draws (and
-    # therefore report_template_validation.html's numbers) bit-identical
+    # 用自己的產生器，所以加上這一節不會改變舊的整條序列抽樣（因而
+    # report_template_validation.html 的數字也一個位元都不變）
     rng_w = np.random.default_rng([SEED, sum(map(ord, group_id + band))])
     if len(series) < 20:
         return {"group": group_id, "band": band, "error": f"only {len(series)} non-storm days"}
@@ -140,8 +140,8 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     pre_event = {k: v for k, v in win_res.items() if "whole" not in k}
     pre_event.update(mc.placebo_counts(series, window, rng_w, tail="lower"))
     pre_event.update(mc.rank_window_test(series, window, tail="lower"))
-    # placebo: the block right before the real window posing as the real one -- if the
-    # position just before the anchor were enough to rank lowest, this would be "significant" too
+    # 安慰劑：緊接在真實窗口前的區段假裝成真實窗口——如果
+    # 光是位在錨點正前方就足以排到最低，這個也會「顯著」
     prev = mc.rank_window_test(series, set(pre_event_window(pd.to_datetime(cfg.anchor_event.date)
                                                              - pd.Timedelta(days=mc.PRE_WINDOW_DAYS),
                                                              mc.PRE_WINDOW_DAYS)), tail="lower")
@@ -186,7 +186,7 @@ def main():
 
     results = []
     for group_id in groups:
-        rng = np.random.default_rng(SEED)  # reset per group so band order doesn't matter
+        rng = np.random.default_rng(SEED)  # 每組重設，讓頻帶的順序不影響結果
         for band in BANDS:
             result = run_one(group_id, band, rng)
             if result is None:
@@ -218,12 +218,12 @@ def main():
         print(f"wrote {out_dir / 'window_summary.md'}", file=sys.stderr)
 
 
-# Pre-specified 2026-09-25, before looking at the rank-test numbers: the primary
-# pre-event test is PRIMARY_BAND + rank test + all groups; everything else is
-# exploratory. Sensitivity (S3): groups sharing a raw-data folder are not
-# independent, so keep only the largest-magnitude anchor per folder family.
+# 2026-09-25 在看到排名檢定數字之前就預先指定：主要的
+# 震前檢定是 PRIMARY_BAND + 排名檢定 + 所有組別；其他都是
+# 探索性的。敏感度分析（S3）：共用原始資料夾的組別並不
+# 獨立，所以每個資料夾家族只保留規模最大的錨點。
 PRIMARY_BAND = "pc3"
-FAMILY_DROP = ("G6", "G7", "G24")  # keep G8 (ML6.7) of G6/G7/G8 and G23 (ML6.24) of G23/G24
+FAMILY_DROP = ("G6", "G7", "G24")  # G6/G7/G8 保留 G8（ML6.7），G23/G24 保留 G23（ML6.24）
 
 
 def rank_summary(results: list[dict], rng: np.random.Generator) -> dict:
@@ -243,11 +243,11 @@ def rank_summary(results: list[dict], rng: np.random.Generator) -> dict:
 
 
 def rank_sensitivity(rows: list[tuple[str, dict]], rng: np.random.Generator) -> dict:
-    """Checks on the primary Fisher combination (own rng, so the main numbers
-    don't move): G10 is the discovery case (band, direction, window and the
-    -4.1 threshold all came from its 2024-03-30 dip), so drop it; drop G10 and
-    G11 together; leave each group out in turn; and the placebo block just
-    before each real window, combined the same way."""
+    """主要 Fisher 合併的檢查（用自己的 rng，所以主要數字
+    不會動）：G10 是最早發現的案例（頻帶、方向、窗口和
+    -4.1 門檻都來自它 2024-03-30 的低谷），所以拿掉它；同時拿掉 G10 和
+    G11；輪流拿掉每一組；以及緊接在
+    每個真實窗口前的安慰劑區段，用同樣方式合併。"""
     def fisher(sel):
         return mc.fisher_across_groups([pe["rank_p"] for _, pe in sel], [pe["null_ps"] for _, pe in sel], rng)["p"]
     out = {name: {"groups": [g for g, _ in sel], "p": fisher(sel)}
@@ -261,9 +261,9 @@ def rank_sensitivity(rows: list[tuple[str, dict]], rng: np.random.Generator) -> 
 
 
 def window_summary(results: list[dict]) -> dict:
-    """Primary: rank_summary (rank test per group, Fisher across groups).
-    Superseded but kept for comparison: per band x surrogate, groups with
-    pre-event p < 0.05 against the placebo rate."""
+    """主要：rank_summary（每組做排名檢定，跨組用 Fisher 合併）。
+    已被取代但保留供比較：逐頻帶 x 替代資料，震前
+    p < 0.05 的組數，和安慰劑比例比較。"""
     out: dict = {"window_days": mc.PRE_WINDOW_DAYS, "tail": "lower",
                  "primary": {"band": PRIMARY_BAND, "test": "rank test, Fisher across all groups"},
                  "rank_test": rank_summary(results, np.random.default_rng(SEED)), "bands": {}}
@@ -277,7 +277,7 @@ def window_summary(results: list[dict]) -> dict:
             n_pl = sum(r["placebo_n"] for r in rows)
             k_pl = sum(r[f"placebo_n_lt05_{sur}"] for r in rows)
             rate = k_pl / n_pl if n_pl else None
-            # each group against its own placebo rate, shrunk toward the pooled one
+            # 每組和自己的安慰劑比例比較，再往合併比例收縮
             own = [mc.shrunk_placebo_rate(r[f"placebo_n_lt05_{sur}"], r["placebo_n"], rate or 0.05) for r in tested]
             entry[sur] = {
                 "n_groups": len(ps), "n_p_lt_05": k,

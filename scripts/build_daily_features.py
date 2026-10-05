@@ -1,12 +1,12 @@
-"""Parallel ETL: reduce every <station><date>dsec.sec file to (a) one row of
-daily summary features and (b) a 1-minute-resampled series, without ever
-holding more than one file's worth of 1Hz data in memory at a time.
+"""平行 ETL：把每個 <station><date>dsec.sec 檔濃縮成 (a) 一列
+每日摘要特徵，以及 (b) 一條重取樣成 1 分鐘的序列，記憶體中同一時間
+最多只放一個檔案份量的 1Hz 資料。
 
-Usage: build_daily_features.py --group G10
+用法：build_daily_features.py --group G10
 
-Outputs (under the group's own data/interim/<group>/):
+輸出（放在該組自己的 data/interim/<group>/ 底下）：
   daily_features.csv
-  minute_series_<station>.parquet   (one file per station)
+  minute_series_<station>.parquet   （每站一個檔）
 """
 from __future__ import annotations
 
@@ -25,35 +25,35 @@ from parser import DayFileRef, _parse_day_file_from_text, parse_day_file  # noqa
 
 N_WORKERS = 16
 
-# Second-to-second jump threshold (nT) beyond which a sample is treated as an
-# instrument/telemetry glitch rather than real geomagnetic variation. Real
-# secular + Sq + storm-time field changes are at most a few nT/s even during
-# severe storms; this threshold is set far above that (confirmed empirically:
-# twu shows post-quake glitches with jumps of 1e5 nT, ttn shows chronic
-# smaller spikes up to ~7700 nT — both are instrumental, not geophysical).
+# 逐秒跳動門檻（nT），超過就把該樣本當成儀器／遙測
+# 故障，而不是真實的地磁變化。真實的
+# 長期變化 + Sq + 磁暴期間的磁場變化，即使在
+# 強烈磁暴時最多也只有幾 nT/s；這個門檻設得遠高於此（實測確認：
+# twu 震後有跳動 1e5 nT 的故障，ttn 長期有
+# 較小的突波，最高約 7700 nT——兩者都是儀器問題，不是地球物理現象）。
 SPIKE_THRESHOLD_NT = 300.0
 
 
 def _despike(series: pd.Series) -> tuple[pd.Series, pd.Series, float]:
-    """Return (cleaned series with newly-detected spikes set to NaN,
-    boolean spike_mask that is True ONLY for glitch samples (never for
-    pre-existing sentinel-NaN gaps, since diff() against NaN is NaN and
-    NaN > threshold is False), max |jump| between two valid samples)."""
+    """回傳（新偵測到的突波設為 NaN 後的清理序列，
+    只有故障樣本才是 True 的布林 spike_mask（原本就是
+    哨兵值 NaN 的缺口永遠不會是 True，因為和 NaN 做 diff() 會得到 NaN，而
+    NaN > threshold 是 False），兩個有效樣本之間的最大 |跳動|）。"""
     d = series.diff().abs()
     max_jump = float(d.max()) if d.notna().any() else 0.0
-    spike_mask = d > SPIKE_THRESHOLD_NT  # NaN comparisons are False, so pre-existing gaps are excluded
+    spike_mask = d > SPIKE_THRESHOLD_NT  # 和 NaN 比較都是 False，所以原本的缺口會被排除
     cleaned = series.copy()
     cleaned[spike_mask] = np.nan
     return cleaned, spike_mask, max_jump
 
 
 def _list_files(gdms_dir, stations: dict):
-    """Split the group's day files into loose (plain .sec/.sec.gz) and
-    tgz-sourced refs. Kept separate rather than one merged list because the
-    two need completely different treatment in main(): loose files are
-    cheap for a worker to open itself, but .tgz members are not (gzip has
-    no random access -- see module docstring / build plan), so those are
-    extracted once in the main process instead of per-worker."""
+    """把該組的日檔分成零散檔（一般 .sec/.sec.gz）和
+    來自 tgz 的參照。分開放而不是合成一個清單，是因為
+    兩者在 main() 中的處理方式完全不同：零散檔讓工作行程自己開
+    很便宜，但 .tgz 成員不是（gzip 無法
+    隨機存取——見模組 docstring／建置計畫），所以那些改在
+    主行程中取出一次，而不是每個工作行程各取一次。"""
     refs = [r for r in list_day_refs(gdms_dir) if r.station in stations]
     loose = [r for r in refs if r.kind == "loose"]
     tgz = [r for r in refs if r.kind == "tgz"]
@@ -62,7 +62,7 @@ def _list_files(gdms_dir, stations: dict):
 
 def _features_from_df(df, station, date_str):
     n_total = len(df)
-    if "F" in df.columns:  # scalar-only file, per its own header (see parser.is_scalar_only)
+    if "F" in df.columns:  # 依它自己的檔頭是純量檔（見 parser.is_scalar_only）
         f_raw = df["F"]
         f, spike_mask, max_jump = _despike(f_raw)
         n_valid = int(f.notna().sum())
@@ -84,8 +84,8 @@ def _features_from_df(df, station, date_str):
         x, spike_x, max_jump_x = _despike(x_raw)
         y, spike_y, max_jump_y = _despike(y_raw)
         z, spike_z, max_jump_z = _despike(z_raw)
-        # a spike in any component invalidates that second's vector for H/D;
-        # this is on top of (not instead of) pre-existing sentinel-NaN gaps
+        # 任何分量有突波，那一秒的 H/D 向量就無效；
+        # 這是加在原本哨兵值 NaN 缺口之上（而不是取代它）
         spike_any = spike_x | spike_y | spike_z
         x, y, z = x.mask(spike_any), y.mask(spike_any), z.mask(spike_any)
         h = np.sqrt(x**2 + y**2)
@@ -113,9 +113,9 @@ def _features_from_df(df, station, date_str):
 
 
 def _process_one_ref(ref: DayFileRef):
-    """Loose-file path: worker does its own I/O + parse, same as before
-    this module gained .tgz support (no gzip random-access penalty for
-    loose files, so there's no reason to change this)."""
+    """零散檔路徑：工作行程自己做 I/O + 解析，和這個模組
+    支援 .tgz 之前一樣（零散檔沒有 gzip 隨機存取的代價，
+    所以沒有理由改它）。"""
     try:
         df = parse_day_file(ref, ref.station)
     except Exception as exc:  # noqa: BLE001
@@ -124,9 +124,9 @@ def _process_one_ref(ref: DayFileRef):
 
 
 def _process_one_text(text: str, ref: DayFileRef):
-    """.tgz-sourced path: the member's text was already extracted once in
-    the main process (see main()'s tgz dispatch loop), so this worker does
-    pure CPU-bound parse/despike/resample and never touches tarfile itself."""
+    """來自 .tgz 的路徑：成員的文字已在
+    主行程中取出一次（見 main() 的 tgz 分派迴圈），所以這個工作行程只做
+    純 CPU 的解析／去突波／重取樣，完全不碰 tarfile。"""
     try:
         df = _parse_day_file_from_text(text, ref, ref.station)
     except Exception as exc:  # noqa: BLE001
@@ -148,11 +148,11 @@ def main():
         file=sys.stderr,
     )
 
-    # Group the .tgz-sourced refs by archive so each archive is opened and
-    # walked sequentially exactly once (see module docstring: gzip has no
-    # random access, so per-member cold-opens -- e.g. one per worker -- are
-    # ~600x slower than a single sequential pass, measured on real GDMS
-    # batch downloads).
+    # 把來自 .tgz 的參照依壓縮檔分組，讓每個壓縮檔只開一次、
+    # 依序走一遍（見模組 docstring：gzip 無法
+    # 隨機存取，所以每個成員各自冷開——例如每個工作行程一次——
+    # 比單次依序掃描慢約 600 倍，這是在真實的 GDMS
+    # 批次下載檔上量到的）。
     by_tgz: dict[Path, dict[str, DayFileRef]] = {}
     for r in tgz_refs:
         by_tgz.setdefault(r.source_path, {})[r.member] = r
@@ -165,7 +165,7 @@ def main():
         futures = [pool.submit(_process_one_ref, r) for r in loose_refs]
         for tgz_path, wanted in by_tgz.items():
             with tarfile.open(tgz_path, "r:gz") as tf:
-                for member in tf:  # single sequential scan over this archive
+                for member in tf:  # 對這個壓縮檔做單次依序掃描
                     if member.name not in wanted:
                         continue
                     ref = wanted[member.name]

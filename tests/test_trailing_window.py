@@ -1,8 +1,8 @@
-"""compute_indices.mad_zscore's baseline must be the TRAILING_WINDOW_DAYS calendar
-days before each day (what verify_pipeline's baseline check reconstructs), not
-the previous TRAILING_WINDOW_DAYS rows. G6_G7_G8 has no files for 2021-12-30 and
-2022-01-01, so a row window reached 22-23 calendar days back inside G7's
-(2022-01-03) pre-event window."""
+"""compute_indices.mad_zscore 的基準期必須是每一天之前的 TRAILING_WINDOW_DAYS 個日曆天
+（也就是 verify_pipeline 的基準期檢查所重建的範圍），而不是前 TRAILING_WINDOW_DAYS
+列。G6_G7_G8 缺 2021-12-30 和 2022-01-01 的檔案，所以以列數計算的窗口
+在 G7（2022-01-03）的震前窗口內會往回延伸到 22–23 個日曆天之前。
+"""
 import numpy as np
 import pandas as pd
 

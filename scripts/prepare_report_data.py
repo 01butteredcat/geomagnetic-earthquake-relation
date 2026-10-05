@@ -1,19 +1,19 @@
-"""Gather all small interim artifacts into one JSON blob for the final
-self-contained HTML report (build_artifact.py embeds this verbatim).
+"""把所有小型中間產物收集成一個 JSON，給最終的
+單檔 HTML 報告用（build_artifact.py 會原封不動地嵌入）。
 
-Usage: prepare_report_data.py --group G10
+用法：prepare_report_data.py --group G10
 
-Note: `report_template.html`'s narrative text (twu instrument-failure
-commentary, the 3/30 candidate-day discussion, etc.) is hand-written for the
-G10/2024 single event specifically and is NOT generalized to other groups by
-this refactor -- this script can technically run for any group (paths/near-
-far stations are all dynamic), but the resulting report_data.json's
-qualitative narrative fields (spike/glitch commentary etc.) are only
-meaningful in the context report_template.html was written for. Producing
-polished reports for the other 12 groups is out of scope; this script's role
-in the 13-group batch flow is limited to what run_pipeline.sh actually uses
-(everything up to and including verify_pipeline.py) -- this script is only
-invoked when generating G10's original detailed report.
+注意：`report_template.html` 的敘述文字（twu 儀器故障
+的評論、3/30 候選日的討論等）是專門為
+G10/2024 單一事件手寫的，這次重構**沒有**把它推廣到其他組——
+這支腳本技術上可以對任何組執行（路徑／近站–
+遠站都是動態的），但產生的 report_data.json 中
+質性的敘述欄位（突波／故障評論等）只在
+report_template.html 原本撰寫的脈絡下才有意義。替
+其他 12 組產出精修報告不在範圍內；這支腳本在
+13 組批次流程中的角色只限於 run_pipeline.sh 實際用到的部分
+（到 verify_pipeline.py 為止的所有步驟）——只有在
+產生 G10 原本那份詳細報告時才會呼叫這支腳本。
 """
 from __future__ import annotations
 
@@ -54,15 +54,15 @@ def main():
         for code, meta in sorted(cfg.stations.items(), key=lambda kv: kv[1]["distance_km"])
     ]
 
-    # spike/glitch narrative data (twu instrument failure, ttn escalation --
-    # for G10; generic for any other group)
+    # 突波／故障的敘述資料（twu 儀器故障、ttn 惡化——
+    # 針對 G10；其他組則是通用版）
     spikes = daily[daily.n_spikes > 0][["station", "date", "n_spikes", "max_abs_jump", "pct_missing"]]
     spike_by_station = {}
     for station, g in spikes.groupby("station"):
         spike_by_station[station] = g.drop(columns="station").to_dict(orient="records")
 
-    # whole-day outages (e.g. G10's twu from 2024-04-24 on) -- the report's
-    # quality narrative quotes these instead of hard-coding dates
+    # 整天中斷（例如 G10 的 twu 從 2024-04-24 起）——報告的
+    # 品質敘述會引用這些，而不是寫死日期
     full_outage = daily[daily.pct_missing >= 0.99]
     full_outage_by_station = {s: sorted(g["date"].tolist()) for s, g in full_outage.groupby("station")}
 
@@ -75,13 +75,13 @@ def main():
     local_idx_records = local_idx.replace({float("nan"): None}).to_dict(orient="records")
     ulf_nf_records = ulf_nf.replace({float("nan"): None}).to_dict(orient="records") if len(ulf_nf) else []
 
-    # G10 keeps its original hand-curated per-incident outage notes (richer
-    # than the generic auto-detected summary) for backward compatibility
-    # with report_template.html's existing table; other groups get a
-    # generic auto-detected summary (station/date/pct_missing) instead.
+    # G10 保留它原本人工整理的逐次中斷說明（比
+    # 通用的自動偵測摘要更詳細），以相容於
+    # report_template.html 既有的表格；其他組則改用
+    # 通用的自動偵測摘要（station/date/pct_missing）。
     if args.group == "G10":
-        # the hand-curated list predates the folder's extension to 2024-06-01;
-        # stretch its twu "fully missing" row to the end of the actual whole-day outage
+        # 人工整理的清單早於資料夾延長到 2024-06-01；
+        # 把它的 twu「完全缺漏」那一列延長到實際整天中斷的結束日
         known_outage_windows = [dict(w) for w in G10_KNOWN_OUTAGE_WINDOWS]
         twu_out = full_outage_by_station.get("twu", [])
         for w in known_outage_windows:

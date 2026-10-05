@@ -1,47 +1,47 @@
-"""Cross-group reproducibility analysis (plan §7): does a geomagnetic
-precursor signal recur across the 13 independent earthquake event-groups
-more often than each group's own internal chance rate would predict?
+"""跨組重現率分析（計畫 §7）：地磁
+前兆訊號在 13 個獨立地震事件組之間重複出現的頻率，
+是否高於各組自己的內部機率所預期的？
 
-This is explicitly a REPRODUCIBILITY-RATE analysis, not a formal statistical
-validation. Per this project's established guidance, a
-real statistically-conclusive test needs ~20-30 independent M>=6 events plus
-matched quiet-period controls; 13 groups is a meaningful expansion beyond
-the original n=1 case study but still falls short of that bar. Findings here
-should be read as "how often did this recur across the groups we have",
-never as "this proves a precursor exists".
+這明確是**重現率**分析，不是正式的統計
+驗證。依照本專案既定的方針，
+真正有統計結論的檢定需要約 20-30 起獨立 M>=6 事件，加上
+配對的平靜期對照；13 組相對於最初 n=1 的個案研究
+是有意義的擴充，但仍未達到那個標準。這裡的發現
+應該解讀為「在我們手上的組別中這重複出現了幾次」，
+絕不是「這證明了前兆存在」。
 
-Method, per group:
-  1. Candidate dates for each applicable method (H/Z from compute_indices.py
-     for vector-sufficient groups, F for scalar-only groups, plus a ULF
-     Pc3 Z/H differential candidate flag computed here -- ulf_analysis.py
-     only produces the raw near/far/diff series, it does not itself apply a
-     MAD z-score threshold the way compute_indices.py does for H/Z/F, so
-     that one additional step is done in this script, using the same
-     CANDIDATE_Z_THRESHOLD compute_indices.py uses, applied once over the
-     group's whole clean-day distribution -- there's no obvious per-day
-     causal "trailing window" concept for an already-differenced ULF series
-     the way there is for the raw H/Z/F level, so a single whole-series MAD
-     z-score is used instead of a rolling one).
-  2. For each of three pre-event windows (7/14/30 days immediately before
-     the group's anchor event), check whether ANY candidate date falls in
-     it. All three window sizes are reported side by side rather than
-     picking whichever looks best after the fact (avoiding look-elsewhere
-     bias).
-  3. Each group supplies its OWN null/base rate for "a random W-day window
-     in this group's data contains >=1 candidate", computed by sliding a
-     W-day window across every possible start day in the group's own date
-     range (excluding the actual pre-event test window) and taking the
-     empirical hit fraction. This uses the group's own candidate-count
-     characteristics as its control, so no separate quiet-period dataset
-     needs to be fetched (that remains a real, larger future step per the
-     adaptive-tulip plan, not attempted here).
+方法，逐組：
+  1. 每個適用方法的候選日期（向量站足夠的組別用 compute_indices.py 的 H/Z，
+     只有純量的組別用 F，再加上在這裡計算的 ULF
+     Pc3 Z/H 差值候選旗標——ulf_analysis.py
+     只產生原始的近站／遠站／差值序列，不像 compute_indices.py 對 H/Z/F
+     那樣自己套用 MAD z-score 門檻，所以
+     這一個額外步驟在這支腳本裡做，使用和
+     compute_indices.py 相同的 CANDIDATE_Z_THRESHOLD，對
+     該組整個乾淨日分布套用一次——對已經做過差分的 ULF 序列，
+     並沒有像原始 H/Z/F 水準那樣明顯的逐日
+     因果「滑動窗口」概念，所以改用單一的整條序列 MAD
+     z-score，而不是滾動的）。
+  2. 對三個震前窗口（緊接在該組錨點事件前的 7/14/30 天）
+     各自檢查是否有**任何**候選日期落在裡面。三種窗口長度
+     並列報告，而不是
+     事後挑看起來最好的那個（避免 look-elsewhere
+     偏誤）。
+  3. 每組提供**自己的**虛無／基準率：「該組資料中隨機一個 W 天窗口
+     含有 >=1 個候選日」的比例，計算方式是讓
+     W 天窗口滑過該組自己日期範圍內每一個可能的起始日
+     （排除實際的震前檢定窗口），取
+     經驗命中比例。這用該組自己的候選日數量
+     特性當對照，所以不需要另外下載平靜期資料集
+     （依 adaptive-tulip 計畫，那仍是未來真正、更大的一步，
+     這裡沒有嘗試）。
 
-Cross-group aggregation is reported in two separate confidence tiers (never
-pooled together): groups with a sufficient XYZ station pool (can run H/Z and
-ULF) vs. groups limited to the F-only method (G1, G2, G3) -- structurally
-different methods with different reliability, per common.py's GroupConfig.
+跨組彙總分成兩個不同的信心層級報告（絕不
+合併）：有足夠 XYZ 測站池的組別（可以跑 H/Z 和
+ULF）vs. 只能用 F 方法的組別（G1、G2、G3）——依 common.py 的 GroupConfig，
+兩者是結構上不同、可靠度也不同的方法。
 
-Outputs:
+輸出：
   data/interim/cross_group_summary.json
   data/interim/cross_group_summary.md
 """
@@ -64,9 +64,9 @@ WINDOWS_DAYS = [7, 14, 30]
 
 
 def ulf_candidate_dates(cfg) -> list[str]:
-    """Whole-series MAD z-score candidate flagging on pc3_diff_zh -- see
-    module docstring for why this differs from compute_indices.py's rolling
-    trailing-window approach."""
+    """對 pc3_diff_zh 做整條序列 MAD z-score 候選標記——為什麼這和
+    compute_indices.py 的滾動滑動窗口做法不同，見
+    模組 docstring。"""
     path = cfg.interim_dir / "ulf_near_far_index.csv"
     if not path.exists():
         return []
@@ -89,11 +89,11 @@ def pre_event_window(anchor_date: pd.Timestamp, window_days: int) -> list[str]:
 
 
 def sliding_baseline_rate(all_dates: list[str], candidate_dates: set[str], window_days: int, exclude_window: set[str]) -> tuple[float, int]:
-    """Fraction of every possible window_days-long sliding window within
-    all_dates (excluding every window that shares a day with the actual test
-    window -- skipping only the identical window let the tested window's own
-    candidates raise its baseline) that contains >= 1 candidate date. Returns
-    (rate, n_windows_checked)."""
+    """在 all_dates 內所有可能的 window_days 天滑動窗口中，
+    含有 >= 1 個候選日期的比例（排除每一個和實際檢定
+    窗口共用任何一天的窗口——只跳過完全相同的窗口，會讓被檢定窗口自己的
+    候選日拉高它的基準率）。回傳
+    (rate, n_windows_checked)。"""
     if len(all_dates) < window_days + 1:
         return float("nan"), 0
     hits = 0
@@ -158,13 +158,13 @@ def analyze_group(group_id: str) -> dict:
 
 
 def aggregate(per_group: list[dict]) -> dict:
-    """Aggregate hit-rate vs baseline-rate across groups, split by tier and
-    method, never pooling vector-tier and scalar-only-tier groups together.
-    Uses scipy.stats.binomtest against each tier/method/window's own mean
-    baseline rate as a simple significance summary -- 3 window sizes x
-    several methods means several tests are being run with NO multiple-
-    comparison correction; this is reported as an exploratory reproducibility
-    signal, not a confirmed detection."""
+    """跨組彙總命中率 vs 基準率，依層級和
+    方法拆開，絕不把向量層和純量層的組別合併。
+    用 scipy.stats.binomtest 對每個層級／方法／窗口自己的平均
+    基準率做簡單的顯著性摘要——3 種窗口長度 x
+    好幾種方法代表同時跑了好幾個檢定，**沒有**做多重
+    比較校正；這是當作探索性的重現率
+    訊號報告，不是確認的偵測。"""
     out = {}
     tiers = sorted({g["tier"] for g in per_group})
     for tier in tiers:
@@ -203,8 +203,8 @@ def aggregate(per_group: list[dict]) -> dict:
 
 
 def render_markdown(per_group: list[dict], agg: dict) -> str:
-    # One GROUPS key == one numbered earthquake group (G1 ... G23) since the
-    # 2026-09-20 split of the old merged G2_G3 / G6_G7_G8 keys.
+    # 自 2026-09-20 拆分舊的合併鍵 G2_G3 / G6_G7_G8 之後，
+    # 一個 GROUPS 鍵 == 一個編號的地震組（G1 ... G23）。
     n_groups = len(ALL_GROUP_IDS)
     group_range = f"{ALL_GROUP_IDS[0]}-{ALL_GROUP_IDS[-1]}"
     lines = []

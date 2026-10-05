@@ -1,35 +1,35 @@
-"""ULF (Pc3/Pc4 band) polarization analysis for the near-vs-far station
-comparison, per plan Section 5. Needs real X/Y/Z, so only runs when the
-group's XYZ station pool is sufficient (see common.py's GroupConfig) --
-scalar-only groups (e.g. G1) have no vector data to filter/Hilbert-transform
-at all, so this step is skipped for them, not degraded.
+"""近站 vs 遠站比較用的 ULF（Pc3/Pc4 頻帶）極化分析，
+依計畫第 5 節。需要真實的 X/Y/Z，所以只有在該組
+XYZ 測站池足夠時才跑（見 common.py 的 GroupConfig）——
+只有純量的組別（例如 G1）根本沒有向量資料可以濾波／做 Hilbert 轉換，
+所以這一步對它們是直接跳過，不是降級執行。
 
-For each station-day:
-  1. Detrend X, Y, Z (subtract a 1-hour centered rolling mean).
-  2. Zero-phase 4th-order Butterworth bandpass (scipy.signal.filtfilt) into
-     Pc3 (10-45s period) and Pc4 (45-150s period) bands, per component.
-  3. Hilbert envelope magnitude per component/band.
-  4. Horizontal envelope = sqrt(envX^2 + envY^2); reduce to the confirmed
-     local-night window (UTC hour in {17,18,19} == local 01:00-03:59) RMS.
-  5. Z/H polarization ratio = RMS(envZ_night) / RMS(envH_night).
+每個測站–日：
+  1. X、Y、Z 去趨勢（減掉 1 小時置中滑動平均）。
+  2. 零相位 4 階 Butterworth 帶通（scipy.signal.filtfilt），逐分量分成
+     Pc3（週期 10-45 秒）和 Pc4（週期 45-150 秒）兩個頻帶。
+  3. 逐分量／頻帶取 Hilbert 包絡大小。
+  4. 水平包絡 = sqrt(envX^2 + envY^2)；化約成已確認的
+     當地夜間窗口（UTC 時 in {17,18,19} == 當地 01:00-03:59）RMS。
+  5. Z/H 極化比 = RMS(envZ_night) / RMS(envH_night)。
 
-Near/far index (`ulf_near_far_index.csv`), station-normalized since 2026-09-28:
-each station's nightly Z/H is first divided by that station's own median over
-non-storm days, then the near and far pools take the median of those
-normalized ratios, and diff = near - far. Before that the pools took the
-median of the raw ratios over whichever stations had data that day, so a
-station joining or leaving the pool shifted the index: G11's near station zbn
-sat at Z/H 15-45 (the others 0.1-1.5) and stopped on 2024-12-23, which dropped
-the near index ~20x on 12-24, right at the start of G11's pre-event window.
-The raw-median version is kept as `<band>_*_zh_raw` for comparison, and
-`<band>_n_near` / `<band>_n_far` record how many stations had data each day.
-The reference median uses the whole series (one number per station), so it
-sees future days too; that shifts a station's level, not its day-to-day shape.
+近站／遠站指標（`ulf_near_far_index.csv`），2026-09-28 起做測站標準化：
+每個測站的夜間 Z/H 先除以該站自己在
+非磁暴日的中位數，近站池和遠站池再取這些
+標準化比值的中位數，diff = near - far。在此之前，測站池取的是
+當天有資料的測站原始比值的中位數，所以
+有測站加入或離開測站池就會讓指標跳動：G11 的近站 zbn
+Z/H 在 15-45（其他站 0.1-1.5），2024-12-23 停止，讓
+近站指標在 12-24 掉了約 20 倍，正好在 G11 震前窗口的開頭。
+原始中位數版本保留為 `<band>_*_zh_raw` 供比較，
+`<band>_n_near` / `<band>_n_far` 記錄每天有幾個測站有資料。
+參考中位數用的是整條序列（每站一個數字），所以
+它也看得到未來的日子；這只會改變測站的水準，不會改變它逐日的形狀。
 
-Outputs (under the group's own data/interim/<group>/):
-  ulf_daily.csv               -- full-window daily series
-  ulf_near_far_index.csv      -- near-minus-far index (see above)
-  ulf_spectrogram_<window>.json -- zoomed 1Hz spectrograms around the anchor event
+輸出（放在該組自己的 data/interim/<group>/ 底下）：
+  ulf_daily.csv               -- 整個窗口的每日序列
+  ulf_near_far_index.csv      -- 近站減遠站指標（見上）
+  ulf_spectrogram_<window>.json -- 錨點事件前後放大的 1Hz 頻譜圖
 """
 from __future__ import annotations
 
@@ -49,12 +49,12 @@ from parser import parse_day_file  # noqa: E402
 
 FS = 1.0  # Hz
 BANDS = {
-    "pc3": (1 / 45, 1 / 10),   # 10-45s period
-    "pc4": (1 / 150, 1 / 45),  # 45-150s period
+    "pc3": (1 / 45, 1 / 10),   # 週期 10-45 秒
+    "pc4": (1 / 150, 1 / 45),  # 週期 45-150 秒
 }
 NIGHT_HOURS_UTC = {17, 18, 19}
 N_WORKERS = 10
-ZOOM_WINDOW_DAYS = 12  # +/- this many days around the anchor event
+ZOOM_WINDOW_DAYS = 12  # 錨點事件前後各這麼多天
 
 
 def _bandpass(x: np.ndarray, low: float, high: float) -> np.ndarray:
@@ -76,9 +76,9 @@ def _process_day(ref):
         return {"station": station, "date": date_str, "error": str(exc)}
 
     if "X" not in df.columns or df[["X", "Y", "Z"]].isna().to_numpy().any():
-        # any gap breaks filtfilt's continuity assumption for this simple
-        # pipeline; skip the day rather than risk filter artifacts near gaps
-        # (also covers the defensive case of a scalar-only file slipping in)
+        # 在這個簡單的流程中，任何缺口都會破壞 filtfilt 的連續性假設；
+        # 寧可跳過這一天，也不冒缺口附近出現濾波假象的風險
+        # （也涵蓋純量檔意外混進來的防禦性情況）
         return {"station": station, "date": date_str, "error": "has_gap_or_scalar_skipped"}
 
     x = _detrend(df["X"])
@@ -146,7 +146,7 @@ def build_zoom_spectrogram(cfg, station: str, start_date: str, end_date: str, la
     if not x_chunks:
         return
     x = pd.concat(x_chunks)
-    x_detrended = _detrend(x.interpolate(limit=60))  # interpolate tiny gaps only
+    x_detrended = _detrend(x.interpolate(limit=60))  # 只內插很小的缺口
 
     f, t, sxx = spectrogram(x_detrended, fs=FS, nperseg=3600, noverlap=1800)
     band_mask = (f >= BANDS["pc4"][0]) & (f <= BANDS["pc3"][1])
@@ -165,9 +165,9 @@ def build_zoom_spectrogram(cfg, station: str, start_date: str, end_date: str, la
 
 
 def near_far_table(daily: pd.DataFrame, near_stations, far_stations, storm_dates: set[str]) -> pd.DataFrame:
-    """Near-minus-far differential of the nightly Z/H polarization ratio, per
-    band: station-normalized (see module docstring) plus the old raw-median
-    version as *_raw."""
+    """夜間 Z/H 極化比的近站減遠站差值，逐
+    頻帶：測站標準化版本（見模組 docstring），加上舊的原始中位數
+    版本 *_raw。"""
     daily = daily.copy()
     quiet = ~daily["date"].astype(str).isin(storm_dates)
     for band in BANDS:
@@ -201,9 +201,9 @@ def build_near_far_differential(cfg, daily: pd.DataFrame, near_stations, far_sta
 
 
 def self_test() -> bool:
-    """A high-level near station leaves the pool halfway: the raw-median near
-    index jumps, the station-normalized one doesn't; raw columns keep the old
-    formula."""
+    """一個水準很高的近站中途離開測站池：原始中位數的近站
+    指標會跳動，測站標準化的不會；raw 欄位保留舊的
+    公式。"""
     rng = np.random.default_rng(0)
     dates = [f"202401{d:02d}" for d in range(1, 31)]
     levels = {"n1": 0.5, "n2": 20.0, "f1": 0.3, "f2": 0.4}

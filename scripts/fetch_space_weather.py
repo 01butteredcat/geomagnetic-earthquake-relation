@@ -1,27 +1,27 @@
-"""Fetch historical Kp (GFZ Potsdam) and Dst (Kyoto WDC) space weather
-indices for a group's actual date range, and derive a storm-day flag list
-used to keep geomagnetic-storm-driven variability from being misread as a
-tectonic precursor signal.
+"""抓取一組實際日期範圍內的歷史 Kp（GFZ Potsdam）和 Dst（Kyoto WDC）太空天氣
+指數，並推出一份磁暴日旗標清單，
+用來避免把磁暴造成的變動誤讀成
+構造前兆訊號。
 
-Usage: fetch_space_weather.py --group G10
+用法：fetch_space_weather.py --group G10
 
-Data sources (plain-text, no auth, fetched once and cached per group):
+資料來源（純文字、不需驗證，每組抓一次並快取）：
   Kp:  https://kp.gfz.de/kpdata?startdate=...&enddate=...&format=kp2
-       (kp.gfz-potsdam.de 301-redirects here; -L follows it). Kp has been
-       recorded since 1932, so any group's date range (2017-2026) is covered.
+       （kp.gfz-potsdam.de 會 301 轉址到這裡；-L 會跟著轉）。Kp 從
+       1932 年就有紀錄，所以任何一組的日期範圍（2017-2026）都有涵蓋。
   Dst: https://wdc.kugi.kyoto-u.ac.jp/dst_<final|provisional|realtime>/<YYYYMM>/dst<YYMM>.for.request
-       (requires a browser-like User-Agent or Kyoto returns 403). Which of
-       final/provisional/realtime is available depends on how long ago the
-       month was -- tried in that order per month since finalized data is
-       more likely for older groups and realtime more likely for the most
-       recent one (G13, 2026).
+       （需要像瀏覽器的 User-Agent，否則 Kyoto 會回 403）。final/provisional/realtime
+       哪一種可用，取決於那個月份距今
+       多久——每個月依這個順序嘗試，因為較舊的組別比較可能有定案資料，
+       最新的那組（G13，2026）比較可能
+       只有 realtime。
 
-If BOTH fetches fail, falls back to an internal proxy: days where the
-group's far-reference stations show simultaneous large deviations are
-flagged as "globally disturbed", labeled low confidence. If only one source
-(or only some Dst months) is missing, the storm days from what did arrive
-are still used, and the summary's "confidence" says which part is missing
-("medium (...)") instead of claiming full Kp+Dst coverage.
+如果兩者都抓不到，就退回內部代理指標：該組遠端參考站
+同時出現大偏差的日子
+標記為「全球擾動」，標示為低信心。如果只缺一個來源
+（或只缺部分 Dst 月份），仍會使用已抓到部分的磁暴日，
+摘要的 "confidence" 會寫明缺了哪一部分
+（"medium (...)"），而不是宣稱 Kp+Dst 完整涵蓋。
 """
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ DST_URL_TMPL = "https://wdc.kugi.kyoto-u.ac.jp/dst_{kind}/{yyyymm}/dst{yymm}.for
 DST_KINDS = ("final", "provisional", "realtime")
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
 
-KP_STORM_THRESHOLD = 5.0  # G1+ geomagnetic storm
-DST_STORM_THRESHOLD = -30.0  # nT trough
+KP_STORM_THRESHOLD = 5.0  # G1+ 地磁暴
+DST_STORM_THRESHOLD = -30.0  # nT 谷值
 
 
 def _curl(url: str, extra_args: list[str] | None = None) -> str | None:
@@ -86,11 +86,11 @@ def fetch_kp(start: str, end: str) -> pd.DataFrame | None:
 
 
 def fetch_dst(start: str, end: str) -> tuple[pd.DataFrame | None, list[str]]:
-    """Returns (dataframe of the months that arrived, or None if none did,
-    list of YYYYMM months that could not be fetched). A month is tried as
-    final/provisional/realtime, and the whole sequence is retried once: a
-    single transient failure used to discard the entire range (and a group's
-    cached "FETCH FAILED" then stuck for weeks -- G1/G2/G3/G11)."""
+    """回傳（抓到的月份組成的 dataframe，一個都沒抓到則為 None，
+    抓不到的 YYYYMM 月份清單）。每個月依序嘗試
+    final/provisional/realtime，整個流程會再重試一次：以前
+    一次暫時性失敗就會丟掉整個範圍（而某組
+    快取的 "FETCH FAILED" 會因此卡好幾週——G1/G2/G3/G11）。"""
     rows = []
     missing: list[str] = []
     for yyyymm in _month_range(start, end):
@@ -110,7 +110,7 @@ def fetch_dst(start: str, end: str) -> tuple[pd.DataFrame | None, list[str]]:
         for line in text.strip().splitlines():
             if not line.startswith("DST"):
                 continue
-            # e.g. "DST2404*01PPX120   0  -4  -5  -9 ... -7"
+            # 例如 "DST2404*01PPX120   0  -4  -5  -9 ... -7"
             head, rest = line[:20], line[20:]
             day = int(head[8:10])
             vals = rest.split()
@@ -121,14 +121,14 @@ def fetch_dst(start: str, end: str) -> tuple[pd.DataFrame | None, list[str]]:
             date_str = f"{yyyymm}{day:02d}"
             for hr, v in enumerate(hourly, start=1):
                 rows.append({"date": date_str, "hour_utc": hr % 24, "dst": v})
-            rows.append({"date": date_str, "hour_utc": -1, "dst": daily_mean})  # -1 = daily mean marker
+            rows.append({"date": date_str, "hour_utc": -1, "dst": daily_mean})  # -1 = 日平均標記
     return (pd.DataFrame(rows) if rows else None), missing
 
 
 def internal_proxy_storm_days(cfg) -> pd.DataFrame:
-    """Fallback: flag days where far-reference stations show simultaneous
-    large H/F deviation, as an internally-inferred (lower-confidence) storm
-    proxy. Uses the group's XYZ far pool if available, else its F far pool."""
+    """備援：把遠端參考站同時出現
+    大 H/F 偏差的日子標記出來，作為內部推斷（信心較低）的磁暴
+    代理指標。有 XYZ 遠站池就用該組的 XYZ 遠站池，否則用 F 遠站池。"""
     far = cfg.xyz_pool.far or cfg.f_pool.far
     range_col = "H_range" if cfg.xyz_pool.far else "F_range"
     daily = pd.read_csv(cfg.interim_dir / "daily_features.csv", dtype={"date": str})
@@ -151,8 +151,8 @@ def main():
     cfg = load_group_config(args.group)
     start, end = _group_date_range(cfg)
     if args.check_cache:
-        # A cache built before the folder's data was extended (G6/G7/G8, G17 until 2026-09-25) still
-        # says "high" but leaves later events without a storm flag, so coverage is checked too.
+        # 資料夾資料延長之前建的快取（G6/G7/G8、G17，直到 2026-09-25）仍
+        # 寫 "high"，但後來的事件就沒有磁暴旗標，所以也要檢查涵蓋範圍。
         summary_path = cfg.interim_dir / "storm_days_summary.json"
         ok = (cfg.interim_dir / "storm_days.csv").exists() and summary_path.exists()
         if ok:
@@ -207,7 +207,7 @@ def main():
         source_note.append(f"FALLBACK: internal far-station proxy, {len(proxy)} storm days")
         confidence = "low (internal proxy only, official sources unavailable)"
 
-    # add 1-2 recovery days after each storm day (ring-current decay)
+    # 每個磁暴日之後加 1-2 天恢復期（環電流衰減）
     all_dates = sorted(storm_days)
     extended = set(storm_days)
     for d in all_dates:
