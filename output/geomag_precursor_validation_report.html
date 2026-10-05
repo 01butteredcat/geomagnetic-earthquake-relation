@@ -11667,7 +11667,7 @@ const DATA = /*__REPORT_DATA__*/{
     }
   }
 };
-// Opened as the raw template (no data embedded): say so instead of leaving every chart blank.
+// 開啟的是原始模板（沒有嵌入資料）：直接說明，而不是讓每張圖都空白。
 if (!DATA) {
   const note = document.createElement('div');
   note.className = 'gm-callout';
@@ -11676,7 +11676,7 @@ if (!DATA) {
     + '或執行 <code>scripts/prepare_validation_report_data.py</code> → <code>scripts/build_validation_report.py</code> 重新產生。';
   const title = document.querySelector('.gm-title');
   title.parentNode.insertBefore(note, title.nextSibling);
-  throw new Error('report_template_validation.html opened without embedded data');
+  throw new Error('report_template_validation.html 開啟時沒有嵌入資料');
 }
 (function(){
   const root = document.querySelector('.gm-root');
@@ -11684,7 +11684,7 @@ if (!DATA) {
   const fmtPct = (v) => v==null ? '—' : (v*100).toFixed(1) + '%';
   const fmtNum = (v,d) => v==null ? '—' : v.toFixed(d==null?3:d);
 
-  // ---------- overview stat tiles ----------
+  // ---------- 總覽數字方塊 ----------
   (function(){
     const groups = DATA.meta.ulf_groups;
     const surKeys = Object.keys(DATA.surrogate).filter(k => !DATA.surrogate[k].error);
@@ -11713,7 +11713,7 @@ if (!DATA) {
       </div>`).join('');
   })();
 
-  // ---------- generic step-histogram (density) chart ----------
+  // ---------- 通用階梯直方圖（密度）----------
   function stepPath(edges, counts, X, Y, normalize){
     const total = counts.reduce((a,b)=>a+b,0) || 1;
     const widths = edges.slice(1).map((e,i)=>e-edges[i]);
@@ -11789,7 +11789,7 @@ if (!DATA) {
     `;
   })();
 
-  // ---------- rank test (primary pre-event result since 2026-09-25) ----------
+  // ---------- 排名檢定（2026-09-25 起的主要震前結果）----------
   (function buildRankTables(){
     const w = DATA.window_test;
     if(!w){ document.getElementById('rank-caption').textContent = '（找不到 surrogate_test/window_summary.json，請先跑 method_comparison.py）'; return; }
@@ -11813,7 +11813,7 @@ if (!DATA) {
       `事先指定的主要檢定是 Pc3、全部組別；其餘列為探索性。解讀：沒有任何一組單獨顯著，但震前窗口普遍排在偏低的位置，屬於微弱、方向一致的線索，不是定論。`;
   })();
 
-  // ---------- surrogate summary table ----------
+  // ---------- 替代資料摘要表 ----------
   (function(){
     const rows = [];
     DATA.meta.ulf_groups.forEach(g => {
@@ -11841,7 +11841,7 @@ if (!DATA) {
       <tbody>${tbody}</tbody>`;
   })();
 
-  // ---------- SEA chart ----------
+  // ---------- SEA 圖 ----------
   function buildSeaChart(band, label){
     const d = DATA.sea[band+'_'+label];
     const svgEl = document.getElementById('chart-sea');
@@ -11867,21 +11867,21 @@ if (!DATA) {
     }
     s += `<line x1="${ML}" x2="${W-MR}" y1="${H-MB}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1"/>`;
 
-    // null band (gray fill)
+    // 虛無帶（灰色填色）
     let nb = `M${X(0)},${Y(d.null_band_p5[0])} `;
     lags.forEach((l,i) => nb += `L${X(i)},${Y(d.null_band_p5[i])} `);
     for(let i=lags.length-1;i>=0;i--) nb += `L${X(i)},${Y(d.null_band_p95[i])} `;
     nb += 'Z';
     s += `<path d="${nb}" fill="${cvarRef('--text-muted')}" opacity="0.18" stroke="none"/>`;
 
-    // CI band (purple fill)
+    // 信賴區間帶（紫色填色）
     let ci = `M${X(0)},${Y(d.bootstrap_ci90_lo[0])} `;
     lags.forEach((l,i) => ci += `L${X(i)},${Y(d.bootstrap_ci90_lo[i])} `);
     for(let i=lags.length-1;i>=0;i--) ci += `L${X(i)},${Y(d.bootstrap_ci90_hi[i])} `;
     ci += 'Z';
     s += `<path d="${ci}" fill="${cvarRef('--series-ulf-diff')}" opacity="0.16" stroke="none"/>`;
 
-    // day 0 / day -4 markers
+    // 第 0 天／第 -4 天標記
     const idx0 = lags.indexOf(0);
     const idxM4 = lags.indexOf(-4);
     s += `<line x1="${X(idx0)}" x2="${X(idx0)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-critical')}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
@@ -11891,7 +11891,7 @@ if (!DATA) {
       s += `<text x="${X(idxM4)+4}" y="${MT+24}" font-size="10" fill="${cvarRef('--status-warning')}" font-weight="600">day -4</text>`;
     }
 
-    // mean stack line
+    // 平均疊加線
     let path = ''; let drawing=false;
     d.stack_mean.forEach((v,i) => {
       if(v==null){ drawing=false; return; }
@@ -11933,7 +11933,7 @@ if (!DATA) {
 
     document.getElementById('sea-n-events').textContent = d.n_events_used;
 
-    // narrative: find lags where real stack falls outside null band
+    // 敘述：找出真實疊加落在虛無帶之外的延遲
     const outside = [];
     lags.forEach((l,i) => {
       const v = d.stack_mean[i];
@@ -11950,7 +11950,7 @@ if (!DATA) {
       ${(d.null_groups_without_eligible_days||[]).length ? `<p><b>比較用的組別：</b>虛無基準的假發震日必須離所有真實地震至少 ${d.null_exclusion_buffer_days} 天；${d.null_groups_without_eligible_days.join('、')} 事件太密集，找不到這樣的日子，所以疊加曲線和虛無基準都不含這些組（本級全部 ${d.n_events_all} 起事件中，用於比較的是 ${d.n_events_used} 起）。</p>` : ''}
     `;
   }
-  // ---------- SEA events table ----------
+  // ---------- SEA 事件表 ----------
   function sourceLabel(source){
     if(source === 'events.py') return 'events.py（原 13 組主震/前震/餘震）';
     if(source === 'CWA_GDMS') return 'CWA GDMS 目錄擴充';
@@ -11977,7 +11977,7 @@ if (!DATA) {
     });
   });
 
-  // ---------- backtest tables ----------
+  // ---------- 回測表 ----------
   function buildBacktestTable(elId, label){
     const bt = DATA.backtest[label];
     if(!bt) return;

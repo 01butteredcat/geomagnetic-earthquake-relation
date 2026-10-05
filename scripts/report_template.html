@@ -250,9 +250,9 @@ const DATA = /*__REPORT_DATA__*/null;
   const root = document.querySelector('.gm-root');
   const cs = getComputedStyle(root);
   const cvar = (name) => cs.getPropertyValue(name).trim();
-  // SVG fill/stroke attributes accept CSS var() directly and stay in sync
-  // with the page's live/dark theme automatically; canvas cannot (colors
-  // must be resolved to concrete values at draw time via cvar() instead).
+  // SVG 的 fill/stroke 屬性可以直接吃 CSS var()，會自動跟著
+  // 頁面目前的亮／暗主題同步；canvas 不行（顏色
+  // 必須在繪製時透過 cvar() 解析成具體值）。
   const cvarRef = (name) => 'var(' + name + ')';
 
   function fmtDate(yyyymmdd){
@@ -262,11 +262,11 @@ const DATA = /*__REPORT_DATA__*/null;
     return new Date(Date.UTC(+yyyymmdd.slice(0,4), +yyyymmdd.slice(4,6)-1, +yyyymmdd.slice(6,8)));
   }
   const eqDate = new Date(DATA.meta.eq_time_utc.replace(' ','T')+'Z');
-  // local (UTC+8) calendar day of the mainshock, YYYYMMDD -- the daily files are keyed by UTC date,
-  // but G10's 2024-04-02 23:58 UTC origin is 04/03 local, which is how the narrative refers to it
+  // 主震的當地（UTC+8）日曆日，YYYYMMDD——日檔是以 UTC 日期為鍵，
+  // 但 G10 的 2024-04-02 23:58 UTC 發震時間在當地是 04/03，敘述中也是這樣稱呼它
   const eqDayLocal = DATA.meta.eq_time_local.slice(0,10).replace(/-/g,'');
 
-  // ---------- Event stats ----------
+  // ---------- 事件統計 ----------
   const statsEl = document.getElementById('event-stats');
   const stats = [
     ['規模', 'M' + DATA.meta.eq_magnitude],
@@ -278,21 +278,21 @@ const DATA = /*__REPORT_DATA__*/null;
   ];
   statsEl.innerHTML = stats.map(([l,v]) => `<div class="gm-stat-tile"><div class="gm-stat-label">${l}</div><div class="gm-stat-value" style="font-size:16px;">${v}</div></div>`).join('');
 
-  // ---------- Station table ----------
+  // ---------- 測站表 ----------
   const stTable = document.getElementById('station-table');
   const roleTag = (r) => r==='near' ? '<span class="gm-tag gm-tag-near">近站組</span>' : r==='far' ? '<span class="gm-tag gm-tag-far">遠站組</span>' : '<span class="gm-tag gm-tag-other">其他</span>';
   stTable.innerHTML = '<thead><tr><th>代碼</th><th>站名</th><th>距震央</th><th>緯度</th><th>經度</th><th>分組</th></tr></thead><tbody>' +
     DATA.stations.map(s => `<tr><td>${s.code}${s.code==='ttn'?' *':''}</td><td>${s.name}</td><td>${s.distance_km.toFixed(1)} km</td><td>${s.lat.toFixed(3)}</td><td>${s.lon.toFixed(3)}</td><td>${roleTag(s.role)}</td></tr>`).join('') +
     '</tbody>';
 
-  // ---------- Outage table ----------
+  // ---------- 中斷表 ----------
   const outTable = document.getElementById('outage-table');
   outTable.innerHTML = '<thead><tr><th>測站</th><th>起</th><th>迄</th><th>說明</th></tr></thead><tbody>' +
     DATA.known_outage_windows.map(w => `<tr><td>${w.station}</td><td>${w.start}</td><td>${w.end}</td><td>${w.note}</td></tr>`).join('') +
     '</tbody>';
 
-  // ---------- Quality narrative ----------
-  // contiguous runs of YYYYMMDD dates -> [[start, end], ...]
+  // ---------- 資料品質敘述 ----------
+  // 連續的 YYYYMMDD 日期區段 -> [[start, end], ...]
   function dateRuns(ds){
     const out = [];
     [...ds].sort().forEach(d => {
@@ -320,7 +320,7 @@ const DATA = /*__REPORT_DATA__*/null;
   document.getElementById('limit-twu').innerHTML = `twu 從${twuFirst === eqDayLocal ? '地震當天' : (twuFirst ? ' ' + fmtDate(twuFirst) + ' ' : '')}開始出現儀器脈衝雜訊，${twuOutText}。這比較可能是地震搖晃或餘震對儀器或傳輸造成的損壞。twu 距震央 ${stationKm('twu')}，不在近站組，沒有用在前兆篩檢，但可以當作地震影響監測設施的紀錄。`;
   document.getElementById('limit-ttn').innerHTML = `ttn 從 3/26（震前約 8 天）起雜訊明顯增加，時間和 ${stormText} 的磁暴期部分重疊，加上 ttn 只有純量資料，無法判斷是磁暴造成還是獨立的異常。`;
 
-  // ---------- Dynamic headers / coverage ----------
+  // ---------- 動態標題／涵蓋範圍 ----------
   const nDays = Math.max(...DATA.coverage.map(c => c.n_days));
   const nPreDays = Math.round((parseDate(eqDayLocal) - parseDate(DATA.meta.data_start.replace(/-/g,''))) / 86400000);
   document.getElementById('subtitle').textContent =
@@ -335,7 +335,7 @@ const DATA = /*__REPORT_DATA__*/null;
   document.getElementById('limit-baseline').textContent =
     `資料共 ${nDays} 天，主震前約 ${nPreDays} 天，不足以建立季節或太陽週期尺度的背景分布；MAD z-score 的「正常範圍」也只由這段期間決定。`;
 
-  // ---------- Timezone narrative + mini charts ----------
+  // ---------- 時區敘述 + 小圖 ----------
   const tz = DATA.timezone_check;
   document.getElementById('tz-narrative').innerHTML =
     `IAGA-2002 標頭沒有時區欄位。用 xcg 站 ${tz.quiet_days_used.length} 個乾淨日，交叉比對 Sq 日變曲線（太陽靜日磁場，理論尖峰應落在地方太陽正午附近）與人為/工業 ULF 雜訊日變（應在本地上班時段較高、深夜較低），
@@ -352,7 +352,7 @@ const DATA = /*__REPORT_DATA__*/null;
     const x = h => ML + (W-ML-MR) * h/23;
     const y = v => MT + (H-MT-MB) * (1 - (v-y0)/(y1-y0));
     let s = `<text x="${ML}" y="16" font-size="12" fill="${cvarRef('--text-primary')}" font-weight="600">${title}</text>`;
-    // gridlines
+    // 格線
     for(let i=0;i<=3;i++){
       const v = y0 + (y1-y0)*i/3;
       s += `<line x1="${ML}" x2="${W-MR}" y1="${y(v)}" y2="${y(v)}" stroke="${cvarRef('--grid')}" stroke-width="1"/>`;
@@ -369,12 +369,12 @@ const DATA = /*__REPORT_DATA__*/null;
   miniLineChart('chart-sq', tz.sq_curve_H_deviation_by_raw_hour, cvarRef('--series-near'), 'H 偏差 (nT)', 'Sq 日變曲線（H 偏離當日均值）');
   miniLineChart('chart-noise', tz.noise_power_by_raw_hour, cvarRef('--series-local'), '雜訊功率', '人為/工業 ULF 雜訊功率（一階差分平方）');
 
-  // ---------- Storm narrative ----------
+  // ---------- 磁暴敘述 ----------
   const ss = DATA.storm_summary;
   document.getElementById('storm-narrative').innerHTML =
     `資料來源：${ss.sources.join('；')}。信心：${ss.confidence}。共標記 ${ss.n_storm_onset_days} 個磁暴發生日、含恢復期共 ${ss.n_storm_or_recovery_days} 天已從基線計算中排除。`;
 
-  // ---------- Generic line chart with shading, markers, tooltip ----------
+  // ---------- 通用折線圖，含陰影、標記、提示框 ----------
   function buildLineChart(svgEl, tooltipEl, opts){
     const {dates, series, storms, outages, eqDateStr, candidateDates, yFmt, highlightRange, highlightLabel} = opts;
     const W=900,H=320, ML=54, MR=16, MT=16, MB=34;
@@ -388,8 +388,8 @@ const DATA = /*__REPORT_DATA__*/null;
     const Y = v => MT + (H-MT-MB) * (1 - (v-yMin)/(yMax-yMin));
 
     let s = '';
-    // highlighted date-range band (e.g. the trailing baseline window actually
-    // used for one candidate day) -- drawn first so it sits behind everything
+    // 醒目的日期範圍帶（例如某個候選日實際使用的
+    // 滑動基準窗口）——最先畫，讓它在所有東西後面
     if(highlightRange){
       const hw = (W-ML-MR)*(1/dates.length);
       const xStart = X(parseDate(highlightRange[0]).getTime()) - hw/2;
@@ -399,38 +399,38 @@ const DATA = /*__REPORT_DATA__*/null;
         s += `<text x="${xStart+4}" y="${MT+11}" font-size="10" fill="${cvarRef('--status-good')}" font-weight="600">${highlightLabel}</text>`;
       }
     }
-    // storm shading
+    // 磁暴陰影
     (storms||[]).forEach(d => {
       const t = parseDate(d).getTime();
       const w = (W-ML-MR)*(1/dates.length);
       s += `<rect x="${X(t)-w/2}" y="${MT}" width="${w}" height="${H-MT-MB}" fill="${cvarRef('--status-warning')}" opacity="0.12"/>`;
     });
-    // outage shading
+    // 中斷陰影
     (outages||[]).forEach(d => {
       const t = parseDate(d).getTime();
       const w = (W-ML-MR)*(1/dates.length);
       s += `<rect x="${X(t)-w/2}" y="${MT}" width="${w}" height="${H-MT-MB}" fill="${cvarRef('--text-muted')}" opacity="0.18"/>`;
     });
-    // gridlines + y ticks
+    // 格線 + y 軸刻度
     for(let i=0;i<=4;i++){
       const v = yMin + (yMax-yMin)*i/4;
       s += `<line x1="${ML}" x2="${W-MR}" y1="${Y(v)}" y2="${Y(v)}" stroke="${cvarRef('--grid')}" stroke-width="1"/>`;
       s += `<text x="${ML-8}" y="${Y(v)+4}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="end">${v.toFixed(2)}</text>`;
     }
-    // x ticks: every ~14 days
+    // x 軸刻度：約每 14 天
     for(let i=0;i<dates.length;i+=14){
       s += `<text x="${X(xs[i].getTime())}" y="${H-MB+16}" font-size="10" fill="${cvarRef('--text-muted')}" text-anchor="middle">${fmtDate(dates[i])}</text>`;
     }
     s += `<line x1="${ML}" x2="${W-MR}" y1="${H-MB}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1"/>`;
 
-    // earthquake marker
+    // 地震標記
     if(eqDateStr){
       const t = new Date(eqDateStr.replace(' ','T')+'Z').getTime();
       s += `<line x1="${X(t)}" x2="${X(t)}" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--status-critical')}" stroke-width="1.5" stroke-dasharray="4,3"/>`;
       s += `<text x="${X(t)+4}" y="${MT+11}" font-size="10" fill="${cvarRef('--status-critical')}" font-weight="600">4/3 地震</text>`;
     }
 
-    // series lines
+    // 序列折線
     series.forEach(ser => {
       let d = '';
       let drawing = false;
@@ -444,7 +444,7 @@ const DATA = /*__REPORT_DATA__*/null;
       s += `<path d="${d}" fill="none" stroke="${ser.color}" stroke-width="${ser.width||2}" opacity="${ser.opacity!=null?ser.opacity:1}" stroke-linejoin="round" stroke-linecap="round"/>`;
     });
 
-    // candidate markers
+    // 候選日標記
     (candidateDates||[]).forEach(cd => {
       const i = dates.indexOf(cd);
       if(i<0) return;
@@ -456,7 +456,7 @@ const DATA = /*__REPORT_DATA__*/null;
       s += `<text x="${cx}" y="${cy-10}" font-size="10" fill="${cvarRef('--status-critical')}" text-anchor="middle" font-weight="600">${fmtDate(cd)}</text>`;
     });
 
-    // hover crosshair layer
+    // 滑鼠十字線圖層
     s += `<line id="${svgEl.id}-cross" x1="0" x2="0" y1="${MT}" y2="${H-MB}" stroke="${cvarRef('--axis')}" stroke-width="1" opacity="0"/>`;
     svgEl.innerHTML = s;
 
@@ -487,7 +487,7 @@ const DATA = /*__REPORT_DATA__*/null;
     svgEl.addEventListener('mouseleave', () => { cross.setAttribute('opacity','0'); tooltipEl.style.opacity=0; });
   }
 
-  // ---------- Screening chart ----------
+  // ---------- 篩檢圖 ----------
   const li = DATA.local_anomaly_index;
   const dates1 = li.map(r=>r.date);
   buildLineChart(document.getElementById('chart-screening'), document.getElementById('tooltip-screening'), {
@@ -498,7 +498,7 @@ const DATA = /*__REPORT_DATA__*/null;
       {name:'在地異常指數 (local_anomaly_index_H)', data: li.map(r=>r.local_anomaly_index_H), color: cvarRef('--series-local'), width:2.5},
     ],
     storms: DATA.storm_dates,
-    outages: [], // outage days already show as NaN gaps
+    outages: [], // 中斷日已經顯示為 NaN 缺口
     eqDateStr: DATA.meta.eq_time_utc,
     candidateDates: DATA.candidate_windows.candidate_dates_H,
   });
@@ -520,11 +520,11 @@ const DATA = /*__REPORT_DATA__*/null;
     ${h330 ? `<p>震前最接近地震的 H 候選日是 3/30（震前 4 天），殘差約為殘差 MAD 的 ${h330.ratio.toFixed(1)} 倍（門檻 2.5 倍）。地震當天（4/3）和前後幾天的數值並不特別極端。</p>` : ''}
   `;
 
-  // ---------- ULF chart ----------
+  // ---------- ULF 圖 ----------
   const un = DATA.ulf_near_far_index;
   const dates2 = un.map(r=>r.date);
-  // whole-series median/MAD z of pc3_diff_zh, same formula as stat_utils.mad_zscore
-  // (used by backtest_rule.py), so the ranking below matches the pipeline
+  // pc3_diff_zh 的整條序列中位數／MAD z，和 stat_utils.mad_zscore 公式相同
+  // （backtest_rule.py 使用），所以下面的排名和流程一致
   const pc3Vals = un.map(r=>r.pc3_diff_zh).filter(v => v!=null && isFinite(v));
   const median = a => { const b=[...a].sort((x,y)=>x-y), n=b.length; return n%2 ? b[(n-1)/2] : (b[n/2-1]+b[n/2])/2; };
   const pc3Med = median(pc3Vals);
@@ -561,7 +561,7 @@ const DATA = /*__REPORT_DATA__*/null;
     地磁序列有自相關和厚尾，單看 z 值大小容易高估它有多罕見；這裡也沒有做多重比較校正。</p>
   `;
 
-  // ---------- Spectrogram heatmaps ----------
+  // ---------- 頻譜熱圖 ----------
   function drawSpectrogram(canvasId, spec, eqDateStr){
     const canvas = document.getElementById(canvasId);
     const ctx = canvas.getContext('2d');
@@ -609,7 +609,7 @@ const DATA = /*__REPORT_DATA__*/null;
       const yy = i===0 ? H-MB : i===1 ? MT+(H-MT-MB)/2 : MT+8;
       ctx.fillText((f*1000).toFixed(1)+'mHz', ML-4, yy);
     });
-    // earthquake marker
+    // 地震標記
     if(eqDateStr){
       const eqMs = new Date(eqDateStr.replace(' ','T')+'Z').getTime();
       const frac = (eqMs-startMs)/(1000*3600*(spec.time_hours_from_start[nT-1]));
@@ -626,9 +626,9 @@ const DATA = /*__REPORT_DATA__*/null;
     if(DATA.spectrogram_far) drawSpectrogram('spec-far', DATA.spectrogram_far, DATA.meta.eq_time_utc);
   }
   redrawSpectrograms();
-  // captions pull the actual station code/distance from the data itself
-  // (rather than being hardcoded) so they stay correct if the near/far
-  // station selection ever differs from the original xcg/mtu pairing.
+  // 圖說直接從資料取出實際的測站代碼／距離
+  // （而不是寫死），所以即使近站／遠站
+  // 選擇和最初的 xcg/mtu 配對不同，仍然正確。
   function stationDistanceKm(code){
     const s = DATA.stations.find(s => s.code === code);
     return s ? s.distance_km.toFixed(1) + ' km' : '';
@@ -637,16 +637,16 @@ const DATA = /*__REPORT_DATA__*/null;
     `近站 ${DATA.spectrogram_near.station}（${stationDistanceKm(DATA.spectrogram_near.station)}）`;
   if(DATA.spectrogram_far) document.getElementById('spec-far-caption').textContent =
     `遠站 ${DATA.spectrogram_far.station}（${stationDistanceKm(DATA.spectrogram_far.station)}，背景參考）`;
-  // canvas colors are baked at draw time, so re-draw whenever the page's
-  // theme changes (host viewer's toggle sets data-theme; OS-level changes
-  // fire prefers-color-scheme) -- SVG charts elsewhere use var() directly
-  // and re-theme via CSS with no JS involvement.
+  // canvas 的顏色在繪製時就固定了，所以頁面
+  // 主題改變時要重畫（宿主檢視器的切換會設定 data-theme；作業系統層級的變更
+  // 會觸發 prefers-color-scheme）——其他地方的 SVG 圖直接用 var()，
+  // 透過 CSS 換主題，不需要 JS 參與。
   new MutationObserver(redrawSpectrograms).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
   if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redrawSpectrograms);
   }
 
-  // ---------- Convergence ----------
+  // ---------- 收斂 ----------
   document.getElementById('convergence-card').innerHTML = `
     <p class="gm-limits">夜間基線的近遠站殘差（H 分量）和 ULF 極化（Pc3 Z/H）是兩條獨立的處理路徑。
     ${h330 ? '3/30（震前 4 天）是 H 的候選異常日' : 'H 分量在 3/30 沒有被標記'}；在 Pc3 上，${pc3Rank330 >= 0 ? `3/30 排第 ${pc3Rank330+1} 低，` : ''}最低點則是${relLabel(lo1.date)}的 ${fmtDate(lo1.date)}。
@@ -655,7 +655,7 @@ const DATA = /*__REPORT_DATA__*/null;
     後來在 24 組地震序列上做的跨組檢定裡，G10 是 Pc3 線索的發現個案：頻帶、下凹方向和 30 天窗口都是從這裡來的。跨組主要檢定（12 組）合併 p = 0.049，拿掉 G10 後是 0.055。</p>
   `;
 
-  // ---------- Verification table ----------
+  // ---------- 驗證表 ----------
   const v = DATA.verification;
   const vTable = document.getElementById('verify-table');
   const rows = Object.entries(v.checks).map(([name, c]) => {
@@ -665,12 +665,12 @@ const DATA = /*__REPORT_DATA__*/null;
   vTable.innerHTML = `<thead><tr><th>檢查項目</th><th>結果</th><th>備註</th></tr></thead><tbody>${rows}</tbody>` +
     `<caption style="text-align:left;caption-side:bottom;padding-top:8px;font-size:12px;color:var(--text-muted);">${v.summary.pass} 項通過 / ${v.summary.fail} 項失敗 / ${v.summary.inconclusive} 項無法判定</caption>`;
 
-  // ---------- Baseline window chart ----------
-  // Reuses the same local_anomaly_index series as the screening chart, zoomed
-  // to the storm period, with the actual trailing baseline window that
-  // verify_pipeline.py independently reconstructed for the 3/30 candidate
-  // day drawn as a highlight band -- this is the direct visual answer to
-  // "did the baseline overlap the storm".
+  // ---------- 基準窗口圖 ----------
+  // 重用和篩檢圖相同的 local_anomaly_index 序列，放大
+  // 到磁暴期間，並把 verify_pipeline.py 為 3/30 候選日
+  // 獨立重建的實際滑動基準窗口
+  // 畫成醒目帶——這是對「基準期有沒有和磁暴重疊」
+  // 最直接的視覺回答。
   const baselineCheck = v.checks.baseline_window_excludes_storms;
   const focusStart = '20240301', focusEnd = '20240410';
   const liFocus = li.filter(r => r.date >= focusStart && r.date <= focusEnd);

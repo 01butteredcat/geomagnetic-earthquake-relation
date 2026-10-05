@@ -7,7 +7,7 @@ analysis.py` 和 `backtest_rule.py` 都使用
 「統計外觀」（自相關／頻譜形狀）、但
 和地震時間沒有任何真實關係的虛無分布。
 
-FIXED_RULE_THRESHOLD = -4.1 是 `report_template.html` 對
+常數 FIXED_RULE_THRESHOLD（-4.1）是 `report_template.html` 對
 G10 2024-03-30 Pc3 近站／遠站極化低谷引用的數字（「z ~= -4.1 MAD 單位，
 在 113 天可計算窗口中最極端的一天」）。在這個模組之前，它從來不是
 程式碼中任何地方的程式化門檻——完整的來源脈絡見
