@@ -1,4 +1,4 @@
-# Python virtual environment -- regenerate with:
+# Python 虛擬環境——用以下指令重建：
 #   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/
 
@@ -7,18 +7,18 @@ __pycache__/
 .DS_Store
 *Zone.Identifier*
 
-# Analysis intermediates/outputs (~850MB) -- all regenerable from scripts/
-# against the raw data below, with the project's fixed seed (20260805).
-# Not worth version-controlling; see NOTES.md.
+# 分析中間檔／輸出（約 850MB）——全部可以用 scripts/
+# 對下面的原始資料、以專案固定的亂數種子（20260805）重新產生。
+# 不值得版本控制；見 NOTES.md。
 data/
 
-# --- Raw geomagnetic day-data, per group ------------------------------------
-# ~18GB total across G1..G23 -- far beyond what belongs in a git repo (and
-# beyond Git LFS's free quota). Excluded here; each group's own NOTES.md
-# (small, valuable per-group documentation) is explicitly kept via the `!`
-# negation lines. Must be `Gx/*` (not `Gx/`) below -- gitignore cannot apply
-# a negation to a file inside a directory that was itself fully ignored.
-# See README.md's "資料需求" section for how to fetch this data.
+# --- 原始地磁日資料，逐組 ------------------------------------
+# G1..G23 合計約 18GB——遠超過 git repo 該放的量（也
+# 超過 Git LFS 的免費額度）。這裡排除；每組自己的 NOTES.md
+# （很小、有價值的逐組文件）用 `!` 否定規則
+# 明確保留。下面必須寫 `Gx/*`（不是 `Gx/`）——如果整個目錄都被忽略，
+# gitignore 就無法對目錄裡的檔案套用否定規則。
+# 怎麼取得這些資料，見 README.md 的「資料要自己準備」一節。
 G1/*
 !G1/NOTES.md
 G2_G3/*
@@ -60,13 +60,13 @@ G22/*
 G23/*
 !G23/NOTES.md
 
-# --- Seismometer/accelerometer waveform + instrument-response data ---------
-# ~384MB, all binary (mseed waveforms + SAC PoleZero files), no documentation
-# files to preserve -- moved in from the parent directory 2026-09-14, same
-# too-big-for-git reasoning as Gx above.
+# --- 地震儀／加速度儀波形 + 儀器響應資料 ---------
+# 約 384MB，全是二進位檔（mseed 波形 + SAC PoleZero 檔），沒有要保留的
+# 文件檔——2026-09-14 從上層目錄搬進來，和上面的 Gx 一樣
+# 是因為對 git 來說太大。
 seismometer/
 
-# AI-assistant files stay local (notes live in NOTES.md; a local CLAUDE.md just imports it)
+# AI 助理相關檔案只留在本機（筆記在 NOTES.md；本機的 CLAUDE.md 只是匯入它）
 CLAUDE.md
 **/CLAUDE.md
 .claude/

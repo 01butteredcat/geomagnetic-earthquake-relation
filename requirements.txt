@@ -1,14 +1,14 @@
-# geomag_precursor pipeline dependencies.
+# geomag_precursor 流程的相依套件。
 #
-# This project had no dependency manifest before 2026-08-13 -- packages were
-# installed ad hoc into geomag_precursor/.venv over the course of development
-# with no record of what/why. This file was added when coseismic_stacking_
-# analysis.py / seismometer_comparison.py introduced obspy as the project's
-# first external (non-scientific-stdlib) dependency, and captures the other
-# three (numpy/pandas/scipy) that every other script already silently
-# assumed, pinned to what data/interim/ was actually generated with.
+# 2026-08-13 之前這個專案沒有相依套件清單——開發過程中套件都是
+# 臨時裝進 geomag_precursor/.venv，
+# 沒有紀錄裝了什麼、為什麼裝。這個檔案是在 coseismic_stacking_
+# analysis.py / seismometer_comparison.py 引入 obspy、成為專案
+# 第一個外部（非科學計算基本套件）相依時加入的，同時記下其他每支腳本
+# 早就默默假設的另外三個（numpy/pandas/scipy），
+# 版本釘在實際產生 data/interim/ 時用的版本。
 #
-# Setup:
+# 設定：
 #   cd geomag_precursor && python3 -m venv .venv
 #   .venv/bin/pip install -r requirements.txt
 
@@ -17,9 +17,9 @@ pandas==3.0.3
 scipy==1.18.0
 obspy==1.5.0
 
-# docs/flowchart/ (pipeline flowchart build/check tooling only; not needed by scripts/)
+# docs/flowchart/（只給流程圖建置／檢查工具用；scripts/ 不需要）
 PyYAML>=6.0
 
-# tests/ (regression and property tests: .venv/bin/python3 -m pytest tests)
+# tests/（回歸測試和性質測試：.venv/bin/python3 -m pytest tests）
 pytest>=9.1
 hypothesis>=6.168.3

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Runs scripts/run_pipeline.sh (through verify_pipeline.py, no report build)
-# for all 24 groups. A single group failing (e.g. a real verification
-# check failure) does NOT abort the batch -- it's recorded and the script
-# moves on, since the whole point is to see the full 20-group picture
-# including groups with structurally degraded station coverage (G1 has no
-# vector stations at all, G2_G3/G4 have thin vector pools; G14-G18 predate
-# the modern vector-station network and may be F-pool-only -- see events.py/
-# common.py). "Skipped" methods (e.g. G1's H/Z screening) are not failures;
-# real verify_pipeline.py check failures are.
+# 對全部 24 組執行 scripts/run_pipeline.sh（到 verify_pipeline.py 為止，不建置報告）。
+# 單一組失敗（例如真正的驗證
+# 檢查失敗）**不會**中止整批——會記錄下來，腳本
+# 繼續往下跑，因為重點就是看到完整的 20 組全貌，
+# 包括測站涵蓋在結構上較差的組別（G1 完全沒有
+# 向量站，G2_G3/G4 的向量測站池很薄；G14-G18 早於
+# 現代向量測站網，可能只有 F 測站池——見 events.py／
+# common.py）。「跳過」的方法（例如 G1 的 H/Z 篩檢）不算失敗；
+# verify_pipeline.py 真正的檢查失敗才算。
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,7 +38,7 @@ for g in $ALL_GROUP_IDS; do
     overall_status=1
   fi
 
-  # Pull a compact per-group summary out of whatever got written, even on failure
+  # 從已寫出的任何東西中取出精簡的逐組摘要，即使失敗也照做
   entry=$("$PYTHON" - "$g" "$run_status" <<PYEOF
 import json, sys
 from pathlib import Path
@@ -83,7 +83,7 @@ rm -f "$SUMMARY_JSON.tmp"
 
 echo
 echo "############################################"
-echo "# SUMMARY (all_groups_run_summary.json)"
+echo "# 摘要（all_groups_run_summary.json）"
 echo "############################################"
 "$PYTHON" -c "
 import json

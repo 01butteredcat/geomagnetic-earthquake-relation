@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Orchestrates the geomag_precursor pipeline for one group end to end and,
-# critically, refuses to (re)build a report if verify_pipeline.py finds any
-# failing check -- nothing used to gate prepare_report_data.py/
-# build_artifact.py on verification passing, so a stale or failing
-# verification_report.json could silently sit underneath a freshly-built
-# report.
+# 從頭到尾統籌單一組的 geomag_precursor 流程，而且
+# 關鍵在於：只要 verify_pipeline.py 有任何檢查失敗，就拒絕（重新）建置報告
+# ——以前沒有任何東西讓 prepare_report_data.py/
+# build_artifact.py 以驗證通過為前提，所以過時或失敗的
+# verification_report.json 可能默默躺在剛建好的
+# 報告底下。
 #
-# Usage: run_pipeline.sh --group G10 [--full-report]
+# 用法：run_pipeline.sh --group G10 [--full-report]
 #
-# By default this runs steps 1-6 (through verify_pipeline.py) -- that's all
-# run_all_groups.sh needs for the 20-group-folder/23-event-sequence batch/
-# cross-group analysis.
-# --full-report additionally runs prepare_report_data.py + build_artifact.py
-# to (re)build the polished single-event HTML report; that report's
-# hand-written narrative text is specific to G10/2024, so --full-report is
-# only meaningful for --group G10.
+# 預設跑步驟 1-6（到 verify_pipeline.py 為止）——這就是
+# run_all_groups.sh 做 20 個資料夾／23 個事件序列批次
+# 跨組分析所需要的全部。
+# --full-report 另外跑 prepare_report_data.py + build_artifact.py，
+# （重新）建置精修的單一事件 HTML 報告；那份報告
+# 手寫的敘述文字是專門針對 G10/2024 的，所以 --full-report
+# 只對 --group G10 有意義。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,11 +31,11 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --group) GROUP="$2"; shift 2 ;;
     --full-report) FULL_REPORT=1; shift ;;
-    *) echo "unknown argument: $1" >&2; exit 1 ;;
+    *) echo "未知的參數：$1" >&2; exit 1 ;;
   esac
 done
 if [ -z "$GROUP" ]; then
-  echo "usage: run_pipeline.sh --group <G1|G2|...|G24> [--full-report]" >&2
+  echo "用法：run_pipeline.sh --group <G1|G2|...|G24> [--full-report]" >&2
   exit 1
 fi
 
@@ -49,12 +49,12 @@ echo "== [$GROUP] 2/$STEPS timezone_check.py =="
 "$PYTHON" timezone_check.py --group "$GROUP"
 
 echo "== [$GROUP] 3/$STEPS fetch_space_weather.py =="
-# Only a complete Kp+Dst result ("confidence": "high...") is reused; a partial or
-# failed earlier fetch (transient Kyoto/GFZ error) is retried instead of being
-# cached forever -- that is how G1/G2/G3/G11 stayed without Dst for weeks. The cache
-# must also cover the folder's current date range (G6/G7/G8/G17 missed their last weeks).
+# 只有完整的 Kp+Dst 結果（"confidence": "high..."）才會重用；先前抓到一半或
+# 失敗的（Kyoto/GFZ 暫時性錯誤）會重抓，而不是被
+# 永遠快取——G1/G2/G3/G11 就是這樣好幾週都沒有 Dst。快取
+# 也必須涵蓋資料夾目前的日期範圍（G6/G7/G8/G17 漏了最後幾週）。
 if "$PYTHON" fetch_space_weather.py --group "$GROUP" --check-cache; then
-  echo "  storm_days.csv already cached with high confidence and full coverage, skipping fetch (delete it to force a re-fetch)"
+  echo "  storm_days.csv 已有高信心且完整涵蓋的快取，跳過抓取（刪掉它可以強制重抓）"
 else
   "$PYTHON" fetch_space_weather.py --group "$GROUP"
 fi
@@ -68,8 +68,8 @@ echo "== [$GROUP] 5/$STEPS ulf_analysis.py =="
 echo "== [$GROUP] 6/$STEPS verify_pipeline.py =="
 if ! "$PYTHON" verify_pipeline.py --group "$GROUP"; then
   echo
-  echo "[$GROUP] verify_pipeline.py FAILED -- stopping before regenerating any report." >&2
-  echo "Fix the failing check(s) above, then re-run this script." >&2
+  echo "[$GROUP] verify_pipeline.py 失敗——在重新產生任何報告之前停止。" >&2
+  echo "修好上面失敗的檢查後，再重跑這支腳本。" >&2
   exit 1
 fi
 
@@ -82,4 +82,4 @@ if [ "$FULL_REPORT" = 1 ]; then
 fi
 
 echo
-echo "[$GROUP] pipeline complete: all verification checks passed$( [ "$FULL_REPORT" = 1 ] && echo ' and the report was rebuilt' )."
+echo "[$GROUP] 流程完成：所有驗證檢查都通過$( [ "$FULL_REPORT" = 1 ] && echo '，報告也已重建' )。"
