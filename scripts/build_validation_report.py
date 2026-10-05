@@ -18,7 +18,7 @@ def main():
     data_json = (PROJECT_DIR / "data" / "interim" / "validation_report_data.json").read_text()
 
     token = "/*__REPORT_DATA__*/null"
-    assert token in template, "placeholder token missing from template"
+    assert token in template, "模板中缺少佔位符"
     html = template.replace(token, "/*__REPORT_DATA__*/" + data_json)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

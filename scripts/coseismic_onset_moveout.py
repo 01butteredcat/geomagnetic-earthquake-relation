@@ -308,7 +308,7 @@ def process_group(group_id: str, min_mag: float | None = None) -> tuple[list[dic
         nulls[(group_id, event.date)] = ev_null
         print(f"[{group_id}] {event.date} M{event.magnitude}: "
               f"{sum(r.get('status') == 'onset' for r in ev_rows)} onsets"
-              f"{' (shared-null fallback)' if fallback else ''}", file=sys.stderr)
+              f"{'（共用虛無分布退回）' if fallback else ''}", file=sys.stderr)
     return rows, nulls
 
 
@@ -619,7 +619,7 @@ def self_test() -> bool:
                                ("S-wave moveout", R / V_S_KMS, "seismic_moveout")]:
         on = _synthetic(list(delays), rng)
         if any(o is None for o in on):
-            print(f"[self-test] {name}: missed onsets {on}  FAIL", file=sys.stderr)
+            print(f"[self-test] {name}：漏掉的起始 {on}  FAIL", file=sys.stderr)
             ok = False
             continue
         s, _, lo, hi = theilslopes(on, R, alpha=CI_ALPHA)
@@ -627,11 +627,11 @@ def self_test() -> bool:
         err = max(abs(o - d) for o, d in zip(on, delays))
         good = verdict == want and err <= 6  # 逐漸增強的爆發：最初幾個樣本可能低於 K_SIGMA
         print(f"[self-test] {name}: slope={s:.3f} s/km CI=[{lo:.3f},{hi:.3f}] -> {verdict}, "
-              f"max onset error {err:.1f}s  {'PASS' if good else 'FAIL'}", file=sys.stderr)
+              f"最大起始誤差 {err:.1f}s  {'PASS' if good else 'FAIL'}", file=sys.stderr)
         ok &= good
     quiet = [detect_onset(np.cumsum(rng.normal(0, 0.02, 3600)), 2000, SEARCH_LAGS[1]) for _ in range(200)]
     fr = np.mean([q["status"] == "onset" for q in quiet])
-    print(f"[self-test] pure-noise false trigger rate {fr:.3f}  {'PASS' if fr < 0.02 else 'FAIL'}", file=sys.stderr)
+    print(f"[self-test] 純雜訊誤觸發率 {fr:.3f}  {'PASS' if fr < 0.02 else 'FAIL'}", file=sys.stderr)
     ok &= fr < 0.02
     fp_event = fp_station = 0
     n_rep = 200
@@ -640,8 +640,8 @@ def self_test() -> bool:
         fp_event += arrival_window_event_level(df, nulls, rng)["p_one_sided"] < 0.05
         fp_station += arrival_window_test(df[df.status == "onset"], rng)["p_one_sided"] < 0.05
     good = fp_event / n_rep <= 0.08 and fp_station > fp_event
-    print(f"[self-test] correlated H0 (network-wide disturbances), false positives at 5 %: "
-          f"event-level {fp_event / n_rep:.3f}, per-station {fp_station / n_rep:.3f}  "
+    print(f"[self-test] 相關的 H0（全網擾動），5% 水準下的偽陽性："
+          f"事件層級 {fp_event / n_rep:.3f}，逐測站 {fp_station / n_rep:.3f}  "
           f"{'PASS' if good else 'FAIL'}", file=sys.stderr)
     ok &= good
     t0 = pd.Timestamp("2024-04-03 00:00:00")
@@ -649,7 +649,7 @@ def self_test() -> bool:
                                                                         PRIOR_EVENT_EXCLUSION_SEC + 1, 0)]
     flags = [g is not None and g <= PRIOR_EVENT_EXCLUSION_SEC for g in gaps]
     good = flags == [True, False, False]
-    print(f"[self-test] prior-event flag at 900/901/0 s: {flags}  {'PASS' if good else 'FAIL'}", file=sys.stderr)
+    print(f"[self-test] 900/901/0 秒時的前一事件旗標：{flags}  {'PASS' if good else 'FAIL'}", file=sys.stderr)
     ok &= good
     return bool(ok)
 
@@ -657,13 +657,13 @@ def self_test() -> bool:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--self-test", action="store_true")
-    ap.add_argument("--all", action="store_true", help="run on real data (default action)")
-    ap.add_argument("--group", action="append", help="restrict to this group (repeatable)")
+    ap.add_argument("--all", action="store_true", help="在真實資料上執行（預設動作）")
+    ap.add_argument("--group", action="append", help="限定在這一組（可重複）")
     ap.add_argument("--min-mag", type=float, default=None)
     args = ap.parse_args()
     if args.self_test:
         sys.exit(0 if self_test() else 1)
     if not self_test():
-        print("[main] self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
     run_all(args.group, args.min_mag)

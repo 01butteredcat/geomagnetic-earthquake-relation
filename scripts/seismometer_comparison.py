@@ -876,7 +876,7 @@ def self_test() -> bool:
     catalog = _load_pz_catalog(pz_dir)
     key = ("ALS", "HLZ")
     status1 = "PASS" if catalog.get(key) else "FAIL"
-    print(f"[self-test] PZ catalog parse ALS/HLZ: {len(catalog.get(key, []))} epoch(s)  {status1}")
+    print(f"[self-test] PZ 目錄解析 ALS/HLZ：{len(catalog.get(key, []))} epoch(s)  {status1}")
     ok = ok and status1 == "PASS"
 
     event_utc = pd.Timestamp("2024-04-02 23:58:11")
@@ -892,14 +892,14 @@ def self_test() -> bool:
         finite = bool(np.all(np.isfinite(data)))
         spread = float(np.std(data))
         status3 = "PASS" if finite and spread > 0 else "FAIL"
-        print(f"[self-test] response-removed trace sanity: finite={finite} std={spread:.6g}  {status3}")
+        print(f"[self-test] 去除響應後波形的健全性：finite={finite} std={spread:.6g}  {status3}")
         ok = ok and status3 == "PASS"
 
         sta_lta = detect_window_sta_lta(info["trace"], event_utc)
         env = detect_window_envelope_threshold(info["trace"], event_utc)
         status4 = ("PASS" if sta_lta["status"] in ("ok", "no_trigger", "no_pre_event_baseline")
                    and env["status"] in ("ok", "no_signal_above_threshold", "flat_trace") else "FAIL")
-        print(f"[self-test] detectors ran without error: sta_lta={sta_lta['status']} "
+        print(f"[self-test] 偵測器執行無誤：sta_lta={sta_lta['status']} "
               f"envelope={env['status']}  {status4}")
         ok = ok and status4 == "PASS"
 
@@ -975,7 +975,7 @@ def run_available_events(group_ids: tuple[str, ...] | None = None) -> dict:
     for group_id in targets:
         group_dirs = SEISMIC_DATA_DIRS.get(group_id, {})
         if not group_dirs:
-            print(f"[{group_id}] no seismic data fetched, skipping", file=sys.stderr)
+            print(f"[{group_id}] 沒有下載地震資料，跳過", file=sys.stderr)
             continue
         cfg = common.load_group_config(group_id)
         group = get_group(group_id)
@@ -1035,7 +1035,7 @@ def run_available_events(group_ids: tuple[str, ...] | None = None) -> dict:
 
     pd.DataFrame(gate_verdicts(rows)).to_csv(OUT_DIR / "comparison_summary.csv", index=False)
     (OUT_DIR / "all_comparisons_run_summary.json").write_text(json.dumps(run_summary, indent=2))
-    print(f"[run] {len(rows)} events compared -> {OUT_DIR}", file=sys.stderr)
+    print(f"[run] 已比對 {len(rows)} 起事件 -> {OUT_DIR}", file=sys.stderr)
 
     if "G9" in targets:
         cs = build_case_study("G9", "2022-09-18", "csg")
@@ -1051,19 +1051,19 @@ def run_available_events(group_ids: tuple[str, ...] | None = None) -> dict:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--self-test", action="store_true", help="PZ-parse + response-removal sanity check only")
+    ap.add_argument("--self-test", action="store_true", help="只做 PZ 解析 + 去除響應的健全性檢查")
     ap.add_argument("--group", action="append", dest="groups",
-                     help="restrict to this group ID (repeatable); default is every group with seismic data fetched")
+                     help="限定在這個組別 ID（可重複）；預設是每個已下載地震資料的組")
     ap.add_argument("--geomag-station", dest="geomag_station", default=None,
-                     help="(informational, single-group spot checks) which geomag station to compare against")
-    ap.add_argument("--all", action="store_true", help="explicit alias for the default (no --group filter)")
+                     help="（參考用，單組抽查）要比對哪一個地磁測站")
+    ap.add_argument("--all", action="store_true", help="預設行為的明確別名（不加 --group 篩選）")
     args = ap.parse_args()
 
     if args.self_test:
         sys.exit(0 if self_test() else 1)
 
     if not self_test():
-        print("[main] self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
 
     group_ids = tuple(args.groups) if args.groups else None

@@ -178,7 +178,7 @@ def main():
     ap.add_argument("--all", action="store_true")
     args = ap.parse_args()
     if not args.group and not args.all:
-        ap.error("pass --group <id> or --all")
+        ap.error("請傳入 --group <id> 或 --all")
 
     groups = list(ULF_GROUPS) if args.all else [args.group]
     out_dir = PROJECT_DIR / "data" / "interim" / "surrogate_test"
@@ -190,7 +190,7 @@ def main():
         for band in BANDS:
             result = run_one(group_id, band, rng)
             if result is None:
-                print(f"[{group_id}/{band}] no data, skipped", file=sys.stderr)
+                print(f"[{group_id}/{band}] 沒有資料，略過", file=sys.stderr)
                 continue
             out_path = out_dir / f"{group_id}_{band}.json"
             out_path.write_text(json.dumps(result, indent=2))
@@ -201,13 +201,13 @@ def main():
                 obs = result["observed"]
                 bb = result["block_bootstrap"]
                 pr = result["phase_randomization"]
-                print(f"[{group_id}/{band}] min_z={obs['min_z']} on {obs['min_z_date']} "
+                print(f"[{group_id}/{band}] min_z={obs['min_z']}，日期 {obs['min_z_date']} "
                       f"| block-bootstrap p(<=obs)={bb['p_value_vs_observed_extreme']} "
                       f"p(<=-4.1)={bb['p_value_vs_fixed_threshold']} "
                       f"| phase-rand p(<=obs)={pr['p_value_vs_observed_extreme']} "
                       f"p(<=-4.1)={pr['p_value_vs_fixed_threshold']}", file=sys.stderr)
                 pe = result["pre_event_window"]
-                print(f"[{group_id}/{band}] pre-event window: min_z={pe.get('obs_window_min_z')} "
+                print(f"[{group_id}/{band}] 震前窗口：min_z={pe.get('obs_window_min_z')} "
                       f"p(bb)={pe.get('p_window_block_bootstrap')} p(phase)={pe.get('p_window_phase_randomization')} "
                       f"placebo n={pe['placebo_n']}", file=sys.stderr)
 

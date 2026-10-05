@@ -88,7 +88,7 @@ def _read_text(ref: DayFileRef) -> str:
     with tarfile.open(ref.source_path, "r:gz") as tf:
         extracted = tf.extractfile(ref.member)
         if extracted is None:
-            raise ValueError(f"{ref.label}: tar member is not a regular file")
+            raise ValueError(f"{ref.label}：tar 成員不是一般檔案")
         raw = extracted.read()
     return raw.decode("ascii", errors="strict")
 
@@ -108,7 +108,7 @@ def _find_data_start_from_text(text: str, label: str) -> int:
     for i, line in enumerate(text.splitlines(keepends=True)):
         if _HEADER_LINE_RE.match(line):
             return i + 1
-    raise ValueError(f"Could not find IAGA-2002 column header line in {label}")
+    raise ValueError(f"找不到 IAGA-2002 欄位標題列：{label}")
 
 
 def _parse_header_from_text(text: str, label: str) -> dict:
@@ -121,7 +121,7 @@ def _parse_header_from_text(text: str, label: str) -> dict:
             fields[m.group(1).strip()] = m.group(2).strip()
 
     if "Geodetic Latitude" not in fields or "Geodetic Longitude" not in fields:
-        raise ValueError(f"{label}: could not find lat/lon in IAGA-2002 header")
+        raise ValueError(f"{label}：在 IAGA-2002 檔頭中找不到 lat/lon")
 
     elevation = fields.get("Elevation", "")
     return {
@@ -179,7 +179,7 @@ def _parse_day_file_from_text(text: str, ref: DayFileRef, station_code: str) -> 
 
     if len(df) != 86400:
         raise ValueError(
-            f"{ref.label}: expected 86400 data rows, got {len(df)}"
+            f"{ref.label}：預期 86400 列資料，實際 {len(df)}"
         )
 
     ts = pd.to_datetime(df["DATE"] + " " + df["TIME"], format="%Y-%m-%d %H:%M:%S.%f")
@@ -227,4 +227,4 @@ if __name__ == "__main__":
     out = parse_day_file(p, station)
     print(out.describe())
     print(out.head())
-    print("NaN count:\n", out.isna().sum())
+    print("NaN 個數：\n", out.isna().sum())

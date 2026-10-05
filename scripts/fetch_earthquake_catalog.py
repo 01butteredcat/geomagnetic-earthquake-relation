@@ -110,7 +110,7 @@ def fetch_usgs(start: str, end: str, min_mag: float) -> list[dict]:
         except Exception as exc:  # noqa: BLE001
             if attempt == 2:
                 raise
-            print(f"  retry after error: {exc}", file=sys.stderr)
+            print(f"  發生錯誤後重試：{exc}", file=sys.stderr)
             time.sleep(2)
     events = []
     for feat in data["features"]:
@@ -148,7 +148,7 @@ def fetch_cwa(path: Path, start: str, end: str, min_mag: float) -> list[dict]:
     with path.open() as f:
         header = f.readline()
         assert header.split()[:6] == ["date", "time", "lat", "lon", "depth", "ML"], \
-            f"unexpected GDMS catalog header: {header!r}"
+            f"非預期的 GDMS 目錄標題列：{header!r}"
         for line in f:
             parts = line.split()
             if not parts:
@@ -229,7 +229,7 @@ def reflag_existing(path: Path) -> None:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         w.writerows(rows)
-    print(f"reflagged {path}: {n_changed} rows changed", file=sys.stderr)
+    print(f"已重新標記 {path}：{n_changed} 列有變動", file=sys.stderr)
 
 
 def main():
@@ -238,11 +238,11 @@ def main():
     ap.add_argument("--output", type=Path, default=None)
     ap.add_argument("--groups", nargs="*", default=list(ULF_GROUPS))
     ap.add_argument("--allow-usgs", action="store_true",
-                    help="query USGS for a group whose window falls outside the CWA exports' "
-                         f"range ({CWA_CATALOG_START} ~ {CWA_CATALOG_END}); without it such a "
-                         "group is an error, never a silent fallback")
+                    help="窗口落在 CWA 匯出檔範圍"
+                         f"（{CWA_CATALOG_START} ~ {CWA_CATALOG_END}）以外的組改查 USGS；不加的話，"
+                         "這種組會報錯，絕不默默退回")
     ap.add_argument("--reflag", action="store_true",
-                    help="only recompute is_known_event on the existing output CSV (no fetching)")
+                    help="只在既有的輸出 CSV 上重算 is_known_event（不抓取）")
     args = ap.parse_args()
 
     out_path = args.output or (PROJECT_DIR / "data" / "external" / f"extended_catalog_m{args.min_mag}.csv")
@@ -255,7 +255,7 @@ def main():
     for group_id in args.groups:
         window = group_date_window(group_id)
         if window is None:
-            print(f"[{group_id}] no ulf_near_far_index.csv -- skipping (scalar-only or not run)", file=sys.stderr)
+            print(f"[{group_id}] 沒有 ulf_near_far_index.csv——跳過（只有純量或還沒跑）", file=sys.stderr)
             continue
         start, end = window
         # 實務上 USGS 的 endtime 在日界線差不多是不含端點的；多補 1 天
@@ -264,15 +264,15 @@ def main():
             paths = [p for p, _, _ in CWA_CATALOGS]
             missing = [str(p) for p in paths if not p.exists()]
             if missing:
-                sys.exit(f"missing CWA catalog export(s): {missing}")
-            print(f"[{group_id}] reading CWA GDMS catalogs {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
+                sys.exit(f"缺少 CWA 目錄匯出檔：{missing}")
+            print(f"[{group_id}] 讀取 CWA GDMS 目錄 {start} ~ {end_padded}，M>={args.min_mag}", file=sys.stderr)
             events = fetch_cwa_all(paths, start, end_padded, args.min_mag)
             source = "CWA_GDMS"
         elif not args.allow_usgs:
-            sys.exit(f"[{group_id}] window {start} ~ {end} is outside the CWA exports "
-                     f"({CWA_CATALOG_START} ~ {CWA_CATALOG_END}); add a CWA export or pass --allow-usgs")
+            sys.exit(f"[{group_id}] 窗口 {start} ~ {end} 在 CWA 匯出檔範圍"
+                     f"（{CWA_CATALOG_START} ~ {CWA_CATALOG_END}）之外；請加入 CWA 匯出檔，或傳入 --allow-usgs")
         else:
-            print(f"[{group_id}] querying USGS {start} ~ {end_padded}, M>={args.min_mag}", file=sys.stderr)
+            print(f"[{group_id}] 查詢 USGS {start} ~ {end_padded}，M>={args.min_mag}", file=sys.stderr)
             events = fetch_usgs(start, end_padded, args.min_mag)
             source = "USGS"
         for e in events:
@@ -286,8 +286,8 @@ def main():
             # 一起去叢集），否則它會在每個兄弟組各被算一次。
             n_all = len(events)
             events = [e for e in events if assign_group_for_time(group_id, e["_dt"]) == group_id]
-            print(f"  folder shared with {sibling_group_ids(group_id)}: kept {len(events)}/{n_all} "
-                  f"events nearest {group_id}'s anchor", file=sys.stderr)
+            print(f"  和 {sibling_group_ids(group_id)} 共用資料夾：保留 {len(events)}/{n_all} 起"
+                  f"最靠近 {group_id} 錨點的事件", file=sys.stderr)
         n_kept = sum(1 for e in events if e["declustered"])
         print(f"  {len(events)} raw -> {n_kept} declustered", file=sys.stderr)
         for e in events:
@@ -304,7 +304,7 @@ def main():
 
     n_total = len(all_rows)
     n_decl = sum(1 for r in all_rows if r["declustered"])
-    print(f"wrote {out_path} ({n_total} raw rows, {n_decl} declustered/independent events)", file=sys.stderr)
+    print(f"已寫入 {out_path}（{n_total} 列原始資料，{n_decl} 起去叢集後的獨立事件）", file=sys.stderr)
 
 
 if __name__ == "__main__":

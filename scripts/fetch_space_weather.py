@@ -54,7 +54,7 @@ def _curl(url: str, extra_args: list[str] | None = None) -> str | None:
         out = subprocess.run(args, capture_output=True, timeout=30, check=True)
         return out.stdout.decode("utf-8", errors="replace")
     except Exception as exc:  # noqa: BLE001
-        print(f"fetch failed for {url}: {exc}", file=sys.stderr)
+        print(f"抓取失敗：{url}：{exc}", file=sys.stderr)
         return None
 
 
@@ -146,7 +146,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--group", required=True)
     ap.add_argument("--check-cache", action="store_true",
-                    help="exit 0 if storm_days.csv is high-confidence AND covers the folder's whole date range, else 1")
+                    help="storm_days.csv 為高信心且涵蓋資料夾整個日期範圍時結束碼為 0，否則為 1")
     args = ap.parse_args()
     cfg = load_group_config(args.group)
     start, end = _group_date_range(cfg)
@@ -159,7 +159,7 @@ def main():
             summary = json.loads(summary_path.read_text())
             ok = summary.get("confidence", "").startswith("high") and summary["date_range"] == [start, end]
         sys.exit(0 if ok else 1)
-    print(f"[{args.group}] fetching space weather for {start}..{end}", file=sys.stderr)
+    print(f"[{args.group}] 抓取太空天氣資料 {start}..{end}", file=sys.stderr)
 
     kp_df = fetch_kp(start, end)
     dst_df, dst_missing_months = fetch_dst(start, end)

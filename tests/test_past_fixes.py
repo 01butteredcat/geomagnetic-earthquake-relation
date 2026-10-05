@@ -95,7 +95,7 @@ def test_complete_cache_is_reused(monkeypatch, tmp_path):
 def test_event_keys_unique_within_each_group():
     for gid, g in GROUPS.items():
         dup = [d for d, n in Counter(e.date for e in g.events).items() if n > 1]
-        assert not dup, f"{gid}: duplicate event.date keys {dup}"
+        assert not dup, f"{gid}：重複的 event.date 鍵 {dup}"
 
 
 def test_same_local_day_events_are_suffixed_and_consistent():
@@ -190,7 +190,7 @@ def test_cwa_window_straddling_two_exports_reads_both_and_applies_bbox(tmp_path)
 
 def test_window_outside_cwa_range_never_falls_back_to_usgs(tmp_path, monkeypatch):
     monkeypatch.setattr(fec, "group_date_window", lambda g: ("2008-01-01", "2008-03-01"))
-    monkeypatch.setattr(fec, "fetch_usgs", lambda *a, **k: pytest.fail("queried USGS without --allow-usgs"))
+    monkeypatch.setattr(fec, "fetch_usgs", lambda *a, **k: pytest.fail("沒有 --allow-usgs 卻查詢了 USGS"))
     monkeypatch.setattr(sys, "argv", ["fetch_earthquake_catalog.py", "--groups", "G4",
                                       "--output", str(tmp_path / "out.csv")])
     with pytest.raises(SystemExit):

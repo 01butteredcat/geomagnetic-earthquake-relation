@@ -436,7 +436,7 @@ def self_test() -> bool:
         event_utc = idx[center_i]
         arr = _step_statistic(noise, 30)
         base = _off_event_baseline(arr, idx, [event_utc], EXCLUSION_BUFFER_SEC)
-        assert base is not None, "self-test off-event baseline computation failed"
+        assert base is not None, "自我測試的事件外基準計算失敗"
         return EventSeries(
             group_id="SYN", event_date=f"synthetic-{int(rng.integers(0, 10**6))}", anchor=True, magnitude="M0",
             station="SYN", distance_km=0.0, idx=idx, stat_arrays={"step30": arr}, baselines={"step30": base},
@@ -457,13 +457,13 @@ def self_test() -> bool:
     near_zero = abs(signal_result["peak_lag_sec"]) <= 10
     outside = signal_result["outside_null_band_at_peak"]
     status1 = "PASS" if (near_zero and outside) else "FAIL"
-    print(f"[self-test] injected-signal stack: peak_lag={signal_result['peak_lag_sec']}s "
+    print(f"[self-test] 注入訊號的疊加：peak_lag={signal_result['peak_lag_sec']}s "
           f"peak_abs_z={signal_result['peak_abs_z']} outside_null={outside}  {status1}")
     ok = ok and near_zero and outside
 
     noise_outside = noise_result["outside_null_band_at_peak"]
     status2 = "PASS" if not noise_outside else "FAIL"
-    print(f"[self-test] noise-only stack (false-positive check): peak_abs_z={noise_result['peak_abs_z']} "
+    print(f"[self-test] 純雜訊的疊加（偽陽性檢查）：peak_abs_z={noise_result['peak_abs_z']} "
           f"outside_null={noise_outside}  {status2}")
     ok = ok and not noise_outside
 
@@ -570,17 +570,17 @@ def run_group_ids(group_ids: tuple[str, ...]) -> dict:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--self-test", action="store_true", help="run only the synthetic sanity check")
+    ap.add_argument("--self-test", action="store_true", help="只跑合成資料健全性檢查")
     ap.add_argument("--group", action="append", dest="groups",
-                     help="restrict to this group ID (repeatable); default is every group in events.py")
-    ap.add_argument("--all", action="store_true", help="explicit alias for the default (no --group filter)")
+                     help="限定在這個組別 ID（可重複）；預設是 events.py 中的每一組")
+    ap.add_argument("--all", action="store_true", help="預設行為的明確別名（不加 --group 篩選）")
     args = ap.parse_args()
 
     if args.self_test:
         sys.exit(0 if self_test() else 1)
 
     if not self_test():
-        print("[main] synthetic self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 合成資料自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
 
     group_ids = tuple(args.groups) if args.groups else tuple(GROUPS.keys())

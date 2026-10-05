@@ -297,7 +297,7 @@ def _make_synth_series(rng: np.random.Generator, amplitude: float, tag: str) -> 
     event_utc = idx[center_i]
     arr = _step_statistic(noise, 30)
     base = _off_event_baseline(arr, idx, [event_utc], EXCLUSION_BUFFER_SEC)
-    assert base is not None, "self-test off-event baseline computation failed"
+    assert base is not None, "自我測試的事件外基準計算失敗"
     return EventSeries(
         group_id="SYN", event_date=f"{tag}-{int(rng.integers(0, 10**6))}", anchor=True, magnitude="M0",
         station="SYN", distance_km=0.0, idx=idx, stat_arrays={"step30": arr}, baselines={"step30": base},
@@ -322,7 +322,7 @@ def self_test() -> bool:
     detected = (result_a.get("p_value_peak") is not None and result_a["p_value_peak"] < 0.05
                 and result_a["delta_peak_abs_z"] > 0)
     status_a = "PASS" if detected else "FAIL"
-    print(f"[self-test] real-difference case: delta_peak_abs_z={result_a.get('delta_peak_abs_z')} "
+    print(f"[self-test] 有真實差異的情況：delta_peak_abs_z={result_a.get('delta_peak_abs_z')} "
           f"p_value_peak={result_a.get('p_value_peak')}  {status_a}")
     ok = ok and detected
 
@@ -334,7 +334,7 @@ def self_test() -> bool:
     result_b = permutation_test(events_b, labels_b, "step30", rng2)
     no_false_positive = result_b.get("p_value_peak") is not None and result_b["p_value_peak"] >= 0.05
     status_b = "PASS" if no_false_positive else "FAIL"
-    print(f"[self-test] no-difference case (false-positive check): "
+    print(f"[self-test] 沒有差異的情況（偽陽性檢查）："
           f"delta_peak_abs_z={result_b.get('delta_peak_abs_z')} p_value_peak={result_b.get('p_value_peak')}  {status_b}")
     ok = ok and no_false_positive
 
@@ -368,7 +368,7 @@ def run_all(min_mag: float | None = None, gated: bool = False) -> dict:
         mag = {f"{gid}__{e.date}": e.magnitude for gid, g in GROUPS.items() for e in g.events}
         arm_of = {k: v for k, v in arm_of.items() if mag.get(k, 0) >= min_mag}
     event_keys = [tuple(k.split("__", 1)) for k in arm_of]
-    print(f"[joint] {len(event_keys)} events with a defined arm "
+    print(f"[joint] {len(event_keys)} 起事件有明確的分組 "
           f"(noise={sum(1 for v in arm_of.values() if v=='noise')}, "
           f"signal={sum(1 for v in arm_of.values() if v=='signal')})", file=sys.stderr)
 
@@ -433,19 +433,19 @@ def run_all(min_mag: float | None = None, gated: bool = False) -> dict:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--self-test", action="store_true", help="run only the synthetic sanity check")
-    ap.add_argument("--all", action="store_true", help="run the real-data joint analysis (default action)")
+    ap.add_argument("--self-test", action="store_true", help="只跑合成資料健全性檢查")
+    ap.add_argument("--all", action="store_true", help="跑真實資料的聯合分析（預設動作）")
     ap.add_argument("--gated", action="store_true",
-                    help="arms from alignment_verdict_gated (significant anomalies only), separate _gated directory")
+                    help="分組取自 alignment_verdict_gated（只有顯著異常），輸出到另外的 _gated 目錄")
     ap.add_argument("--min-mag", type=float, default=None,
-                    help="only events of at least this magnitude, output to a separate _m<mag> directory")
+                    help="只用規模至少這麼大的事件，輸出到另外的 _m<mag> 目錄")
     args = ap.parse_args()
 
     if args.self_test:
         sys.exit(0 if self_test() else 1)
 
     if not self_test():
-        print("[main] synthetic self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 合成資料自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
 
     run_all(min_mag=args.min_mag, gated=args.gated)

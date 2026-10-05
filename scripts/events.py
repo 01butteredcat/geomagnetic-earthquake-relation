@@ -119,7 +119,7 @@ class Group:
     @property
     def anchor_event(self) -> Event:
         anchors = [e for e in self.events if e.anchor]
-        assert len(anchors) == 1, f"{self.group_id} must have exactly one anchor event, got {len(anchors)}"
+        assert len(anchors) == 1, f"{self.group_id} 必須剛好有一個錨點事件，實際有 {len(anchors)}"
         return anchors[0]
 
 
@@ -1153,7 +1153,7 @@ def get_group(group_id: str) -> Group:
     try:
         return GROUPS[group_id]
     except KeyError:
-        raise KeyError(f"unknown group_id {group_id!r}; valid: {sorted(GROUPS)}") from None
+        raise KeyError(f"未知的 group_id {group_id!r}；有效值：{sorted(GROUPS)}") from None
 
 
 def sibling_group_ids(group_id: str) -> tuple[str, ...]:

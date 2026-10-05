@@ -140,7 +140,7 @@ def bootstrap_ci(
     需要它。"""
     n = arrays[0].shape[0]
     if any(a.shape[0] != n for a in arrays):
-        raise ValueError("all arrays must share length along axis 0 for paired resampling")
+        raise ValueError("配對重抽時，所有陣列在 axis 0 的長度必須相同")
 
     point = statistic(*arrays)
     boot = None
@@ -217,7 +217,7 @@ def self_test() -> bool:
     status = "PASS" if close_to_truth else "FAIL"
     if status == "FAIL":
         ok = False
-    print(f"[self-test] paired ratio n={n_large}: point={res_large['point_estimate']:.3f} "
+    print(f"[self-test] 配對比值 n={n_large}: point={res_large['point_estimate']:.3f} "
           f"ci=[{res_large['ci_lo']:.3f}, {res_large['ci_hi']:.3f}] (true={true_ratio})  {status}")
 
     # 情況 A 續：同樣的真實比值／雜訊，n 很小——信賴區間應該
@@ -232,8 +232,8 @@ def self_test() -> bool:
     status = "PASS" if width_small > width_large else "FAIL"
     if status == "FAIL":
         ok = False
-    print(f"[self-test] paired ratio n={n_small}: ci=[{res_small['ci_lo']:.3f}, {res_small['ci_hi']:.3f}] "
-          f"width={width_small:.3f} (expected wider than n={n_large}'s width={width_large:.3f})  {status}")
+    print(f"[self-test] 配對比值 n={n_small}: ci=[{res_small['ci_lo']:.3f}, {res_small['ci_hi']:.3f}] "
+          f"width={width_small:.3f} （預期比 n={n_large} 的寬度 {width_large:.3f} 寬）  {status}")
 
     # 情況 B：單一陣列的逐延遲平均，仿照 superposed_epoch_
     # analysis.py 的 run_band——M 是 (n_events x n_lags)，統計量對
@@ -253,7 +253,7 @@ def self_test() -> bool:
     status = "PASS" if (right_shape and brackets_truth) else "FAIL"
     if status == "FAIL":
         ok = False
-    print(f"[self-test] single-array per-lag mean: ci_lo={np.round(ci_lo, 2)} "
+    print(f"[self-test] 單一陣列的逐延遲平均：ci_lo={np.round(ci_lo, 2)} "
           f"ci_hi={np.round(ci_hi, 2)} (true={lag_means})  {status}")
 
     return ok

@@ -500,7 +500,7 @@ def self_test() -> bool:
         status = "PASS" if (near_step and magnitude_ok) else "FAIL"
         if status == "FAIL":
             ok = False
-        print(f"[self-test] M={m:3d}s  peak_idx={peak_idx} (expected ~{step_at})  "
+        print(f"[self-test] M={m:3d}s  peak_idx={peak_idx} （預期約 {step_at}）  "
               f"peak_val={peak_val:.2f} (injected {amplitude})  {status}")
 
     spike = _spike_statistic(injected)
@@ -508,7 +508,7 @@ def self_test() -> bool:
     spike_status = "PASS" if abs(spike_peak - step_at) <= 2 else "FAIL"
     if spike_status == "FAIL":
         ok = False
-    print(f"[self-test] spike peak_idx={spike_peak} (expected ~{step_at})  {spike_status}")
+    print(f"[self-test] spike peak_idx={spike_peak} （預期約 {step_at}）  {spike_status}")
     return ok
 
 
@@ -677,10 +677,10 @@ def run(group_id: str = GROUP_ID, run_injection: bool = True) -> dict:
         inj_path = OUT_DIR / "injection_power_curve.json"
         inj_path.write_text(json.dumps({"group": group_id, "event_date": event.date, "runs": injection_runs},
                                         indent=2))
-        print(f"wrote {inj_path} ({len(injection_runs)} channel runs)", file=sys.stderr)
+        print(f"已寫入 {inj_path}（{len(injection_runs)} 次通道執行）", file=sys.stderr)
 
     pd.DataFrame(summary_rows).to_csv(OUT_DIR / "summary.csv", index=False)
-    print(f"wrote summary.csv ({len(summary_rows)} rows)", file=sys.stderr)
+    print(f"已寫入 summary.csv（{len(summary_rows)} 列）", file=sys.stderr)
     return event_result
 
 
@@ -770,10 +770,10 @@ def run_all(run_injection: bool = False) -> dict:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--self-test", action="store_true", help="run only the synthetic sanity check")
-    ap.add_argument("--no-injection", action="store_true", help="skip the positive-control injection test")
+    ap.add_argument("--self-test", action="store_true", help="只跑合成資料健全性檢查")
+    ap.add_argument("--no-injection", action="store_true", help="跳過正向對照注入測試")
     ap.add_argument("--all", action="store_true",
-                     help="run every event in events.py's 117-event registry instead of just G10's anchor")
+                     help="跑 events.py 117 起事件登錄表中的每一個事件，而不只是 G10 的錨點")
     args = ap.parse_args()
 
     if args.self_test:
@@ -781,13 +781,13 @@ if __name__ == "__main__":
         sys.exit(0 if passed else 1)
 
     if not self_test():
-        print("[main] synthetic self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 合成資料自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
 
     if args.all:
         if not args.no_injection:
-            print("[main] --all always runs with injection testing disabled (already validated once on "
-                  "G10, see injection_power_curve.json / plan file) -- ignoring lack of --no-injection",
+            print("[main] --all 一律關閉注入測試（已經在 G10 上驗證過一次，"
+                  "見 injection_power_curve.json／計畫檔）——忽略沒有加 --no-injection",
                   file=sys.stderr)
         run_all(run_injection=False)
     else:

@@ -48,7 +48,7 @@ def _pick_station(cfg) -> str:
         return cfg.xyz_pool.near[0]
     if cfg.f_pool.near:
         return cfg.f_pool.near[0]
-    raise RuntimeError(f"{cfg.group_id}: no station available at all for timezone check")
+    raise RuntimeError(f"{cfg.group_id}：完全沒有可用來做時區檢查的測站")
 
 
 def _signals(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
@@ -85,7 +85,7 @@ def main():
     station = _pick_station(cfg)
 
     quiet_days = pick_quiet_days(cfg, station)
-    print(f"[{args.group}] station={station} quiet days used ({len(quiet_days)}): {quiet_days}", file=sys.stderr)
+    print(f"[{args.group}] station={station} 使用的平靜日（{len(quiet_days)} 天）：{quiet_days}", file=sys.stderr)
 
     sq_by_hour = {h: [] for h in range(24)}
     noise_by_hour = {h: [] for h in range(24)}

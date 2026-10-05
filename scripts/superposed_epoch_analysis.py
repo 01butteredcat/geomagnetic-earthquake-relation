@@ -218,9 +218,9 @@ def run_band(band: str, events: list[dict], group_series: dict, rng: np.random.G
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", type=Path, required=True)
-    ap.add_argument("--label", required=True, help="e.g. m5.5 or m5.0, used in output filenames")
+    ap.add_argument("--label", required=True, help="例如 m5.5 或 m5.0，用在輸出檔名中")
     ap.add_argument("--min-mag", type=float, required=True,
-                    help="magnitude threshold of this tier; must match the --catalog file's")
+                    help="這個級距的規模門檻；必須和 --catalog 檔案的一致")
     args = ap.parse_args()
 
     group_series = {}
@@ -231,7 +231,7 @@ def main():
 
     raw = load_extended_events(args.catalog, ULF_GROUPS, args.min_mag)
     events = merge_same_day(raw)
-    print(f"{len(raw)} candidate events -> {len(events)} group-days across {len(group_series)} groups",
+    print(f"{len(raw)} 起候選事件 -> {len(events)} 個組–日，分布在 {len(group_series)} 組",
           file=sys.stderr)
 
     out_dir = PROJECT_DIR / "data" / "interim" / "superposed_epoch"
@@ -246,7 +246,7 @@ def main():
         if "error" in result:
             print(f"[{band}] {result['error']}", file=sys.stderr)
         else:
-            print(f"[{band}] wrote {out_path} ({result['n_events_used']} events used)", file=sys.stderr)
+            print(f"[{band}] 已寫入 {out_path}（使用 {result['n_events_used']} 起事件）", file=sys.stderr)
 
 
 if __name__ == "__main__":

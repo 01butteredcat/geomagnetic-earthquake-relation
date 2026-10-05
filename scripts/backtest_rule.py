@@ -153,7 +153,7 @@ def main():
     ap.add_argument("--catalog", type=Path, required=True)
     ap.add_argument("--label", required=True)
     ap.add_argument("--min-mag", type=float, required=True,
-                    help="magnitude threshold of this tier; must match the --catalog file's")
+                    help="這個級距的規模門檻；必須和 --catalog 檔案的一致")
     args = ap.parse_args()
 
     out_dir = PROJECT_DIR / "data" / "interim" / "backtest"

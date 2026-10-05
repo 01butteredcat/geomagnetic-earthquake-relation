@@ -44,7 +44,7 @@ def check_raw_vs_parsed_spotcheck(cfg):
                 if line.startswith(ts.strftime("%Y-%m-%d %H:%M:%S")):
                     raw_line = line
                     break
-        assert raw_line is not None, f"could not find raw line for {ts} in {ref.label}"
+        assert raw_line is not None, f"找不到 {ts} 的原始資料列：{ref.label}"
         parts = raw_line.split()
         raw = dict(zip(["X", "Y", "Z", "F"], (float(v) for v in parts[3:7])))
 
@@ -516,7 +516,7 @@ def main():
     print(json.dumps(report, indent=2, default=str))
 
     if n_fail > 0:
-        print(f"\n{n_fail} CHECK(S) FAILED -- do not trust precursor conclusions until fixed", file=sys.stderr)
+        print(f"\n{n_fail} 項檢查失敗——修好之前不要相信任何前兆結論", file=sys.stderr)
         sys.exit(1)
 
 

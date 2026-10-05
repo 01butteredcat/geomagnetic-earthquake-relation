@@ -209,7 +209,7 @@ def main():
         candidates["Z"] = merged[merged["candidate_flag_Z"] == True]["date"].tolist()  # noqa: E712
         methods_run += ["H", "Z"]
     else:
-        print(f"[{args.group}] XYZ pool insufficient ({len(cfg.xyz_pool.all_stations)} stations) -- skipping H/Z screening", file=sys.stderr)
+        print(f"[{args.group}] XYZ 測站池不足（{len(cfg.xyz_pool.all_stations)} 站）——跳過 H/Z 篩檢", file=sys.stderr)
 
     if cfg.f_pool.sufficient:
         result_f, fit_f = build_field_index(cfg, "F", cfg.f_pool.near, cfg.f_pool.far, storm_dates, outage_by_station)
@@ -223,10 +223,10 @@ def main():
                 result_f.rename(columns={"is_clean_day": "is_clean_day_F"}), on="date", how="outer"
             )
     else:
-        print(f"[{args.group}] F pool insufficient ({len(cfg.f_pool.all_stations)} stations) -- skipping F screening", file=sys.stderr)
+        print(f"[{args.group}] F 測站池不足（{len(cfg.f_pool.all_stations)} 站）——跳過 F 篩檢", file=sys.stderr)
 
     if merged is None:
-        print(f"[{args.group}] neither station pool sufficient -- no basic screening possible for this group", file=sys.stderr)
+        print(f"[{args.group}] 兩個測站池都不足——這組無法做基本篩檢", file=sys.stderr)
         merged = pd.DataFrame(columns=["date"])
     merged = merged.sort_values("date")
     merged.to_csv(cfg.interim_dir / "local_anomaly_index.csv", index=False)

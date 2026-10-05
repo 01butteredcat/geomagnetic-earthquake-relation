@@ -185,9 +185,9 @@ def self_test() -> bool:
     a = within_group_permutation_test(x, y_dose, groups, np.random.default_rng(SEED), 500)
     b = within_group_permutation_test(x, y_null, groups, np.random.default_rng(SEED), 500)
     ok1, ok2 = a["p_one_sided_within_group"] < 0.01, b["p_one_sided_within_group"] > 0.05
-    print(f"[self-test] injected dose-response: rho={a['spearman_rho']} p={a['p_one_sided_within_group']}  "
+    print(f"[self-test] 注入的劑量反應：rho={a['spearman_rho']} p={a['p_one_sided_within_group']}  "
           f"{'PASS' if ok1 else 'FAIL'}", file=sys.stderr)
-    print(f"[self-test] no relation:            rho={b['spearman_rho']} p={b['p_one_sided_within_group']}  "
+    print(f"[self-test] 沒有關聯：         rho={b['spearman_rho']} p={b['p_one_sided_within_group']}  "
           f"{'PASS' if ok2 else 'FAIL'}", file=sys.stderr)
     return ok1 and ok2
 
@@ -195,11 +195,11 @@ def self_test() -> bool:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--self-test", action="store_true")
-    ap.add_argument("--all", action="store_true", help="run on real data (default action)")
+    ap.add_argument("--all", action="store_true", help="在真實資料上執行（預設動作）")
     args = ap.parse_args()
     if args.self_test:
         sys.exit(0 if self_test() else 1)
     if not self_test():
-        print("[main] self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
     run_all()

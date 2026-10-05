@@ -165,7 +165,7 @@ def list_day_refs(gdms_dir: Path, station: str = "*") -> list[DayFileRef]:
                 n_dup += 1
                 print(
                     f"[list_day_refs] WARNING: {st}{date_str} duplicate -- "
-                    f"{tgz.name}:{member} skipped, already using "
+                    f"{tgz.name}:{member} 已略過，已經在使用 "
                     f"{existing.source_path.name}:{existing.member}",
                     file=sys.stderr,
                 )
@@ -174,7 +174,7 @@ def list_day_refs(gdms_dir: Path, station: str = "*") -> list[DayFileRef]:
     if n_tgz or n_dup:
         print(
             f"[list_day_refs] {gdms_dir.name}: {n_loose} loose, {n_tgz} from .tgz, "
-            f"{n_dup} duplicate tgz entries skipped",
+            f"{n_dup} 個重複的 tgz 條目已略過",
             file=sys.stderr,
         )
     return sorted(by_key.values(), key=lambda r: (r.station, r.date_str))
@@ -324,7 +324,7 @@ if __name__ == "__main__":
         a = cfg.anchor_event
         print(f"== {gid} == anchor {a.date} {a.magnitude_type}{a.magnitude} ({a.lat},{a.lon}) "
               f"confidence={a.coord_confidence}")
-        print(f"  F   pool: {len(cfg.f_pool.all_stations):2d} stations  near={cfg.f_pool.near}  "
+        print(f"  F   測站池：{len(cfg.f_pool.all_stations):2d} 站  near={cfg.f_pool.near}  "
               f"far={cfg.f_pool.far}  sufficient={cfg.f_pool.sufficient}")
-        print(f"  XYZ pool: {len(cfg.xyz_pool.all_stations):2d} stations  near={cfg.xyz_pool.near}  "
+        print(f"  XYZ 測站池：{len(cfg.xyz_pool.all_stations):2d} 站  near={cfg.xyz_pool.near}  "
               f"far={cfg.xyz_pool.far}  sufficient={cfg.xyz_pool.sufficient}")

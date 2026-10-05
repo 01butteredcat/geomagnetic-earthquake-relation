@@ -488,11 +488,11 @@ def self_test() -> bool:
     # 被檢定的極值不能漏進它自己的虛無分布：窗口中 100 個 sigma 的突波
     # 必須達到 p 值下限 1/(N+1)
     ok3 = leak["p_window_block_bootstrap"] <= 2 / 501 and leak["p_window_phase_randomization"] <= 2 / 501
-    print(f"[self-test] injected shift: p_window = {sig['p_window_block_bootstrap']} / "
+    print(f"[self-test] 注入偏移：p_window = {sig['p_window_block_bootstrap']} / "
           f"{sig['p_window_phase_randomization']}  {'PASS' if ok1 else 'FAIL'}", file=sys.stderr)
-    print(f"[self-test] noise only:     p_window = {nul['p_window_block_bootstrap']} / "
+    print(f"[self-test] 純雜訊：  p_window = {nul['p_window_block_bootstrap']} / "
           f"{nul['p_window_phase_randomization']}  {'PASS' if ok2 else 'FAIL'}", file=sys.stderr)
-    print(f"[self-test] 100σ spike (leak check): p_window = {leak['p_window_block_bootstrap']} / "
+    print(f"[self-test] 100σ 突波（洩漏檢查）：p_window = {leak['p_window_block_bootstrap']} / "
           f"{leak['p_window_phase_randomization']}  {'PASS' if ok3 else 'FAIL'}", file=sys.stderr)
     return ok1 and ok2 and ok3 and rank_self_test()
 
@@ -533,10 +533,10 @@ def rank_self_test(n_rep: int = 100, n_groups: int = 12) -> bool:
         N_SURROGATES = saved
     power = combined(n_groups // 2)
     ok1, ok2 = fp <= 0.09, power < 0.01
-    print(f"[self-test] {n_groups} null groups, combined rank p<0.05 in {fp:.1%} of {n_rep}  "
-          f"{'PASS' if ok1 else 'FAIL'} (per-group leave-window-out block bootstrap: {bb:.1%}, for reference)",
+    print(f"[self-test] {n_groups} 個虛無組，合併排名 p<0.05 的比例為 {fp:.1%}（共 {n_rep} 次）  "
+          f"{'PASS' if ok1 else 'FAIL'} （逐組留一窗區塊 bootstrap：{bb:.1%}，供參考）",
           file=sys.stderr)
-    print(f"[self-test] dip in {n_groups // 2}/{n_groups} groups: combined rank p = {power}  "
+    print(f"[self-test] {n_groups // 2}/{n_groups} 組有低谷：合併排名 p = {power}  "
           f"{'PASS' if ok2 else 'FAIL'}", file=sys.stderr)
     return ok1 and ok2
 
@@ -550,9 +550,9 @@ def main():
     if args.self_test:
         sys.exit(0 if self_test() else 1)
     if not args.groups and not args.all:
-        ap.error("pass --group <id> (repeatable) or --all")
+        ap.error("請傳入 --group <id>（可重複）或 --all")
     if not self_test():
-        print("[main] self-test FAILED -- aborting before touching real data", file=sys.stderr)
+        print("[main] 自我測試失敗——在碰真實資料之前中止", file=sys.stderr)
         sys.exit(1)
 
     group_ids = list(GROUPS) if args.all else args.groups

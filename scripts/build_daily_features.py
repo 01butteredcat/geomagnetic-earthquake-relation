@@ -143,8 +143,8 @@ def main():
     loose_refs, tgz_refs = _list_files(cfg.gdms_dir, cfg.stations)
     n_files = len(loose_refs) + len(tgz_refs)
     print(
-        f"[{args.group}] {n_files} files to process "
-        f"({len(loose_refs)} loose, {len(tgz_refs)} from .tgz)",
+        f"[{args.group}] {n_files} 個檔案要處理"
+        f"（{len(loose_refs)} 個零散檔，{len(tgz_refs)} 個來自 .tgz）",
         file=sys.stderr,
     )
 
@@ -188,11 +188,11 @@ def main():
 
     daily = pd.DataFrame(rows).sort_values(["station", "date"])
     daily.to_csv(cfg.interim_dir / "daily_features.csv", index=False)
-    print(f"wrote daily_features.csv ({len(daily)} rows)", file=sys.stderr)
+    print(f"已寫入 daily_features.csv（{len(daily)} 列）", file=sys.stderr)
 
     if errors:
         pd.DataFrame(errors).to_csv(cfg.interim_dir / "parse_errors.csv", index=False)
-        print(f"wrote parse_errors.csv ({len(errors)} rows)", file=sys.stderr)
+        print(f"已寫入 parse_errors.csv（{len(errors)} 列）", file=sys.stderr)
 
     for station, chunks in minute_chunks.items():
         if not chunks:

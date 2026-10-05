@@ -105,7 +105,7 @@ def build_daily_series(cfg, stations):
     refs = []
     for station in stations:
         refs.extend(list_day_refs(cfg.gdms_dir, station))
-    print(f"[{cfg.group_id}] {len(refs)} station-days to process for ULF analysis", file=sys.stderr)
+    print(f"[{cfg.group_id}] {len(refs)} 個測站–日要做 ULF 分析", file=sys.stderr)
 
     rows, errors = [], []
     with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
@@ -123,7 +123,7 @@ def build_daily_series(cfg, stations):
 
     daily = pd.DataFrame(rows).sort_values(["station", "date"])
     daily.to_csv(cfg.interim_dir / "ulf_daily.csv", index=False)
-    print(f"wrote ulf_daily.csv ({len(daily)} rows, {len(errors)} skipped)", file=sys.stderr)
+    print(f"已寫入 ulf_daily.csv（{len(daily)} 列，略過 {len(errors)} 個）", file=sys.stderr)
     if errors:
         pd.DataFrame(errors).to_csv(cfg.interim_dir / "ulf_errors.csv", index=False)
     return daily
@@ -196,7 +196,7 @@ def build_near_far_differential(cfg, daily: pd.DataFrame, near_stations, far_sta
     storm = set(pd.read_csv(storm_path, dtype={"date": str})["date"]) if storm_path.exists() else set()
     out = near_far_table(daily, near_stations, far_stations, storm)
     out.to_csv(cfg.interim_dir / "ulf_near_far_index.csv", index=False)
-    print(f"wrote ulf_near_far_index.csv ({len(out)} rows)", file=sys.stderr)
+    print(f"已寫入 ulf_near_far_index.csv（{len(out)} 列）", file=sys.stderr)
     return out
 
 
@@ -222,8 +222,8 @@ def self_test() -> bool:
                                       - g[g.station.isin(["f1", "f2"])].pc3_zh_ratio.median())
     raw_same = np.allclose(t.pc3_diff_zh_raw.to_numpy(), old.reindex(t.index).to_numpy())
     ok = raw_jump > 5 and abs(norm_jump - 1) < 0.2 and raw_same and set(t.pc3_n_near) == {1, 2}
-    print(f"[self-test] near index before/after dropout: raw {raw_jump:.1f}x, normalized {norm_jump:.2f}x; "
-          f"raw columns = old formula: {raw_same}  {'PASS' if ok else 'FAIL'}", file=sys.stderr)
+    print(f"[self-test] 測站中斷前後的近站指標：原始 {raw_jump:.1f} 倍，標準化後 {norm_jump:.2f} 倍；"
+          f"raw 欄位 = 舊公式：{raw_same}  {'PASS' if ok else 'FAIL'}", file=sys.stderr)
     return bool(ok)
 
 
@@ -232,17 +232,17 @@ def main():
     ap.add_argument("--group")
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--from-daily", action="store_true",
-                    help="rebuild only ulf_near_far_index.csv from the existing ulf_daily.csv")
+                    help="只用既有的 ulf_daily.csv 重建 ulf_near_far_index.csv")
     args = ap.parse_args()
     if args.self_test:
         sys.exit(0 if self_test() else 1)
     if not args.group:
-        ap.error("--group is required")
+        ap.error("必須指定 --group")
     cfg = load_group_config(args.group)
 
     if not cfg.xyz_pool.sufficient:
-        print(f"[{args.group}] XYZ pool insufficient ({len(cfg.xyz_pool.all_stations)} stations) "
-              f"-- ULF polarization analysis needs real X/Y/Z and cannot run for this group", file=sys.stderr)
+        print(f"[{args.group}] XYZ 測站池不足（{len(cfg.xyz_pool.all_stations)} 站）"
+              f"——ULF 極化分析需要真實的 X/Y/Z，這組無法執行", file=sys.stderr)
         return
 
     near, far = cfg.xyz_pool.near, cfg.xyz_pool.far
