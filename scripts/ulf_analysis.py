@@ -45,6 +45,7 @@ from scipy.signal import butter, filtfilt, hilbert, spectrogram
 
 sys.path.insert(0, str(Path(__file__).parent))
 from common import list_day_refs, load_group_config, resolve_day_ref  # noqa: E402
+from build_daily_features import _despike  # noqa: E402
 from parser import parse_day_file  # noqa: E402
 
 FS = 1.0  # Hz
@@ -68,6 +69,11 @@ def _detrend(x: pd.Series) -> np.ndarray:
     return (x - trend).to_numpy()
 
 
+def _has_spike(df: pd.DataFrame) -> bool:
+    """X/Y/Z 任一分量有相鄰樣本跳動 > SPIKE_THRESHOLD_NT（和 build_daily_features 同一條規則）。"""
+    return any(_despike(df[c])[1].any() for c in ("X", "Y", "Z"))
+
+
 def _process_day(ref):
     station, date_str = ref.station, ref.date_str
     try:
@@ -80,6 +86,10 @@ def _process_day(ref):
         # 寧可跳過這一天，也不冒缺口附近出現濾波假象的風險
         # （也涵蓋純量檔意外混進來的防禦性情況）
         return {"station": station, "date": date_str, "error": "has_gap_or_scalar_skipped"}
+    if _has_spike(df):
+        # 去尖峰後會留下缺口，照上面的規則整天略過；跳點經過濾波會在
+        # 前後一段時間內留下假的大振幅
+        return {"station": station, "date": date_str, "error": "spike_skipped"}
 
     x = _detrend(df["X"])
     y = _detrend(df["Y"])

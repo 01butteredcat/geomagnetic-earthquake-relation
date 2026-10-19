@@ -83,6 +83,22 @@ def ulf_candidate_dates(cfg) -> list[str]:
     return sorted(flagged.tolist())
 
 
+# 夜間指標取 17-19 UTC（compute_indices／ulf_analysis 的 NIGHT_HOURS_UTC），
+# 所以某個 UTC 日期標籤的夜晚到 20:00 UTC 才結束。
+NIGHT_END_HOUR_UTC = 20
+
+
+def pre_event_anchor(event) -> pd.Timestamp:
+    """震前窗口的終點（不含）：最後一晚的 UTC 日期＋1 天。
+
+    最後一晚是夜間時段在主震 UTC 時刻之前就結束的那一晚。不能用
+    event.date（台灣日期）：G8（UTC 17:41）、G11（UTC 16:17）的主震落在
+    當晚夜間時段之內或之前，用台灣日期會把震時／震後的夜晚算進震前窗口。"""
+    t = pd.to_datetime(event.time_utc)
+    day = t.normalize()
+    return day + pd.Timedelta(days=1) if t >= day + pd.Timedelta(hours=NIGHT_END_HOUR_UTC) else day
+
+
 def pre_event_window(anchor_date: pd.Timestamp, window_days: int) -> list[str]:
     return pd.date_range(anchor_date - pd.Timedelta(days=window_days), anchor_date - pd.Timedelta(days=1)) \
         .strftime("%Y%m%d").tolist()
@@ -123,7 +139,7 @@ def analyze_group(group_id: str) -> dict:
     if cfg.f_pool.sufficient:
         methods["F"] = set(cand.get("candidate_dates_F", []))
 
-    anchor_ts = pd.to_datetime(anchor.date)
+    anchor_ts = pre_event_anchor(anchor)
     tier = "vector" if cfg.xyz_pool.sufficient else "scalar_only"
 
     windows_out = {}

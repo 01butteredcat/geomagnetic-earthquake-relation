@@ -85,7 +85,7 @@ methods:
       - 資料頭尾視窗不完整（min_periods=1），邊界平滑效果較弱。
       - 相較真正的高通濾波器，滾動平均頻率響應較差（旁瓣大），並非嚴謹的頻域設計。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "66-68", symbol: _detrend}
+      - {file: scripts/ulf_analysis.py, lines: "67-69", symbol: _detrend}
       - {file: scripts/coseismic_step_analysis.py, lines: "241-245", symbol: _detrend}
 
   B1:
@@ -227,8 +227,8 @@ methods:
       - 資料有缺值（gap）會破壞 filtfilt 的連續性假設，程式直接跳過該日而非插值，可能造成選擇性缺失。
       - 4 階濾波器過渡帶仍有一定寬度，頻帶邊緣能量會互相滲漏。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "60-63", symbol: _bandpass}
-      - {file: scripts/ulf_analysis.py, lines: "51-54", symbol: BANDS}
+      - {file: scripts/ulf_analysis.py, lines: "61-64", symbol: _bandpass}
+      - {file: scripts/ulf_analysis.py, lines: "52-55", symbol: BANDS}
 
   C2:
     name: Hilbert 包絡線與 Z/H 極化比
@@ -264,8 +264,8 @@ methods:
       - 2026-09-28 起各站先除以自己非磁暴日的中位數再取中位數：舊版直接取原始比值中位數，測站加入或退出會造成水位跳動（G11 的 zbn 在震前窗口開頭退出，近站指標掉約 20 倍）。參考中位數用整條序列。
       - 物理機制（地下電性/壓磁效應）在文獻中仍有爭議，這是觀測型指標而非嚴格物理模型。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "71-101", symbol: _process_day}
-      - {file: scripts/ulf_analysis.py, lines: "167-191", symbol: near_far_table}
+      - {file: scripts/ulf_analysis.py, lines: "77-111", symbol: _process_day}
+      - {file: scripts/ulf_analysis.py, lines: "177-201", symbol: near_far_table}
 
   C3:
     name: 短時傅立葉頻譜圖（STFT Spectrogram）
@@ -285,7 +285,7 @@ methods:
       - 純視覺化/診斷，沒有產生量化統計檢定。
       - 時間與頻率解析度互相牽制（1 小時分段對應約 0.28 mHz）。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "132-164", symbol: build_zoom_spectrogram}
+      - {file: scripts/ulf_analysis.py, lines: "142-174", symbol: build_zoom_spectrogram}
 
   D1:
     name: Shapiro–Wilk 常態性檢定
@@ -426,8 +426,8 @@ methods:
       - $p_0$ 由滑動窗方法估計，偏誤會直接傳導到檢定結果。
       - 3 個視窗大小 × 多種方法同時檢定，沒有多重比較校正，只能視為探索性再現性訊號。
     code:
-      - {file: scripts/cross_group_analysis.py, lines: "92-109", symbol: sliding_baseline_rate}
-      - {file: scripts/cross_group_analysis.py, lines: "161-203", symbol: aggregate}
+      - {file: scripts/cross_group_analysis.py, lines: "108-125", symbol: sliding_baseline_rate}
+      - {file: scripts/cross_group_analysis.py, lines: "177-219", symbol: aggregate}
 
   D6:
     name: 標籤置換檢定（Label-Permutation Test）

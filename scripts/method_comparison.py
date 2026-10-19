@@ -63,7 +63,7 @@ from scipy.stats import binomtest, wilcoxon
 
 sys.path.insert(0, str(Path(__file__).parent))
 import common  # noqa: E402
-from cross_group_analysis import pre_event_window  # noqa: E402
+from cross_group_analysis import pre_event_anchor, pre_event_window  # noqa: E402
 from events import GROUPS  # noqa: E402
 from stat_utils import (  # noqa: E402
     block_bootstrap_surrogate,
@@ -235,7 +235,7 @@ def run_group(group_id: str) -> dict:
     outages = common.auto_outage_dates(daily)
     storm = pd.read_csv(cfg.interim_dir / "storm_days.csv", dtype={"date": str})
     storm_dates = set(storm["date"])
-    window = set(pre_event_window(pd.to_datetime(cfg.anchor_event.date), PRE_WINDOW_DAYS))
+    window = set(pre_event_window(pre_event_anchor(cfg.anchor_event), PRE_WINDOW_DAYS))
 
     series = {"night_residual": night_residual_series(cfg, pair["field"]),
               "range_ratio": range_ratio_series(cfg, pair, storm_dates, outages)}

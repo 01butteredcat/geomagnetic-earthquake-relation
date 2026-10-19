@@ -53,7 +53,7 @@ from scipy.stats import shapiro
 sys.path.insert(0, str(Path(__file__).parent))
 import method_comparison as mc  # noqa: E402
 from common import PROJECT_DIR, load_group_config  # noqa: E402
-from cross_group_analysis import pre_event_window  # noqa: E402
+from cross_group_analysis import pre_event_anchor, pre_event_window  # noqa: E402
 from scipy.stats import binomtest  # noqa: E402
 from stat_utils import (  # noqa: E402
     FIXED_RULE_THRESHOLD,
@@ -123,7 +123,8 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
             **extra,
         }
 
-    window = set(pre_event_window(pd.to_datetime(cfg.anchor_event.date), mc.PRE_WINDOW_DAYS))
+    window_end = pre_event_anchor(cfg.anchor_event)
+    window = set(pre_event_window(window_end, mc.PRE_WINDOW_DAYS))
     # 這裡去掉磁暴／恢復期日（上面的舊檢定沒有）：如果保留它們，
     # G9 和 G13 的震前最小值都落在磁暴日，好幾個震前窗口
     # 的磁暴也比背景期多。乾淨日規則和 method_comparison.py 相同。
@@ -142,11 +143,12 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     pre_event.update(mc.rank_window_test(series, window, tail="lower"))
     # 安慰劑：緊接在真實窗口前的區段假裝成真實窗口——如果
     # 光是位在錨點正前方就足以排到最低，這個也會「顯著」
-    prev = mc.rank_window_test(series, set(pre_event_window(pd.to_datetime(cfg.anchor_event.date)
-                                                             - pd.Timedelta(days=mc.PRE_WINDOW_DAYS),
-                                                             mc.PRE_WINDOW_DAYS)), tail="lower")
+    prev = mc.rank_window_test(series, set(pre_event_window(window_end - pd.Timedelta(days=mc.PRE_WINDOW_DAYS),
+                                                            mc.PRE_WINDOW_DAYS)), tail="lower")
     pre_event["placebo_prev_block"] = {k: prev.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")}
-    pre_event.update({"anchor": cfg.anchor_event.date, "window_days": mc.PRE_WINDOW_DAYS,
+    pre_event.update({"anchor": cfg.anchor_event.date,
+                      "window_last_night": (window_end - pd.Timedelta(days=1)).strftime("%Y%m%d"),
+                      "window_days": mc.PRE_WINDOW_DAYS,
                       "storm_days_excluded": True,
                       "null": "leave-window-out (background days only)", "tail": "lower (most negative z)"})
 

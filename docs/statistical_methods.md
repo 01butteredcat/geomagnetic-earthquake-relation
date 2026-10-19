@@ -44,7 +44,7 @@
 
 ### A2. 去趨勢（1 小時置中滾動平均）
 - **用途**：在做 ULF 頻帶濾波（見 C1）或 coseismic 階躍偵測（見 D7）前，先移除長週期背景趨勢（如日變 Sq 曲線），避免其能量洩漏進目標頻帶。
-- **程式碼**：`scripts/ulf_analysis.py:66-68`；`scripts/coseismic_step_analysis.py:241-245`（獨立複製的同一公式）
+- **程式碼**：`scripts/ulf_analysis.py:67-69`；`scripts/coseismic_step_analysis.py:241-245`（獨立複製的同一公式）
 - **數學式**：
 
   $$
@@ -120,7 +120,7 @@
 
 ### C1. Butterworth 零相位帶通濾波
 - **用途**：從 1Hz X/Y/Z 中萃取 Pc3（10–45 秒週期）與 Pc4（45–150 秒週期）地磁脈動頻帶，這是文獻中常見的「震前 ULF 磁擾動」候選頻段。
-- **程式碼**：`scripts/ulf_analysis.py:60-63`，`scipy.signal.butter` + `filtfilt`
+- **程式碼**：`scripts/ulf_analysis.py:61-64`，`scipy.signal.butter` + `filtfilt`
 - **數學式**：4 階 Butterworth 帶通濾波器，正規化截止頻率為
 
   $$
@@ -134,7 +134,7 @@
 
 ### C2. Hilbert 轉換包絡線與 Z/H 極化比
 - **用途**：計算每個頻帶在「本地夜間」（UTC 17–19 時）的訊號包絡能量，並取垂直分量對水平分量的比值（Z/H ratio）——地磁極化分析中常見的震前異常指標，理論基礎是地下電性結構變化會改變波的極化特性。
-- **程式碼**：`scripts/ulf_analysis.py:71-101`，`scipy.signal.hilbert`
+- **程式碼**：`scripts/ulf_analysis.py:77-111`，`scipy.signal.hilbert`
 - **數學式**：
 
   $$
@@ -156,13 +156,13 @@
   \text{diff\_zh}_t = \operatorname{median}_{s \in \text{近站}} \tilde r_{s,t} - \operatorname{median}_{s \in \text{遠站}} \tilde r_{s,t}
   $$
 
-  （`scripts/ulf_analysis.py:167-191`，`near_far_table`）。舊版直接取原始比值的中位數，只要有測站加入或退出就會造成水位跳動（G11 的 zbn，見開頭「2026-09-28 修正」）；舊版保留為 `*_raw` 欄位，`*_n_near`／`*_n_far` 記錄每天有資料的測站數。參考中位數用整條序列（包含未來的日子），但每站只有一個數，只影響水位、不影響逐日形狀。
+  （`scripts/ulf_analysis.py:177-201`，`near_far_table`）。舊版直接取原始比值的中位數，只要有測站加入或退出就會造成水位跳動（G11 的 zbn，見開頭「2026-09-28 修正」）；舊版保留為 `*_raw` 欄位，`*_n_near`／`*_n_far` 記錄每天有資料的測站數。參考中位數用整條序列（包含未來的日子），但每站只有一個數，只影響水位、不影響逐日形狀。
 - **優點**：Hilbert 包絡是萃取瞬時振幅的標準方法，不需額外視窗化假設；限定於本地夜間可避開人為電磁雜訊（工業用電、交通）干擾最嚴重的時段；near−far 差分設計再次扣除共模效應。
 - **缺點**：僅取夜間 3 小時樣本，樣本量偏少，單日估計變異大；Z/H ratio 對水平分量接近零時數值不穩定（雖設有 `1e-9` 保護）；物理機制（地下電性/壓磁效應）本身在文獻中仍有爭議，此為觀測型指標而非嚴格物理模型。
 
 ### C3. 短時傅立葉頻譜圖（STFT Spectrogram）
 - **用途**：於事件前後 ±12 天窗口內，視覺化 X 分量在 ULF 頻段的功率隨時間變化，作為診斷/報告用圖，輔助判讀是否有頻譜異常。
-- **程式碼**：`scripts/ulf_analysis.py:132-164`，`scipy.signal.spectrogram`（`nperseg=3600, noverlap=1800`）
+- **程式碼**：`scripts/ulf_analysis.py:142-174`，`scipy.signal.spectrogram`（`nperseg=3600, noverlap=1800`）
 - **數學式**：對每個長度 3600 秒的分段做 FFT 取功率譜密度 $S_{xx}(f,t)$，圖示為 $\log_{10}(S_{xx}+10^{-6})$（避免 log(0)）。
 - **優點**：直觀呈現時頻演化，適合人工判讀是否有異常頻譜特徵；`filtfilt` 之外的獨立驗證管道。
 - **缺點**：純視覺化/診斷用途，未產生量化統計檢定；時間解析度與頻率解析度受限於分段長度（Heisenberg 測不準原理的工程版本，1 小時分段對應約 0.28 mHz 頻率解析度）。
@@ -249,7 +249,7 @@
 
 ### D5. 二項式檢定（Binomial Test，跨群組再現性）
 - **用途**：檢驗「候選異常日落在震前視窗內」的命中率，是否顯著高於各群組自身的滑動窗基準率——用來評估整體規則跨 24 個獨立地震序列的再現性，而非單一事件的巧合。
-- **程式碼**：`scripts/cross_group_analysis.py:92-203`，`scipy.stats.binomtest`。基準率只用跟受測窗口沒有任何重疊的滑動窗（2026-09-28 修正：之前只排除完全相同的那一個窗口，受測窗口內的候選日會經由部分重疊的窗口墊高自己的基準率）
+- **程式碼**：`scripts/cross_group_analysis.py:108-219`，`scipy.stats.binomtest`。基準率只用跟受測窗口沒有任何重疊的滑動窗（2026-09-28 修正：之前只排除完全相同的那一個窗口，受測窗口內的候選日會經由部分重疊的窗口墊高自己的基準率）
 - **數學式**：設 $n$ 為受測群組數、$k$ 為命中群組數、$p_0$ 為平均基準命中率，單尾檢定：
 
   $$
