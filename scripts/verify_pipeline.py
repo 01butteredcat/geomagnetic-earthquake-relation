@@ -348,12 +348,9 @@ def check_candidates_not_in_outage_windows(cfg):
 def check_quiet_day_smoothness(cfg):
     """目視健全性檢查的代理：在時區檢查用的
     平靜日上，解析出的曲線不應該有**解析**造成的假象。
-    我們不要求每一秒都接近平坦——短暫（1-2 個樣本）
-    同時跳動、最高約 O(100nT) 在物理上是真實的（例如
-    急始型脈衝），即使在
-    其他方面平靜的日子也偶爾會出現；n_spikes==0 已經確認沒有任何東西超過
-    流程其他地方使用的 300nT 結構性故障門檻（見
-    build_daily_features.SPIKE_THRESHOLD_NT）。這個檢查只是
+    我們不要求每一秒都接近平坦；n_spikes==0 確認沒有任何單點和前後兩點都相差超過
+    build_daily_features.SPIKE_THRESHOLD_NT（100 nT）——依 INTERMAGNET 技術手冊
+    5.2.5 節，自然地磁變化每秒達不到 100 nT，所以這樣的點是假象。這個檢查只是
     確認沒有普遍的損壞（許多大跳動，像 twu 那樣）。"""
     tz = json.loads((cfg.interim_dir / "timezone_check.json").read_text())
     station = tz.get("station")
@@ -366,7 +363,7 @@ def check_quiet_day_smoothness(cfg):
         "station": station,
         "days_checked": quiet_days,
         "max_abs_jump_values": sub["max_abs_jump"].tolist(),
-        "note": "偶爾出現兩位數到約 O(100nT) 的單秒跳動是預期中的真實瞬變，不是解析 bug；n_spikes==0 確認沒有任何跳動超過 300nT 的結構性故障門檻",
+        "note": "n_spikes==0 確認沒有任何單點和前後兩點都相差超過 100 nT（INTERMAGNET 技術手冊 5.2.5：自然變化每秒達不到 100 nT）",
     }
 
 
@@ -390,10 +387,10 @@ def check_no_spikes_adjacent_to_missing_data(cfg):
         df = parse_day_file(ref, station)
         for col in df.columns:  # 純量檔是 ["F"]，向量檔是 ["X","Y","Z"]
             s = df[col]
-            d = s.diff().abs()
-            flagged = np.where((d > SPIKE_THRESHOLD_NT).values)[0]
+            d_prev, d_next = s.diff().abs(), s.diff(-1).abs()
+            flagged = np.where(((d_prev > SPIKE_THRESHOLD_NT) & (d_next > SPIKE_THRESHOLD_NT)).values)[0]
             for i in flagged:
-                if pd.isna(s.iloc[i]) or pd.isna(s.iloc[i - 1]):
+                if pd.isna(s.iloc[i]) or pd.isna(s.iloc[i - 1]) or pd.isna(s.iloc[i + 1]):
                     bad.append({"station": station, "date": date, "column": col, "row": int(i)})
 
     checks["no_spikes_adjacent_to_missing_data"] = {

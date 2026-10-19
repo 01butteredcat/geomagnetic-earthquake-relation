@@ -38,5 +38,5 @@ def test_has_spike():
     idx = pd.date_range("2024-01-01", periods=600, freq="s")
     df = pd.DataFrame({c: 30000 + np.sin(np.arange(600) / 50) for c in "XYZ"}, index=idx)
     assert not _has_spike(df)
-    df.iloc[300, 2] += 500.0
+    df.iloc[300, 2] += 150.0
     assert _has_spike(df)

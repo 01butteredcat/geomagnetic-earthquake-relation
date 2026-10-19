@@ -70,7 +70,8 @@ def _detrend(x: pd.Series) -> np.ndarray:
 
 
 def _has_spike(df: pd.DataFrame) -> bool:
-    """X/Y/Z 任一分量有相鄰樣本跳動 > SPIKE_THRESHOLD_NT（和 build_daily_features 同一條規則）。"""
+    """X/Y/Z 任一分量有尖峰（和前、後一點都相差 > SPIKE_THRESHOLD_NT，
+    INTERMAGNET 手冊 5.2.5；和 build_daily_features 同一條規則）。"""
     return any(_despike(df[c])[1].any() for c in ("X", "Y", "Z"))
 
 

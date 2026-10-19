@@ -46,26 +46,29 @@ kinds:
 methods:
 
   A1:
-    name: 去尖峰濾波（一階差分跳點偵測）
+    name: 去尖峰濾波（INTERMAGNET 雙邊 100 nT 規則）
     group: A. 資料前處理
     purpose: >-
-      在計算日摘要統計之前，先剔除 1Hz X/Y/Z/F 中的儀器或傳輸尖峰。以相鄰兩秒的差值超過固定閾值判定為跳點，
-      將該點設為缺值（NaN）；原本就缺值的點不會被算成尖峰。
+      在計算日摘要統計之前，先剔除 1Hz X/Y/Z/F 中的儀器或傳輸尖峰。依 INTERMAGNET 技術手冊 5.2.5 節：
+      和前一點、後一點都相差超過 100 nT 的點是尖峰（自然變化每秒達不到 100 nT），設為缺值（NaN），不內插。
+      ULF 分析遇到尖峰則整天略過該測站－日。階梯（單邊跳動）不處理，只記錄在 n_one_sided_jumps。
     formula:
       - |-
-        d_t = |x_t - x_{t-1}|
+        d^-_t = |x_t - x_{t-1}|,\quad d^+_t = |x_t - x_{t+1}|
       - |-
-        x_t' = \begin{cases} \text{NaN} & d_t > \texttt{SPIKE\_THRESHOLD\_NT} \\ x_t & \text{otherwise} \end{cases}
+        x_t' = \begin{cases} \text{NaN} & d^-_t > \texttt{SPIKE\_THRESHOLD\_NT} \text{ 且 } d^+_t > \texttt{SPIKE\_THRESHOLD\_NT} \\ x_t & \text{otherwise} \end{cases}
     consts:
       - {name: SPIKE_THRESHOLD_NT, file: scripts/build_daily_features.py}
     pros:
-      - 計算極輕量（O(n)），對單點尖峰非常敏感，不需假設資料分布。
+      - 門檻與判準取自 INTERMAGNET 技術手冊，不是自訂。
+      - 計算極輕量（O(n)），不需假設資料分布。
     cons:
-      - 固定絕對閾值，沒有隨測站或季節雜訊水準自適應。
-      - 連續多點的「階梯」異常不會被偵測（差分本身可能小於閾值）。
-      - 可能誤刪真實的快速磁暴變化。
+      - 固定絕對門檻，沒有隨測站或季節雜訊水準調整；對 ULF（夜間 Pc3 H 的 RMS 中位數約 0.03 nT）而言，低於 100 nT 的尖峰仍可能影響結果。
+      - 只偵測單點尖峰；連續兩點以上的異常和階梯不會被移除（手冊把階梯分開處理，沒有給門檻）。
     code:
-      - {file: scripts/build_daily_features.py, lines: "37-47", symbol: _despike}
+      - {file: scripts/build_daily_features.py, lines: "37-51", symbol: _despike}
+      - {file: scripts/build_daily_features.py, lines: "54-59", symbol: _one_sided_jumps}
+      - {file: scripts/ulf_analysis.py, lines: "72-75", symbol: _has_spike}
 
   A2:
     name: 去趨勢（1 小時置中滾動平均）
@@ -264,8 +267,8 @@ methods:
       - 2026-09-28 起各站先除以自己非磁暴日的中位數再取中位數：舊版直接取原始比值中位數，測站加入或退出會造成水位跳動（G11 的 zbn 在震前窗口開頭退出，近站指標掉約 20 倍）。參考中位數用整條序列。
       - 物理機制（地下電性/壓磁效應）在文獻中仍有爭議，這是觀測型指標而非嚴格物理模型。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "77-111", symbol: _process_day}
-      - {file: scripts/ulf_analysis.py, lines: "177-201", symbol: near_far_table}
+      - {file: scripts/ulf_analysis.py, lines: "78-112", symbol: _process_day}
+      - {file: scripts/ulf_analysis.py, lines: "178-202", symbol: near_far_table}
 
   C3:
     name: 短時傅立葉頻譜圖（STFT Spectrogram）
@@ -285,7 +288,7 @@ methods:
       - 純視覺化/診斷，沒有產生量化統計檢定。
       - 時間與頻率解析度互相牽制（1 小時分段對應約 0.28 mHz）。
     code:
-      - {file: scripts/ulf_analysis.py, lines: "142-174", symbol: build_zoom_spectrogram}
+      - {file: scripts/ulf_analysis.py, lines: "143-175", symbol: build_zoom_spectrogram}
 
   D1:
     name: Shapiro–Wilk 常態性檢定

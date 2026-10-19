@@ -25,26 +25,38 @@ from parser import DayFileRef, _parse_day_file_from_text, parse_day_file  # noqa
 
 N_WORKERS = 16
 
-# 逐秒跳動門檻（nT），超過就把該樣本當成儀器／遙測
-# 故障，而不是真實的地磁變化。真實的
-# 長期變化 + Sq + 磁暴期間的磁場變化，即使在
-# 強烈磁暴時最多也只有幾 nT/s；這個門檻設得遠高於此（實測確認：
-# twu 震後有跳動 1e5 nT 的故障，ttn 長期有
-# 較小的突波，最高約 7700 nT——兩者都是儀器問題，不是地球物理現象）。
-SPIKE_THRESHOLD_NT = 300.0
+# 尖峰門檻（nT），依 INTERMAGNET 技術手冊 5.2.5 節（Despiking and Removal of
+# Artificially Disturbed Data，https://tech-man.intermagnet.org/latest/chapters/processdata/dataqualitycontrol.html）：
+# 自然地磁變化達不到每秒 100 nT，所以和前一點、後一點都相差超過 100 nT 的
+# 資料點可以安全移除；移除後留成缺值，不內插。（2026-10-20 前用的是專案自訂的
+# 單邊 300 nT；實測的故障例子：twu 震後有跳動 1e5 nT 的故障，ttn 長期有
+# 最高約 7700 nT 的突波——兩者都是儀器問題。）
+SPIKE_THRESHOLD_NT = 100.0
 
 
 def _despike(series: pd.Series) -> tuple[pd.Series, pd.Series, float]:
-    """回傳（新偵測到的突波設為 NaN 後的清理序列，
-    只有故障樣本才是 True 的布林 spike_mask（原本就是
-    哨兵值 NaN 的缺口永遠不會是 True，因為和 NaN 做 diff() 會得到 NaN，而
-    NaN > threshold 是 False），兩個有效樣本之間的最大 |跳動|）。"""
-    d = series.diff().abs()
-    max_jump = float(d.max()) if d.notna().any() else 0.0
-    spike_mask = d > SPIKE_THRESHOLD_NT  # 和 NaN 比較都是 False，所以原本的缺口會被排除
+    """回傳（尖峰設為 NaN 後的清理序列，只有尖峰樣本才是 True 的
+    布林 spike_mask，兩個有效樣本之間的最大 |跳動|）。
+
+    尖峰 = 和前一點、後一點都相差超過 SPIKE_THRESHOLD_NT（手冊 5.2.5 的雙邊
+    規則）。第一點、最後一點和緊鄰缺口（哨兵值 NaN）的點只有一個鄰點，和 NaN
+    比較都是 False，所以不會被標記。階梯（水位跳動後停在新水位）只有單邊超過
+    門檻，不算尖峰，見 _one_sided_jumps。"""
+    d_prev = series.diff().abs()
+    d_next = series.diff(-1).abs()
+    max_jump = float(d_prev.max()) if d_prev.notna().any() else 0.0
+    spike_mask = (d_prev > SPIKE_THRESHOLD_NT) & (d_next > SPIKE_THRESHOLD_NT)
     cleaned = series.copy()
     cleaned[spike_mask] = np.nan
     return cleaned, spike_mask, max_jump
+
+
+def _one_sided_jumps(series: pd.Series) -> int:
+    """兩個相鄰樣本都不是尖峰、卻相差超過門檻的次數（階梯／水位跳動）。
+    手冊把階梯和尖峰分開處理、沒有給階梯門檻，所以這裡只記錄、不處理。"""
+    spike = _despike(series)[1]
+    jump = series.diff().abs() > SPIKE_THRESHOLD_NT
+    return int((jump & ~spike & ~spike.shift(1, fill_value=False)).sum())
 
 
 def _list_files(gdms_dir, stations: dict):
@@ -73,6 +85,7 @@ def _features_from_df(df, station, date_str):
             "n_valid": n_valid,
             "pct_missing": round(1 - n_valid / n_total, 4),
             "n_spikes": int(spike_mask.sum()),
+            "n_one_sided_jumps": _one_sided_jumps(f_raw),
             "max_abs_jump": round(max_jump, 2),
             "F_mean": float(f.mean()) if n_valid else np.nan,
             "F_std": float(f.std()) if n_valid else np.nan,
@@ -98,6 +111,7 @@ def _features_from_df(df, station, date_str):
             "n_valid": n_valid,
             "pct_missing": round(1 - n_valid / n_total, 4),
             "n_spikes": int(spike_any.sum()),
+            "n_one_sided_jumps": sum(_one_sided_jumps(c) for c in (x_raw, y_raw, z_raw)),
             "max_abs_jump": round(max(max_jump_x, max_jump_y, max_jump_z), 2),
             "H_mean": float(h.mean()) if n_valid else np.nan,
             "H_std": float(h.std()) if n_valid else np.nan,

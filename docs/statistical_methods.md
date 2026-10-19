@@ -28,19 +28,26 @@
 
 ## A. 資料前處理
 
-### A1. 去尖峰濾波（Despiking，一階差分跳點偵測）
-- **用途**：在計算日摘要統計前，先剔除 1Hz X/Y/Z/F 中的儀器/傳輸尖峰雜訊。
-- **程式碼**：`scripts/build_daily_features.py:37-47`
+### A1. 去尖峰濾波（INTERMAGNET 雙邊 100 nT 規則）
+- **用途**：在計算日摘要統計前，先剔除 1Hz X/Y/Z/F 中的儀器/傳輸尖峰雜訊。ULF 極化（C1–C3）也用同一條規則，但做法不同：X/Y/Z 任一分量有尖峰，就整天略過該測站－日，不只把那個樣本設成 NaN。原因是帶通濾波需要連續序列，尖峰經過濾波會在前後一段時間留下假的大振幅。
+- **來源**：INTERMAGNET 技術手冊 5.2.5 節（Despiking and Removal of Artificially Disturbed Data，<https://tech-man.intermagnet.org/latest/chapters/processdata/dataqualitycontrol.html>）：自然地磁變化每秒達不到 100 nT，所以和前一點、後一點都相差超過 100 nT 的點可以安全移除；被移除的點標記成缺值，不內插。手冊也說品質控制沒有統一的方法。
+- **程式碼**：`scripts/build_daily_features.py:37-51`（`_despike`）、`:54-59`（`_one_sided_jumps`）；ULF：`scripts/ulf_analysis.py:72-75`（`_has_spike`），在 `_process_day` 中呼叫
 - **數學式**：
 
-  設原始序列為 $x_t$，一階差分 $d_t = |x_t - x_{t-1}|$。若 $d_t >$ `SPIKE_THRESHOLD_NT`（300 nT），則將 $x_t$ 標記為缺值（NaN）：
+  設原始序列為 $x_t$，$d^-_t = |x_t - x_{t-1}|$、$d^+_t = |x_t - x_{t+1}|$。兩者都大於 `SPIKE_THRESHOLD_NT`（100 nT）時，將 $x_t$ 標記為缺值（NaN）：
 
   $$
-  x_t' = \begin{cases} \text{NaN} & d_t > 300\text{ nT} \\ x_t & \text{otherwise} \end{cases}
+  x_t' = \begin{cases} \text{NaN} & d^-_t > 100\text{ nT 且 } d^+_t > 100\text{ nT} \\ x_t & \text{otherwise} \end{cases}
   $$
 
-- **優點**：計算極輕量（O(n)）、對單點尖峰異常非常敏感、不需假設資料分布。
-- **缺點**：固定絕對閾值（300 nT）沒有隨測站/季節雜訊水準自適應；連續多點的「階梯」異常不會被偵測（差分本身可能小於閾值）；可能誤刪真實的快速磁暴變化。
+  第一點、最後一點和緊鄰缺口的點只有一個鄰點，不會被標記。
+
+- **優點**：門檻與判準取自 INTERMAGNET 技術手冊，不是自訂；計算極輕量（O(n)）、不需假設資料分布。
+- **缺點**：
+  - 固定絕對門檻，沒有隨測站/季節雜訊水準調整。對 ULF 而言，夜間 Pc3 H 的 RMS 中位數約 0.03 nT（14 組 `ulf_daily.csv`），低於 100 nT 的尖峰仍可能影響當晚的 RMS。
+  - 只偵測單點尖峰：連續兩點以上的異常不會被移除。
+  - 階梯（跳動後停在新水位）也不會被移除。手冊把階梯和尖峰分開處理，沒有給階梯的門檻，所以本專案不處理階梯，只把「兩個非尖峰相鄰樣本相差超過門檻」的次數記在 `daily_features.csv` 的 `n_one_sided_jumps`。
+- **沿革**：2026-10-20 前用的是專案自訂的單邊 300 nT 規則（$|x_t - x_{t-1}| > 300$ 就設成 NaN），沒有文獻依據；ULF 在 2026-10-19 前沒有去尖峰。
 
 ### A2. 去趨勢（1 小時置中滾動平均）
 - **用途**：在做 ULF 頻帶濾波（見 C1）或 coseismic 階躍偵測（見 D7）前，先移除長週期背景趨勢（如日變 Sq 曲線），避免其能量洩漏進目標頻帶。
@@ -134,7 +141,7 @@
 
 ### C2. Hilbert 轉換包絡線與 Z/H 極化比
 - **用途**：計算每個頻帶在「本地夜間」（UTC 17–19 時）的訊號包絡能量，並取垂直分量對水平分量的比值（Z/H ratio）——地磁極化分析中常見的震前異常指標，理論基礎是地下電性結構變化會改變波的極化特性。
-- **程式碼**：`scripts/ulf_analysis.py:77-111`，`scipy.signal.hilbert`
+- **程式碼**：`scripts/ulf_analysis.py:78-112`，`scipy.signal.hilbert`
 - **數學式**：
 
   $$
@@ -156,13 +163,13 @@
   \text{diff\_zh}_t = \operatorname{median}_{s \in \text{近站}} \tilde r_{s,t} - \operatorname{median}_{s \in \text{遠站}} \tilde r_{s,t}
   $$
 
-  （`scripts/ulf_analysis.py:177-201`，`near_far_table`）。舊版直接取原始比值的中位數，只要有測站加入或退出就會造成水位跳動（G11 的 zbn，見開頭「2026-09-28 修正」）；舊版保留為 `*_raw` 欄位，`*_n_near`／`*_n_far` 記錄每天有資料的測站數。參考中位數用整條序列（包含未來的日子），但每站只有一個數，只影響水位、不影響逐日形狀。
+  （`scripts/ulf_analysis.py:178-202`，`near_far_table`）。舊版直接取原始比值的中位數，只要有測站加入或退出就會造成水位跳動（G11 的 zbn，見開頭「2026-09-28 修正」）；舊版保留為 `*_raw` 欄位，`*_n_near`／`*_n_far` 記錄每天有資料的測站數。參考中位數用整條序列（包含未來的日子），但每站只有一個數，只影響水位、不影響逐日形狀。
 - **優點**：Hilbert 包絡是萃取瞬時振幅的標準方法，不需額外視窗化假設；限定於本地夜間可避開人為電磁雜訊（工業用電、交通）干擾最嚴重的時段；near−far 差分設計再次扣除共模效應。
 - **缺點**：僅取夜間 3 小時樣本，樣本量偏少，單日估計變異大；Z/H ratio 對水平分量接近零時數值不穩定（雖設有 `1e-9` 保護）；物理機制（地下電性/壓磁效應）本身在文獻中仍有爭議，此為觀測型指標而非嚴格物理模型。
 
 ### C3. 短時傅立葉頻譜圖（STFT Spectrogram）
 - **用途**：於事件前後 ±12 天窗口內，視覺化 X 分量在 ULF 頻段的功率隨時間變化，作為診斷/報告用圖，輔助判讀是否有頻譜異常。
-- **程式碼**：`scripts/ulf_analysis.py:142-174`，`scipy.signal.spectrogram`（`nperseg=3600, noverlap=1800`）
+- **程式碼**：`scripts/ulf_analysis.py:143-175`，`scipy.signal.spectrogram`（`nperseg=3600, noverlap=1800`）
 - **數學式**：對每個長度 3600 秒的分段做 FFT 取功率譜密度 $S_{xx}(f,t)$，圖示為 $\log_{10}(S_{xx}+10^{-6})$（避免 log(0)）。
 - **優點**：直觀呈現時頻演化，適合人工判讀是否有異常頻譜特徵；`filtfilt` 之外的獨立驗證管道。
 - **缺點**：純視覺化/診斷用途，未產生量化統計檢定；時間解析度與頻率解析度受限於分段長度（Heisenberg 測不準原理的工程版本，1 小時分段對應約 0.28 mHz 頻率解析度）。
