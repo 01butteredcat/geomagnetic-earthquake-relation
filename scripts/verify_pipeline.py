@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common import DATA_TIMEZONE, auto_outage_dates, list_day_refs, load_group_config, resolve_day_ref  # noqa: E402
+from common import PROJECT_DIR, DATA_TIMEZONE, auto_outage_dates, list_day_refs, load_group_config, resolve_day_ref  # noqa: E402
 from parser import is_scalar_only, open_raw, parse_day_file  # noqa: E402
 from build_daily_features import SPIKE_THRESHOLD_NT  # noqa: E402
 from compute_indices import MIN_CLEAN_POINTS, MIN_NIGHT_MINUTES, NIGHT_HOURS_UTC, TRAILING_WINDOW_DAYS  # noqa: E402
@@ -78,7 +78,10 @@ def check_raw_vs_parsed_spotcheck(cfg):
             for c in real_cols
         )
         ok = junk_ok and real_ok
-        samples.append({"station": station, "file": ref.label, "timestamp": str(ts), "ok": bool(ok)})
+        # 存相對於專案根目錄的路徑，避免本機絕對路徑寫進公開的報告
+        rel = ref.source_path.relative_to(PROJECT_DIR).as_posix()
+        file_label = f"{rel}!{ref.member}" if ref.member else rel
+        samples.append({"station": station, "file": file_label, "timestamp": str(ts), "ok": bool(ok)})
 
     all_ok = all(s["ok"] for s in samples)
     checks["raw_vs_parsed_spotcheck"] = {"pass": all_ok, "samples": samples}
