@@ -251,6 +251,7 @@
 
   $m_b$ 為區塊 $b$ 的最低值；$X$ 的虛無分布由「每組隨機挑一個區塊當真窗口」模擬得到，自然包含短序列 p 值離散的效果。滑動（重疊）的假窗口不能用：同一個低點會出現在最多 30 個假窗口裡，模擬中名目 5% 的誤判率變成 14%。代價是單組 p 不能小於 $1/n_{\text{blocks}}$（150 天的序列約 0.2），顯著性只能來自跨組合併。程式：`scripts/method_comparison.py`（`rank_window_test`、`fisher_across_groups`、`rank_self_test`）。
 - **排名檢定的敏感度（2026-09-28，`surrogate_test.rank_sensitivity`）**：不含 G10、不含 G10 與 G11、逐一拿掉一組、以及「安慰劑區塊」（每組真窗口前一個 30 天區塊當成真窗口，同樣合併）。各自用獨立亂數流，不影響主要數字。限制：區塊可互換的前提會被趨勢、季節和測站組成變化破壞；各組獨立的前提在 G23／G24、G6／G7／G8 不成立。
+- **上尾排名檢定（2026-11-01，探索性，`surrogate_test.upper_tail_rank`）**：文獻多報告震前 ULF Z/H **上升**（頻率約 0.01 Hz，屬本專案的 Pc4），所以另跑上尾：$m_b$ 換成區塊 $b$ 的最高值，$p_g = (1 + \#\{b : m_b \ge m_{\text{real}}\})/n_{\text{blocks}}$，其餘（Fisher 合併、敏感度、安慰劑區塊）與下尾完全相同，`method_comparison._window_extreme(tail="upper")`。輸出 `data/interim/surrogate_test/window_summary_upper.{json,md}`，不改動下尾結果。結果：Pc4 12 組合併 p = 0.248（每家族一組 0.162），Pc3 0.345；沒有任何一組單獨 p < 0.10。這是看過下尾結果之後才加跑的，只當探索性。
 - **優點**：不依賴任何母數分布假設，p-value 直接由資料本身的重抽樣分布給出，對非常態、自相關的地磁序列特別合適。
 - **缺點**：p-value 精度受 $N$ 限制（$N=2000$ 時最小可解析 p-value 約 0.0005）；「取序列中最負一日」本身是一種事後挑選最極端值的做法（multiple comparison / look-elsewhere effect），此重抽樣法有部分緩解但未完全校正（跨群組、跨頻帶多重比較的校正在別處以其他方式處理，見 D5）。
 
