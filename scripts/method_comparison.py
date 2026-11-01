@@ -275,8 +275,8 @@ def placebo_counts(s: pd.Series, real_window: set[str], rng: np.random.Generator
 
 
 def _window_extreme(values: np.ndarray, center: float, tail: str) -> float:
-    """越大 = 越極端：下尾用 -min，雙尾用 max|x - center|。"""
-    return float(-values.min()) if tail == "lower" else float(np.abs(values - center).max())
+    """越大 = 越極端：下尾用 -min，上尾用 max（2026-11-01，探索性），雙尾用 max|x - center|。"""
+    return {"lower": -values.min(), "upper": values.max()}.get(tail, np.abs(values - center).max()).item()
 
 
 def rank_window_test(s: pd.Series, real_window: set[str], tail: str = "lower") -> dict:

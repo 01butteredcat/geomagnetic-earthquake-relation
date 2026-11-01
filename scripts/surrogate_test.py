@@ -146,6 +146,7 @@ def run_one(group_id: str, band: str, rng: np.random.Generator) -> dict | None:
     prev = mc.rank_window_test(series, set(pre_event_window(window_end - pd.Timedelta(days=mc.PRE_WINDOW_DAYS),
                                                             mc.PRE_WINDOW_DAYS)), tail="lower")
     pre_event["placebo_prev_block"] = {k: prev.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")}
+    pre_event["upper_tail"] = upper_tail_rank(series, window, window_end)
     pre_event.update({"anchor": cfg.anchor_event.date,
                       "window_last_night": (window_end - pd.Timedelta(days=1)).strftime("%Y%m%d"),
                       "window_days": mc.PRE_WINDOW_DAYS,
@@ -218,6 +219,10 @@ def main():
         (out_dir / "window_summary.json").write_text(json.dumps(summ, indent=2, ensure_ascii=False))
         (out_dir / "window_summary.md").write_text(render_window_summary(results, summ), encoding="utf-8")
         print(f"wrote {out_dir / 'window_summary.md'}", file=sys.stderr)
+        upper = upper_tail_summary(results)
+        (out_dir / "window_summary_upper.json").write_text(json.dumps(upper, indent=2, ensure_ascii=False))
+        (out_dir / "window_summary_upper.md").write_text(render_upper_summary(results, upper), encoding="utf-8")
+        print(f"wrote {out_dir / 'window_summary_upper.md'}", file=sys.stderr)
 
 
 # 2026-09-25 在看到排名檢定數字之前就預先指定：主要的
@@ -355,6 +360,79 @@ def render_window_summary(results: list[dict], summ: dict) -> str:
           "- 排名檢定假設不同 30 天區塊可以互換：若序列有長期漂移，最低值會偏向序列兩端，而真窗口多半在中後段，結果會偏保守。",
           "- G6/G7/G8、G23/G24 共用原始資料，不是完全獨立的樣本。",
           "- 震前窗口與背景期的磁暴比例不同時，排除磁暴日後可用天數也不同，窗口內可能只剩少數幾天。", ""]
+    return "\n".join(L) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# 上尾（2026-11-01，探索性）：文獻多報告震前 ULF Z/H「上升」（Hayakawa 1996、Masci 2011），
+# 頻率約 0.01 Hz，落在本專案的 Pc4。這是看過下尾結果之後才加跑的，不取代主要檢定；
+# 方法與下尾完全相同，只把「震前區塊的最低值」換成「最高值」。
+# ---------------------------------------------------------------------------
+
+def upper_tail_rank(series: pd.Series, window: set[str], window_end: pd.Timestamp) -> dict:
+    up = mc.rank_window_test(series, window, tail="upper")
+    prev = mc.rank_window_test(series, set(pre_event_window(window_end - pd.Timedelta(days=mc.PRE_WINDOW_DAYS),
+                                                            mc.PRE_WINDOW_DAYS)), tail="upper")
+    out = {k: up.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")}
+    in_win = series.index.isin(window)
+    bg = series[~in_win].to_numpy(dtype=float)
+    med = float(np.median(bg))
+    mad = 1.4826 * float(np.median(np.abs(bg - med)))
+    if in_win.any() and mad > 1e-12:  # z 用窗口外背景期的中位數／MAD，與下尾的 obs_window_min_z 相同
+        out["obs_window_max_z"] = round((float(series[in_win].max()) - med) / mad, 4)
+        out["obs_window_max_date"] = str(series[in_win].idxmax())
+    out["placebo_prev_block"] = {k: prev.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")}
+    return out
+
+
+def upper_tail_summary(results: list[dict]) -> dict:
+    """和 rank_summary 同一套合併與敏感度分析，只換成每組的 upper_tail 結果。"""
+    remapped = [{**r, "pre_event_window": r["pre_event_window"]["upper_tail"]} for r in results
+                if "upper_tail" in r.get("pre_event_window", {})]
+    return {"tail": "upper (highest value in the pre-event block)",
+            "status": "exploratory, literature-motivated (Z/H increase); added after the lower-tail results were seen",
+            "literature_band": "pc4", "window_days": mc.PRE_WINDOW_DAYS,
+            "rank_test": rank_summary(remapped, np.random.default_rng([SEED, 2]))}
+
+
+def render_upper_summary(results: list[dict], summ: dict) -> str:
+    L = ["# ULF 排名檢定：上尾（震前上升，探索性）", "",
+         "文獻多報告震前 ULF Z/H **上升**，頻率約 0.01 Hz，落在本專案的 **Pc4**（45–150 秒）。這裡用和主要檢定完全相同的方法"
+         "（不重疊 30 天區塊的排名檢定、Fisher 合併、同一套敏感度分析），只把「震前區塊的最低值」換成「最高值」："
+         "p_g =（1 + 最高值不低於震前區塊的假區塊數）÷（區塊總數）。",
+         "",
+         "**定位**：探索性。上尾是在看過下尾結果（Pc3 p=0.055、Pc4 p=0.108）之後才依文獻加跑的；主要檢定仍是 Pc3 下尾。"
+         "到目前為止這組資料上做過的排名檢定組合共 4 個（Pc3／Pc4 × 下尾／上尾），若要一起看，Bonferroni 門檻是 0.05／4 = 0.0125。",
+         "",
+         "| 頻帶 | 組別 | 組數 | 單組 p<0.05 | 單組 p<0.10 | Fisher X | 合併 p |",
+         "|---|---|---|---|---|---|---|"]
+    for band, e in summ["rank_test"].items():
+        star = "（文獻頻帶）" if band == summ["literature_band"] else ""
+        for name, label in (("all_groups", "全部"), ("one_per_family", "每家族一組")):
+            v = e[name]
+            L.append(f"| {band}{star} | {label} | {v['n_groups']} | {v['n_rank_p_lt_05']} | {v['n_rank_p_lt_10']} "
+                     f"| {v['fisher_x']} | {v['p']} |")
+    L += ["", "## 敏感度", "",
+          "| 頻帶 | 不含 G10 | 不含 G10、G11 | 安慰劑區塊（前一個 30 天） | 逐一拿掉一組的範圍 |", "|---|---|---|---|---|"]
+    for band, e in summ["rank_test"].items():
+        sv = e["sensitivity"]
+        loo = sv["leave_one_out"]
+        lo_g, hi_g = min(loo, key=loo.get), max(loo, key=loo.get)
+        L.append(f"| {band} | {sv['drop_discovery_G10']['p']} | {sv['drop_G10_G11']['p']} | {sv['placebo_prev_block']['p']} "
+                 f"| {loo[lo_g]}（拿掉 {lo_g}）～{loo[hi_g]}（拿掉 {hi_g}） |")
+    L += ["", "## 各組結果", "",
+          "| 組 | 頻帶 | 震前最高 z（日期） | 排名 p（區塊數） | 安慰劑區塊 p |", "|---|---|---|---|---|"]
+    for r in results:
+        up = r.get("pre_event_window", {}).get("upper_tail")
+        if not up:
+            continue
+        n_blocks = up["rank_n_fake_windows"] + 1 if up.get("rank_p") is not None else "—"
+        L.append(f"| {r['group']} | {r['band']} | {up.get('obs_window_max_z')}（{up.get('obs_window_max_date')}） "
+                 f"| {up.get('rank_p')}（{n_blocks}） | {(up.get('placebo_prev_block') or {}).get('rank_p')} |")
+    L += ["", "## 限制", "",
+          "- 事後加跑：方向是看過下尾結果之後才換的，p 值不能和主要檢定同等看待。",
+          "- 單一磁暴後的恢復期或測站加入／退出都可能讓某個區塊的最高值偏高；磁暴日已排除，測站組成改變沒有逐組檢查。",
+          "- 其餘限制與下尾相同（區塊可互換的前提、G6/G7/G8 與 G23/G24 共用原始資料）。", ""]
     return "\n".join(L) + "\n"
 
 
