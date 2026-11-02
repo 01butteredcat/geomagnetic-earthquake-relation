@@ -223,6 +223,127 @@ def main():
         (out_dir / "window_summary_upper.json").write_text(json.dumps(upper, indent=2, ensure_ascii=False))
         (out_dir / "window_summary_upper.md").write_text(render_upper_summary(results, upper), encoding="utf-8")
         print(f"wrote {out_dir / 'window_summary_upper.md'}", file=sys.stderr)
+        kept = storm_kept_summary(groups)
+        (out_dir / "storm_kept_summary.json").write_text(json.dumps(kept, indent=2, ensure_ascii=False))
+        (out_dir / "storm_kept_summary.md").write_text(render_storm_kept(kept), encoding="utf-8")
+        print(f"wrote {out_dir / 'storm_kept_summary.md'}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# 敏感度（2026-11-02）：磁暴日放回去。使用者問「既然是近站減遠站，磁暴是共同背景，
+# 為什麼還要排除磁暴日」。這裡用同一條序列、同一個排名檢定，只差在保不保留磁暴／
+# 恢復期日。不影響上面任何既有輸出：排名檢定本身是確定性的，Fisher 合併用和
+# window_summary 相同的種子，所以「排除」版應該逐位重現主要 p 值（自我檢查）。
+
+def _mad(x: np.ndarray) -> float:
+    x = x[np.isfinite(x)]
+    return 1.4826 * float(np.median(np.abs(x - np.median(x)))) if len(x) else float("nan")
+
+
+def storm_kept_one(group_id: str, band: str) -> dict | None:
+    cfg = load_group_config(group_id)
+    path = cfg.interim_dir / "ulf_near_far_index.csv"
+    if not path.exists():
+        return None
+    df = pd.read_csv(path, dtype={"date": str}).sort_values("date").reset_index(drop=True)
+    col = f"{band}_diff_zh"
+    if col not in df.columns:
+        return None
+    mask = df[col].notna()
+    dates = df.loc[mask, "date"].to_numpy()
+    vals = df.loc[mask, col].to_numpy(dtype=float)
+    storm = set(pd.read_csv(cfg.interim_dir / "storm_days.csv", dtype={"date": str})["date"])
+    is_storm = np.isin(dates, list(storm))
+    window_end = pre_event_anchor(cfg.anchor_event)
+    window = set(pre_event_window(window_end, mc.PRE_WINDOW_DAYS))
+    prev_window = set(pre_event_window(window_end - pd.Timedelta(days=mc.PRE_WINDOW_DAYS), mc.PRE_WINDOW_DAYS))
+    out = {"group": group_id, "band": band, "n_days": int(len(vals)), "n_storm_days": int(is_storm.sum()),
+           # 整條序列上，磁暴日相對平靜日的離散程度（MAD 比）；約 1 代表差分已經吸收磁暴
+           "mad_storm_over_quiet": round(_mad(vals[is_storm]) / _mad(vals[~is_storm]), 3)
+           if is_storm.sum() >= 5 and (~is_storm).sum() >= 5 else None,
+           # 磁暴日的中位數比平靜日低多少（以平靜日 MAD 為單位）；負值＝磁暴本身會把 Z/H 拉低，
+           # 這時窗口內磁暴日偏多就會讓「保留」版本的下尾 p 變小，和前兆無關
+           "storm_median_shift_mad": round((np.median(vals[is_storm]) - np.median(vals[~is_storm]))
+                                           / _mad(vals[~is_storm]), 3)
+           if is_storm.sum() >= 5 and (~is_storm).sum() >= 5 else None,
+           "storm_fraction_all": round(float(is_storm.mean()), 3) if len(is_storm) else None}
+    for label, keep in (("storm_excluded", ~is_storm), ("storm_kept", np.ones_like(is_storm))):
+        series = pd.Series(vals[keep], index=dates[keep])
+        if len(series) < 20:
+            out[label] = {"error": f"只有 {len(series)} 天"}
+            continue
+        rk = mc.rank_window_test(series, window, tail="lower")
+        prev = mc.rank_window_test(series, prev_window, tail="lower")
+        in_win = series[series.index.isin(window)]
+        min_date = str(in_win.idxmin()) if len(in_win) else None
+        out[label] = {**{k: rk.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")},
+                      "placebo_prev_block": {k: prev.get(k) for k in ("rank_p", "rank_n_fake_windows", "null_ps")},
+                      "n_window_days": int(len(in_win)),
+                      "n_window_storm_days": int(np.isin(in_win.index, list(storm)).sum()),
+                      "window_min_date": min_date, "window_min_is_storm": min_date in storm if min_date else None}
+    return out
+
+
+def storm_kept_summary(groups: list[str]) -> dict:
+    rows = [r for g in groups for b in BANDS if (r := storm_kept_one(g, b)) is not None]
+    combined = {label: rank_summary([{"group": r["group"], "band": r["band"], "pre_event_window": r[label]}
+                                     for r in rows if "rank_p" in r.get(label, {})],
+                                    np.random.default_rng(SEED))  # 和 window_summary 同種子
+                for label in ("storm_excluded", "storm_kept")}
+    # 公平比較：保留版本只用排除版本也有的組（G12 排除磁暴日後窗口內只剩 1 天，沒有 p 值）
+    same = {(r["group"], r["band"]) for r in rows if r.get("storm_excluded", {}).get("rank_p") is not None}
+    combined["storm_kept_same_groups"] = rank_summary(
+        [{"group": r["group"], "band": r["band"], "pre_event_window": r["storm_kept"]}
+         for r in rows if (r["group"], r["band"]) in same and "rank_p" in r.get("storm_kept", {})],
+        np.random.default_rng(SEED))
+    return {"question": "近站減遠站之後，磁暴日還需要排除嗎？",
+            "status": "敏感度分析；主要檢定仍是排除磁暴日的 Pc3 下尾",
+            "rank_test": combined, "per_group": rows}
+
+
+def render_storm_kept(s: dict) -> str:
+    L = ["# 敏感度：磁暴日放回去（ULF Z/H 近站減遠站）", "",
+         "同一條 `{頻帶}_diff_zh` 序列、同一個排名檢定（下尾、不重疊 30 天區塊、Fisher 合併），"
+         "只差在保留或排除磁暴／恢復期日。「排除」欄應該和主要檢定的數字完全相同。", "",
+         "## 跨組合併", "",
+         "「保留（同組）」只用排除版本也有 p 值的組，才能和「排除」直接比；「保留（全部）」多了 G12。", "",
+         "| 頻帶 | 組別 | 排除磁暴日 p | 保留磁暴日 p（同組） | 保留磁暴日 p（全部） | 安慰劑區塊（排除／保留同組） |",
+         "|---|---|---|---|---|---|"]
+    ex, kp, ks = (s["rank_test"][k] for k in ("storm_excluded", "storm_kept", "storm_kept_same_groups"))
+    for band in BANDS:
+        for name, label in (("all_groups", "全部"), ("one_per_family", "每家族一組")):
+            pl = "" if name != "all_groups" else (f"{ex[band]['sensitivity']['placebo_prev_block']['p']}／"
+                                                  f"{ks[band]['sensitivity']['placebo_prev_block']['p']}")
+            L.append(f"| {band} | {label} | {ex[band][name]['p']}（{ex[band][name]['n_groups']} 組） "
+                     f"| {ks[band][name]['p']}（{ks[band][name]['n_groups']} 組） "
+                     f"| {kp[band][name]['p']}（{kp[band][name]['n_groups']} 組） | {pl} |")
+    L += ["", "保留磁暴日（同組）的敏感度：", ""]
+    for band in BANDS:
+        sens = ks[band]["sensitivity"]
+        loo = sens["leave_one_out"].values()
+        L.append(f"- {band}：不含 G10 {sens['drop_discovery_G10']['p']}、不含 G10＋G11 {sens['drop_G10_G11']['p']}、"
+                 f"逐一拿掉一組 {min(loo)}–{max(loo)}")
+    L += ["", "## 各組", "",
+          "| 組 | 頻帶 | 磁暴日數／總日數 | 磁暴／平靜 MAD 比 | 磁暴日中位偏移（MAD） | 窗口內磁暴日 | 排除：p（最低日） | 保留：p（最低日） |",
+          "|---|---|---|---|---|---|---|---|"]
+    for r in s["per_group"]:
+        ex_g, kp_g = r.get("storm_excluded", {}), r.get("storm_kept", {})
+        mark = lambda g: f"{g.get('rank_p')}（{g.get('window_min_date')}{'，磁暴' if g.get('window_min_is_storm') else ''}）"
+        L.append(f"| {r['group']} | {r['band']} | {r['n_storm_days']}／{r['n_days']} | {r['mad_storm_over_quiet']} | {r['storm_median_shift_mad']} "
+                 f"| {kp_g.get('n_window_storm_days')}／{kp_g.get('n_window_days')} | {mark(ex_g)} | {mark(kp_g)} |")
+    shifts = [r["storm_median_shift_mad"] for r in s["per_group"] if r.get("storm_median_shift_mad") is not None]
+    more = [f"{r['group']}/{r['band']}" for r in s["per_group"]
+            if (r.get("storm_kept") or {}).get("n_window_days") and r.get("storm_fraction_all") is not None
+            and r["storm_kept"]["n_window_storm_days"] / r["storm_kept"]["n_window_days"] > r["storm_fraction_all"]]
+    L += ["", "## 解讀注意", "",
+          f"- 磁暴日的 Z/H 中位數相對平靜日的偏移：{sum(x < 0 for x in shifts)}／{len(shifts)} 個組×頻帶為負"
+          f"（中位數 {np.median(shifts):+.2f} MAD）。",
+          f"- 震前窗口內磁暴日比例高於整條序列的：{len(more)}／{len(s['per_group'])}（{'、'.join(more)}）。",
+          "- 兩者同時成立時，「保留磁暴日」的下尾 p 變小可能只是磁暴日集中在窗口裡，不能當成前兆證據；"
+          "主要檢定仍是排除磁暴日的版本。"]
+    L += ["", "MAD 比 = 磁暴日序列值的 MAD ÷ 平靜日的 MAD。約 1 表示近站減遠站之後，磁暴日和平靜日一樣安靜；"
+          "明顯大於 1 表示相減後仍留有磁暴造成的離散。", ""]
+    return "\n".join(L) + "\n"
 
 
 # 2026-09-25 在看到排名檢定數字之前就預先指定：主要的
