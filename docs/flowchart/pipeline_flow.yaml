@@ -807,6 +807,21 @@ steps:
     scope: 僅向量站群組（ULF_GROUPS：G4–G13、G19、G20、G23）
     after: [raw, timezone_check]
 
+  - id: ulf_interstation_tf
+    lane: daily
+    kind: stat
+    title: 站間轉換函數差分（探索性：磁暴日診斷）
+    scripts: [ulf_interstation_tf.py]
+    summary: >-
+      回答「在原始資料層用遠站把磁暴抵消掉，磁暴日能不能放回分析」：夜間 1Hz X/Y/Z 去尖峰（A1）、去趨勢（A2）後切 1200 秒 FFT 子段，
+      每對近站／遠站在平靜日（扣掉被檢定的震前窗口與安慰劑區塊）以最小平方估計遠站 X/Y/Z → 近站 Z 的站間轉換函數（Harada et al. 2004 的概念，
+      估計細節自訂），取殘差 Z 的 Pc3/Pc4 能量。只列磁暴日 vs 平靜日的描述性診斷（D4 段落），不算前兆 p 值。
+    inputs: [原始 1Hz 日檔（X/Y/Z）, storm_days.csv, kp.csv, ulf_near_far_index.csv]
+    outputs: [ulf_istf_index.csv, ulf_istf_fits.json, ulf_istf/summary.md]
+    methods: [A1, A2, D4]
+    scope: 僅向量站群組（ULF_GROUPS）；探索性，不在 run_pipeline.sh 內
+    after: [raw, fetch_space_weather, ulf_analysis]
+
   - id: verify_pipeline
     lane: daily
     kind: gate
